@@ -1285,6 +1285,34 @@ yamaContext S y … : TerminalCopy.Context
 
 これが原文の `badAtTerminalMountain` にあたる山である。
 
+その山の高さと親を書き下した。
+
+```
+yamaContext_height_orig   c < n−1 なら height c = height base c
+yamaContext_height_seam   0 < i なら height (y + L*i) = height base y
+yamaContext_height_other  y < j < n−1 なら height (j + L*i) = height base j
+yamaContext_parent_orig       c < n−1 なら元の親そのもの
+yamaContext_parent_seam_low   置き換えの継ぎ目・r < level: 元の列 x、桁上げ i−1
+yamaContext_parent_seam_high  置き換えの継ぎ目・level ≤ r: 元の列 y、桁上げ無し
+yamaContext_parent_other      それ以外: 元の列 j、桁上げ i
+```
+
+高さはどの列 `j + L*i` についても「元の列 `j` の高さ」になり、JS の
+`kmax(i,j) = height base j + 1`（`kmaxAt_expRes_eq`）と一致する。
+
+**そして親が一致することを証明した。**
+
+```
+fujiCellAt_parCol_yama:
+  JS が段 k に積むセル（列 j + L*i）の par が添字 p を指すとき、
+    (yamaContext …).parent k (j + L*i) = some（添字 p のセルの列）
+```
+
+3 分岐がそのまま対応する。`j = y`（置き換えの継ぎ目）で `k < level` なら元の列は
+最後の列 `x` で桁上げ `i−1`、`level ≤ k` なら元の列は根 `y`。後者で JS は桁上げ
+`i−1` を掛けるが、根 `y` の親は `y` より左なので `parentCopy` は恒等になる
+（`parentCopy_of_parent_y`）。`j ≠ y` なら元の列は `j` で桁上げ `i`。
+
 空段落としを通す運搬補題も揃えた。
 
 ```
