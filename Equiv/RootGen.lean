@@ -85,4 +85,38 @@ theorem diff_le_of_a_and_one (root p j : Nat)
   -- 最終算術
   exact difference_le_of_value_le (select F U) hp ht hUt hone
 
+/-! ## `j` が `p` の `F` 祖先である場合
+
+この場合、(a) と (1) はどちらも `restrictedParent` の最大性と
+祖先鎖の線形性だけで出る。 -/
+
+/-- (1) の祖先の場合。`root = G p` は `0 < U` かつ `U < U p` を満たす
+`F` 祖先のうち最大のものだから、`root` より右の `F` 祖先 `j` は
+その条件を満たさない。`U j > 0` なので `U p ≤ U j` となる。 -/
+theorem one_of_ancestor (root p j : Nat)
+    (hp : restrictedParent F U p = some root)
+    (hj : ZeroY.Forest.Ancestor F.parent p j)
+    (hjr : root < j) (hUj : 0 < U j) : U p ≤ U j := by
+  obtain ⟨_, _, _, hmax⟩ := (restrictedParent_some_iff F U p root).mp hp
+  rcases Nat.lt_or_ge (U j) (U p) with hlt | hge
+  · have := hmax j hj hUj hlt
+    omega
+  · exact hge
+
+/-- (a) の祖先の場合。`root` と `j` はどちらも `p` の `F` 祖先で `root < j`
+なので、祖先鎖の線形性から `root` は `j` の `F` 祖先である。 -/
+theorem a_of_ancestor (root p j : Nat)
+    (hp : restrictedParent F U p = some root)
+    (hj : ZeroY.Forest.Ancestor F.parent p j)
+    (hjr : root < j) : ZeroY.Forest.Ancestor F.parent j root := by
+  obtain ⟨hroot, _, _, _⟩ := (restrictedParent_some_iff F U p root).mp hp
+  exact anc_of_common p root j hroot hj hjr
+
+/-- (a) の非祖先の場合。`j` の `G` 親が `root` であれば、`root` は
+`j` の `F` 祖先である。 -/
+theorem a_of_gparent (root j : Nat)
+    (hj : restrictedParent F U j = some root) :
+    ZeroY.Forest.Ancestor F.parent j root :=
+  ((restrictedParent_some_iff F U j root).mp hj).1
+
 end Yukito
