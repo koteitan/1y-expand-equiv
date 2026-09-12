@@ -1642,4 +1642,46 @@ theorem hasCol_cutChild_zero (S : Setting) (M : List Rowj) (hM : MtRep S M) (cut
   have := pos_eq_index (rowAt M 0) S.n _ (rep_top S M hM 0 hM0) hM.size0 c hcM
   omega
 
+/-! ## 継ぎ目の高さの上限（仮定なし）
+
+`hasCol M r j` が真なら、段 `r` に列 `j` のセルがあるので `r ≤ j` である
+（position は非負）。したがって継ぎ目の高さはつねに `j + 1` 以下。 -/
+
+theorem hasCol_le (M : List Rowj) (r j : Nat) (h : hasCol M r j = true) : r ≤ j := by
+  unfold hasCol at h
+  cases hlk : lookupPos (rowAt M r) (j - r) with
+  | none => rw [hlk] at h; exact absurd h (by simp)
+  | some m =>
+      rw [hlk] at h
+      dsimp only at h
+      split at h
+      · next hm =>
+          have := (beq_iff_eq).mp h
+          omega
+      · exact absurd h (by simp)
+
+/-- **継ぎ目の高さはつねに `j + 1` 以下。** -/
+theorem seamHeightOf_le_col (M : List Rowj) (j : Nat) :
+    ∀ hi : Nat, seamHeightOf M j hi ≤ j + 1 := by
+  intro hi
+  induction hi with
+  | zero => exact Nat.zero_le _
+  | succ h ih =>
+      rw [seamHeightOf]
+      split
+      · next hc => have := hasCol_le M h j hc; omega
+      · exact ih
+
+/-- **積む段の数の上限（継ぎ目の高さの仮定なし）。** 残る仮定は `d ≤ len` だけ。 -/
+theorem kmaxAt_le' (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hd : P.cutHeight - P.badRootHeight ≤ P.len) :
+    kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
+  kmaxAt_le M P i j ach af (seamHeightOf_le_col M j ach) hd
+
+/-- 山崎噴火の枝では仮定なしで成り立つ。 -/
+theorem kmaxAt_le_yama' (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hd : P.cutHeight = P.badRootHeight) :
+    kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
+  kmaxAt_le' M P i j ach af (by omega)
+
 end Yukito
