@@ -709,4 +709,117 @@ theorem kmaxAt_le_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : 
       (j + (x - y) * i)
   omega
 
+/-! ## 落差は幅を超えない
+
+段 `r ∈ [floor, height x]` について `rootAt r x` は真に増える。`rootAt floor x = y`
+で `rootAt (height x) x = x` なので、段の数だけ列が進む。 -/
+
+theorem rootAt_ge_of_gap (S : Setting) (x : Nat) (y : Nat)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y) :
+    ∀ d, height S.tower.base y + d ≤ height S.tower.base x →
+      y + d ≤ (mountainOf' S).rootAt (height S.tower.base y + d) x := by
+  intro d
+  induction d with
+  | zero =>
+      intro _
+      have h0 : height S.tower.base y + 0 = height S.tower.base y := by omega
+      rw [h0, hroot]
+      omega
+  | succ d ih =>
+      intro hd
+      have h1 := ih (by omega)
+      have h2 : (mountainOf' S).rootAt (height S.tower.base y + d) x
+          < (mountainOf' S).rootAt (height S.tower.base y + (d + 1)) x :=
+        (mountainOf' S).rootAt_strict_mono (by omega) (show height S.tower.base y + (d + 1)
+          ≤ (mountainOf' S).height x from hd)
+      omega
+
+/-- **落差は幅を超えない。** -/
+theorem rise_le_length (S : Setting) (y x : Nat)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x) :
+    height S.tower.base x - height S.tower.base y ≤ x - y := by
+  have hd : height S.tower.base y + (height S.tower.base x - height S.tower.base y)
+      = height S.tower.base x := by omega
+  have h := rootAt_ge_of_gap S x y hroot
+    (height S.tower.base x - height S.tower.base y) (by omega)
+  rw [hd] at h
+  have htop : (mountainOf' S).rootAt (height S.tower.base x) x = x :=
+    (mountainOf' S).top_root x
+  rw [htop] at h
+  omega
+
+/-- **積む段の数の一様な上界。** -/
+theorem kmaxAt_le_lower' (S : Setting) (M : List Rowj) (P : FujiParams)
+    (y x : Nat)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x) (hlen : P.len = x - y)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (i j ach af : Nat) :
+    kmaxAt M P i j ach af ≤ j + P.len * i + 1 := by
+  refine kmaxAt_le' M P i j ach af ?_
+  rw [hbh, hcut, hlen]
+  exact rise_le_length S y x hroot hhigher
+
+/-! ## この枝で作る疎な山の形 -/
+
+/-- コピー 1 つぶんの長さ。 -/
+theorem expP_len_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (h0 : 0 < (expRes M).length) (y x : Nat)
+    (hsm : (expP M mfuel).badRootSeam = y) (hx : x = S.n - 1) :
+    (expP M mfuel).len = x - y := by
+  show (expP M mfuel).afterCutLength - (expP M mfuel).badRootSeam = x - y
+  rw [expP_afterCutLength S M hM mfuel h0, hsm, hx]
+
+theorem rowsMono_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (nd : Nat → Nat) (nrep : Nat) :
+    RowsMono (fujiRs M mfuel nd nrep) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hsum : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by rw [hsm, hacl]; omega)
+  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
+    rw [hacl]
+    exact colLt_cutChild S M hM (expCutH M) hn (Nat.le_of_eq hcuth.symm)
+  exact rowsMono_dropEmptyTop _
+    (fujiIters_invariant M (expP M mfuel) nd (expRes M).length mfuel
+      (fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher
+        i2 j2 _ _)
+      nrep (expRes M) (expP M mfuel).afterCutLength hcolLt (by omega)
+      (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM))).1
+
+/-- **コピーで作った列は原文の高さまで届く。** -/
+theorem hasCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep m i j : Nat) (hi : 0 < i) (hin : i ≤ nrep)
+    (hjy : y ≤ j) (hjx : j < x)
+    (hm : m ≤ (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)) :
+    HasCol (fujiRaw M mfuel nd nrep) m (j + (expP M mfuel).len * i) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  refine hasCol_fujiIters M (expP M mfuel) nd (expRes M).length mfuel
+    (fun i' j' => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher
+      i' j' _ _)
+    nrep (expRes M) m i j hi hin (by omega) (by omega) ?_
+  rw [kmaxAt_lower S M hM mfuel hn hM2 (expP M mfuel) hbh hsm hcut hx hyx hroot hhigher
+    hfuel i j hjy hjx]
+  omega
+
 end Yukito
