@@ -506,9 +506,26 @@ firstAtLeast のずれ  鎖の要素が今の行で死んでいるときだけ�
 条件である。これまでの比較が失敗してきたことを表しており、根に着いたときに
 `root_step_le` の仮定にそのまま渡る。
 
-残るのは `assignParents` が計算する `par` が `restrictedParent` に対応すること、
-すなわち `ParRep` を実際に立てることである。`searchUpper_eq` の頭に
-`firstAtLeast prev (c.pos + 1)` を差し込み、燃料が足りることを言えばよい。
+### `assignParents` への接続
+
+`searchUpper_eq` の頭に `firstAtLeast prev (c.pos + 1)`（列 `c` 自身の引き当て）を
+差し込み、`assignParents` が計算する親が `restrictedParent` に一致することを示した
+（`parRep_assignParents`）。これで **1 行ぶんの橋渡しが閉じた**。
+
+燃料は JS が `prev.size + 1` を使う。これで足りることは、鎖に沿って真に減る量として
+「その列の疎配列での添字」を取れば出る（`idx_measure`、`chainFind_ge`）。列番号その
+ものは燃料より大きくなりうるので、添字を測度にするのが要点である。
+
+```
+searchUpper_lt        探索が返す添字は配列の中にある
+col_lt_of_parent      親を持つ列は入力列の中にある
+idx_measure           疎配列での添字は鎖に沿って真に減る
+chainFind_stable / chainFind_ge   燃料が足りていれば増やしても答えは変わらない
+parRep_assignParents  assignParents の親 = restrictedParent
+```
+
+残るのは、この 1 行ぶんを `calcMountain` の全行に回して `Rep` と `ParRep` を同時に
+持ち上げることである。
 
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。

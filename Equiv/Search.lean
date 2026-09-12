@@ -222,4 +222,157 @@ theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
             · rw [← he]; omega
             · exact hacc y hy (anc_ge_of_gt_parent hxc hFx hy hgt) hly
 
+/-! ## `assignParents` への接続 -/
+
+/-- 探索が返す添字は配列の中にある。 -/
+theorem searchUpper_lt (prev row : Rowj) (i : Nat) :
+    ∀ fuel op j, searchUpper prev row i fuel op = some j → j < row.size := by
+  intro fuel
+  induction fuel with
+  | zero => intro op j h; cases h
+  | succ fuel ih =>
+    intro op j h
+    cases op with
+    | none => cases h
+    | some p =>
+      rw [searchUpper] at h
+      by_cases hp : p < prev.size
+      · rw [dif_pos hp] at h
+        cases hpp : (prev[p]'hp).par with
+        | none => rw [hpp] at h; cases h
+        | some p' =>
+          rw [hpp] at h
+          dsimp only at h
+          by_cases hp' : p' < prev.size
+          · rw [dif_pos hp'] at h
+            by_cases hb : breakHere row (firstAtLeast row ((prev[p']'hp').pos - 1)) = true
+            · rw [if_pos hb] at h; cases h
+            · rw [if_neg hb] at h
+              by_cases hj : firstAtLeast row ((prev[p']'hp').pos - 1) < row.size
+              · rw [dif_pos hj] at h
+                by_cases hi2 : i < row.size
+                · rw [dif_pos hi2] at h
+                  by_cases hv : (row[firstAtLeast row ((prev[p']'hp').pos - 1)]'hj).val
+                      < (row[i]'hi2).val
+                  · rw [if_pos hv] at h
+                    injection h with he
+                    subst he
+                    exact hj
+                  · rw [if_neg hv] at h
+                    exact ih _ _ h
+                · rw [dif_neg hi2] at h; cases h
+              · rw [dif_neg hj] at h; cases h
+          · rw [dif_neg hp'] at h; cases h
+      · rw [dif_neg hp] at h; cases h
+
+theorem assignParents_some_par (pv row : Rowj) (i : Nat)
+    (hi : i < (assignParents (some pv) row).size) (hi' : i < row.size) :
+    ((assignParents (some pv) row)[i]'hi).par =
+      searchUpper pv row i (pv.size + 1)
+        (some (firstAtLeast pv ((row[i]'hi').pos + 1))) := by
+  simp only [assignParents, Array.getElem_mapIdx]
+
+/-- 親を持つ列は入力列の中にある。 -/
+theorem col_lt_of_parent (s : List Nat) (k a b : Nat)
+    (hab : (rows (ofSequence s) k).forest.parent a = some b) : a < s.length := by
+  obtain ⟨hbv, hlt⟩ := (rows (ofSequence s) k).parent_values hab
+  rcases Nat.lt_or_ge a s.length with h | h
+  · exact h
+  · exfalso
+    cases k with
+    | zero =>
+        have he : (rows (ofSequence s) 0).value a = 1 := ofSequence_value_ge s a h
+        omega
+    | succ k =>
+        have he : (rows (ofSequence s) (k + 1)).value a = 0 :=
+          rows_value_zero_of_ge s (k + 1) a (by omega) h
+        omega
+
+/-- 疎配列での添字は鎖に沿って真に減る。`chainFind` の燃料はこれで足りる。 -/
+theorem idx_measure (s : List Nat) (k : Nat) (prev : Rowj)
+    (hprev : Rep prev k s.length (rows (ofSequence s) k).value) :
+    ∀ a b, (rows (ofSequence s) k).forest.parent a = some b →
+      firstAtLeast prev (b - k) < firstAtLeast prev (a - k) := by
+  intro a b hab
+  obtain ⟨hbv, hlt⟩ := (rows (ofSequence s) k).parent_values hab
+  have hav : 0 < (rows (ofSequence s) k).value a := by omega
+  have hba : b < a := (rows (ofSequence s) k).forest.parent_left hab
+  have han : a < s.length := col_lt_of_parent s k a b hab
+  have hbk : k ≤ b := by
+    rcases Nat.lt_or_ge b k with h | h
+    · rw [rows_value_zero_of_lt (ofSequence s) k b h] at hbv; omega
+    · exact h
+  obtain ⟨jb, hjb, hcb, hfb⟩ :=
+    rep_lookup prev k s.length _ hprev b hbk (by omega) hbv
+  obtain ⟨ja, hja, hca, hfa⟩ :=
+    rep_lookup prev k s.length _ hprev a (by omega) han hav
+  rw [hfb, hfa]
+  exact index_lt_of_pos_lt prev hprev.posMono jb ja hjb hja (by omega)
+
+/-- **`assignParents` が計算する親は `restrictedParent` に一致する。**
+これで疎配列と密表現の橋渡しが 1 行ぶん閉じる。 -/
+theorem parRep_assignParents (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
+    (prev row : Rowj)
+    (hprev : Rep prev k s.length (rows (ofSequence s) k).value)
+    (hpar : ParRep prev k (rows (ofSequence s) k).forest)
+    (hrow : Rep row (k + 1) s.length (rows (ofSequence s) (k + 1)).value) :
+    ParRep (assignParents (some prev) row) (k + 1)
+      (rows (ofSequence s) (k + 1)).forest := by
+  intro y hy
+  obtain ⟨i, hi, hiy⟩ := getElem_of_mem _ hy
+  have hsz : (assignParents (some prev) row).size = row.size :=
+    assignParents_size (some prev) row
+  have hi' : i < row.size := by omega
+  have hpos : ((assignParents (some prev) row)[i]'hi).pos = (row[i]'hi').pos :=
+    assignParents_pos (some prev) row i hi hi'
+  -- 列 c
+  have hcv : 0 < (rows (ofSequence s) (k + 1)).value ((row[i]'hi').pos + (k + 1)) := by
+    have h1 := hrow.live _ (mem_of_getElem row i hi')
+    have h2 := hrow.val _ (mem_of_getElem row i hi')
+    omega
+  have hcn : (row[i]'hi').pos + (k + 1) < s.length := hrow.bound _ (mem_of_getElem row i hi')
+  have hck : k + 1 ≤ (row[i]'hi').pos + (k + 1) := by omega
+  -- c は行 k でも生きている
+  have hcv0 : 0 < (rows (ofSequence s) k).value ((row[i]'hi').pos + (k + 1)) := by
+    have := rows_value_le (ofSequence s) k ((row[i]'hi').pos + (k + 1))
+    omega
+  obtain ⟨p0, hp0, hcp0, hfa0⟩ :=
+    rep_lookup prev k s.length _ hprev ((row[i]'hi').pos + (k + 1)) (by omega) hcn hcv0
+  -- 探索の出発点
+  have hstart : (row[i]'hi').pos + 1 = ((row[i]'hi').pos + (k + 1)) - k := by omega
+  -- 歩行の一致
+  have hstep := searchUpper_eq s hs k prev row i ((row[i]'hi').pos + (k + 1))
+    hprev hpar hrow hi' rfl (prev.size + 1) ((row[i]'hi').pos + (k + 1)) p0 hp0 hcp0
+    (Or.inr rfl)
+    (fun z hz hle _ => absurd (ZeroY.Forest.ancestor_lt
+      (rows (ofSequence s) k).forest.parent_left hz) (by omega))
+    (by omega)
+  -- 燃料が足りている
+  have hbig := chainFind_ge (F := (rows (ofSequence s) k).forest)
+    (pred := searchPred (rows (ofSequence s) (k + 1)).value
+      ((row[i]'hi').pos + (k + 1)))
+    (fun z => firstAtLeast prev (z - k)) (idx_measure s k prev hprev)
+    ((row[i]'hi').pos + (k + 1)) (prev.size + 1)
+    (by rw [hfa0]; omega) ((row[i]'hi').pos + (k + 1))
+  have hres : chainFind (rows (ofSequence s) k).forest
+      (searchPred (rows (ofSequence s) (k + 1)).value ((row[i]'hi').pos + (k + 1)))
+      (prev.size + 1) ((row[i]'hi').pos + (k + 1))
+      = (rows (ofSequence s) (k + 1)).forest.parent ((row[i]'hi').pos + (k + 1)) := by
+    rw [← hbig]
+    exact chainFind_eq_restrictedParent' _ _ _ _ (by omega)
+  -- 場合分け
+  rw [← hiy, assignParents_some_par prev row i hi hi', hstart, hfa0, hpos]
+  cases hsu : searchUpper prev row i (prev.size + 1) (some p0) with
+  | none =>
+      rw [hsu] at hstep
+      simp only [readIdx] at hstep
+      exact (hstep.trans hres).symm
+  | some j =>
+      have hj : j < row.size := searchUpper_lt prev row i _ _ j hsu
+      rw [hsu] at hstep
+      simp only [readIdx, dif_pos hj] at hstep
+      refine ⟨by omega, ?_⟩
+      rw [assignParents_pos (some prev) row j (by omega) hj]
+      exact (hstep.trans hres).symm
+
 end Yukito

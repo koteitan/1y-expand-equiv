@@ -140,6 +140,49 @@ theorem chainFind_none_of_no_parent {F : ParentForest} {pred : Nat → Bool} {c 
   | zero => rfl
   | succ f => rw [chainFind, h]
 
+/-! ## 燃料
+
+`chainFind` の燃料は鎖の長さぶんあれば足りる。鎖に沿って真に減る量 `m` があれば、
+`m c` 以上の燃料で答えは変わらない。山では `m` として「その列の疎配列での添字」を
+取る。JS の探索も添字を辿るので、燃料 `prev.size + 1` がそのまま足りる。 -/
+
+/-- 燃料を 1 増やしても答えは変わらない。 -/
+theorem chainFind_stable {F : ParentForest} {pred : Nat → Bool} (m : Nat → Nat)
+    (hm : ∀ a b, F.parent a = some b → m b < m a) :
+    ∀ fuel c, m c ≤ fuel → chainFind F pred (fuel + 1) c = chainFind F pred fuel c := by
+  intro fuel
+  induction fuel with
+  | zero =>
+      intro c hc
+      have hnp : F.parent c = none := by
+        cases hp : F.parent c with
+        | none => rfl
+        | some q => have := hm c q hp; omega
+      exact chainFind_none_of_no_parent hnp (0 + 1)
+  | succ fuel ih =>
+      intro c hc
+      rw [chainFind, chainFind]
+      cases hp : F.parent c with
+      | none => rfl
+      | some q =>
+          dsimp only
+          by_cases hq : pred q = true
+          · rw [if_pos hq, if_pos hq]
+          · rw [if_neg hq, if_neg hq]
+            have := hm c q hp
+            exact ih q (by omega)
+
+/-- 燃料が足りていれば、増やしても答えは変わらない。 -/
+theorem chainFind_ge {F : ParentForest} {pred : Nat → Bool} (m : Nat → Nat)
+    (hm : ∀ a b, F.parent a = some b → m b < m a) (c fuel : Nat) (h : m c ≤ fuel) :
+    ∀ d, chainFind F pred (fuel + d) c = chainFind F pred fuel c := by
+  intro d
+  induction d with
+  | zero => rfl
+  | succ d ih =>
+      rw [show fuel + (d + 1) = (fuel + d) + 1 from by omega,
+        chainFind_stable m hm (fuel + d) c (by omega), ih]
+
 /-- **探索は `restrictedParent` である。** 止まる条件に「値が正」も入れた形。
 疎配列では死んだ列がそもそも見えないので、JS 側ではこの条件が自動になる。 -/
 theorem chainFind_eq_restrictedParent' (F : ParentForest) (U : Nat → Nat)
