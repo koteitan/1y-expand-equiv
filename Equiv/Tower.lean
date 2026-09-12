@@ -68,4 +68,44 @@ theorem one_at_zero (s : List Nat) {t q1 q2 : Nat}
     towerVal s 0 q2 ≤ towerVal s 0 q1 :=
   one_of_ancestor t q2 q1 h2 (ancestor_at_zero s hlt) ht hpos
 
+/-! ## 3 択を塔の形で書く
+
+目標は層 `k` での `towerVal s k q2 ≤ towerVal s k q1` である。
+
+1. `q1` が層 `k` の frame で `q2` の祖先 → 最大性で完了
+2. `q1` と `q2` が層 `k` の frame で兄弟 → 目標が層 `k-1` に移る
+3. どちらでもない → 合流点を取り `q2` を小さい列に置き換える
+
+層 0 では 2 が起きえず（`no_siblings_zero`）、1 が必ず成り立つ（`one_at_zero`）
+ので、降下はそこで止まる。 -/
+
+/-- 場合 1。層 `k` の frame で `q1` が `q2` の祖先なら最大性で閉じる。 -/
+theorem tower_case_ancestor (s : List Nat) {k t q1 q2 : Nat}
+    (h2 : (frameAt s (k+1)).parent q2 = some t)
+    (hanc : ZeroY.Forest.Ancestor (frameAt s k).parent q2 q1)
+    (ht : t < q1) (hpos : 0 < towerVal s k q1) :
+    towerVal s k q2 ≤ towerVal s k q1 := by
+  rw [frameAt_step] at h2
+  exact one_of_ancestor t q2 q1 h2 hanc ht hpos
+
+/-- 場合 2。層 `k+1` の frame で兄弟なら、層 `k` の目標から層 `k+1` の目標が出る。 -/
+theorem tower_case_descent (s : List Nat) {k t q1 q2 : Nat}
+    (h1 : (frameAt s (k+1)).parent q1 = some t)
+    (h2 : (frameAt s (k+1)).parent q2 = some t)
+    (hgoal : towerVal s k q2 ≤ towerVal s k q1) :
+    towerVal s (k+1) q2 ≤ towerVal s (k+1) q1 :=
+  (sibling_descent (rows (ofSequence s) k) h1 h2).mpr hgoal
+
+/-- 場合 3 の結合部。層 `k` の frame で `z` が `q2` の祖先なら、
+`q2` 側を `z` で押さえて連鎖する。 -/
+theorem tower_case_meet (s : List Nat) {k t z q1 q2 : Nat}
+    (h2 : (frameAt s (k+1)).parent q2 = some t)
+    (hz : ZeroY.Forest.Ancestor (frameAt s k).parent q2 z)
+    (htz : t < z) (hzpos : 0 < towerVal s k z)
+    (hrec : towerVal s k z ≤ towerVal s k q1) :
+    towerVal s k q2 ≤ towerVal s k q1 := by
+  rw [frameAt_step] at h2
+  have := one_of_ancestor t q2 z h2 hz htz hzpos
+  omega
+
 end Yukito

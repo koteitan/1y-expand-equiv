@@ -165,6 +165,16 @@ towerVal k    = (rows (ofSequence s) k).value
 
 したがって降下は層 0 で必ず場合 1 になって止まる。
 
+3 択も塔の形で揃えた。
+
+```
+tower_case_ancestor  層 k の frame で q1 が q2 の祖先なら最大性で閉じる
+tower_case_descent   層 k+1 の frame で兄弟なら、層 k の目標から層 k+1 の目標が出る
+tower_case_meet      合流点の直上 z で q2 側を押さえて連鎖する
+```
+
+残るのは、この 3 択を `(層, q2)` の辞書式順序で回す整礎帰納の組み立てである。
+
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち
 
