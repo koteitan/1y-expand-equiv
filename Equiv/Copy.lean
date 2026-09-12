@@ -549,4 +549,78 @@ theorem fujiIters_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) 
       rw [Nat.mul_succ]
       omega
 
+/-! ## どの列がどの段に載るか
+
+段 `m` に載る列は、元からあったものと、`m < kmax(i,j)` となる `(i,j)` の
+`j + len * i` である。ここでは載ることだけを示す。 -/
+
+/-- 段 `m` に列 `c` のセルがある。 -/
+def HasCol (res : List Rowj) (m c : Nat) : Prop :=
+  ∃ (t : Nat) (d : Cell), (rowAt res m)[t]? = some d ∧ d.pos + m = c
+
+theorem lt_size_of_getElem? {a : Rowj} {t : Nat} {d : Cell} (h : a[t]? = some d) :
+    t < a.size := by
+  rcases Nat.lt_or_ge t a.size with h1 | h1
+  · exact h1
+  · rw [Array.getElem?_eq_none h1] at h
+    exact absurd h (by simp)
+
+theorem HasCol.ext {res res' : List Rowj} {m c : Nat}
+    (h : RowExt (rowAt res m) (rowAt res' m)) (hc : HasCol res m c) : HasCol res' m c := by
+  obtain ⟨t, d, ht, hd⟩ := hc
+  exact ⟨t, d, (h.2 t (lt_size_of_getElem? ht)).trans ht, hd⟩
+
+theorem hasCol_fujiRows_new (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) (hm : m < kmax)
+    (hk : m ≤ j + P.len * i) :
+    HasCol (fujiRows M P nd i j isRep kmax res) m (j + P.len * i) := by
+  refine ⟨(rowAt res m).size, fujiCellAt M P nd i j isRep res m, ?_, ?_⟩
+  · rw [rowAt_fujiRows, if_pos hm, Array.getElem?_push_size]
+  · exact fujiCellAt_col M P nd i j isRep res m hk
+
+theorem hasCol_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (t : Nat) (res : List Rowj) (m j : Nat), P.badRootSeam ≤ j → j < P.badRootSeam + t →
+      m < kmaxAt M P i j ach af →
+      HasCol (fujiSeams M P nd i ach af t res) m (j + P.len * i) := by
+  intro t
+  induction t with
+  | zero => intro res m j hj1 hj2 _; omega
+  | succ t ih =>
+      intro res m j hj1 hj2 hm
+      rw [fujiSeams_succ]
+      rcases Nat.lt_or_ge j (P.badRootSeam + t) with hlt | hge
+      · exact HasCol.ext (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+          (ih res m j hj1 hlt hm)
+      · have hje : j = P.badRootSeam + t := by omega
+        subst hje
+        exact hasCol_fujiRows_new M P nd i (P.badRootSeam + t)
+          (isRepAt P (P.badRootSeam + t)) (kmaxAt M P i (P.badRootSeam + t) ach af) _ m hm
+          (by have := hkm i (P.badRootSeam + t); omega)
+
+theorem hasCol_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (n : Nat) (res : List Rowj) (m i j : Nat), 0 < i → i ≤ n →
+      P.badRootSeam ≤ j → j < P.badRootSeam + P.len →
+      m < kmaxAt M P i j ach af →
+      HasCol (fujiIters M P nd ach af n res) m (j + P.len * i) := by
+  intro n
+  induction n with
+  | zero => intro res m i j h1 h2 _ _ _; omega
+  | succ n ih =>
+      intro res m i j h1 h2 hj1 hj2 hm
+      rw [fujiIters_succ]
+      rcases Nat.lt_or_ge i (n + 1) with hlt | hge
+      · exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+          (ih res m i j h1 (by omega) hj1 hj2 hm)
+      · have hie : i = n + 1 := by omega
+        subst hie
+        exact hasCol_fujiSeams M P nd (n + 1) ach af hkm P.len _ m j hj1 hj2 hm
+
+/-- 元からあった列は残る。 -/
+theorem hasCol_fujiIters_old (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (n : Nat) (res : List Rowj) (m c : Nat) (h : HasCol res m c) :
+    HasCol (fujiIters M P nd ach af n res) m c :=
+  HasCol.ext (rowExt_fujiIters _ _ _ _ _ _ _ _) h
+
 end Yukito
