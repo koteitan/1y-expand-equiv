@@ -22,7 +22,7 @@ cover  生きている列はすべてセルとして現れる
 
 namespace Yukito
 
-open OneY.Numeric
+open OneY OneY.Numeric
 
 /-! ## 密表現側：行 `r` では列 `r` 未満は死んでいる -/
 
@@ -47,18 +47,36 @@ theorem rows_value_zero_of_lt (base : Row) :
 
 /-! ## 表現述語 -/
 
+/-- 配列の要素はリストの要素。 -/
+theorem mem_of_getElem (row : Rowj) (i : Nat) (hi : i < row.size) :
+    (row[i]'hi) ∈ row.toList := Array.getElem_mem_toList hi
+
+/-- リストの要素は配列のどこかの要素。 -/
+theorem getElem_of_mem (row : Rowj) {x : Cell} (h : x ∈ row.toList) :
+    ∃ i, ∃ hi : i < row.size, (row[i]'hi) = x := by
+  obtain ⟨i, hi, he⟩ := List.mem_iff_getElem.mp h
+  refine ⟨i, by rw [← Array.length_toList]; exact hi, ?_⟩
+  rw [← he, Array.getElem_toList]
+
 /-- 疎配列 `row` が、行のずれ `r`・列の上限 `n` のもとで密な値 `V` を表している。
 
 上限が要るのは、`ofSequence` が列 `n` 以降を値 1 で埋めるからである。埋めた列は
 値 1 なので親を持てず（親には真に小さい正の値が要る）、他の列の親にもならない。
 行 1 以降では死んでいるので、上限が効くのは行 0 だけである。 -/
 structure Rep (row : Rowj) (r n : Nat) (V : Nat → Nat) : Prop where
-  mono : PosMono row
-  val : ∀ i, ∀ hi : i < row.size, (row[i]'hi).val = V ((row[i]'hi).pos + r)
-  live : ∀ i, ∀ hi : i < row.size, 0 < (row[i]'hi).val
-  bound : ∀ i, ∀ hi : i < row.size, (row[i]'hi).pos + r < n
-  cover : ∀ c, r ≤ c → c < n → 0 < V c →
-    ∃ i, ∃ hi : i < row.size, (row[i]'hi).pos + r = c
+  pairwise : List.Pairwise (fun a b => a.pos < b.pos) row.toList
+  val : ∀ x ∈ row.toList, x.val = V (x.pos + r)
+  live : ∀ x ∈ row.toList, 0 < x.val
+  bound : ∀ x ∈ row.toList, x.pos + r < n
+  cover : ∀ c, r ≤ c → c < n → 0 < V c → ∃ x ∈ row.toList, x.pos + r = c
+
+/-- 添字の形で読んだ単調性。 -/
+theorem Rep.posMono {row : Rowj} {r n : Nat} {V : Nat → Nat} (h : Rep row r n V) :
+    PosMono row := by
+  intro i j hi hj hij
+  have h2 := List.pairwise_iff_getElem.mp h.pairwise i j
+    (by rw [Array.length_toList]; exact hi) (by rw [Array.length_toList]; exact hj) hij
+  rwa [Array.getElem_toList, Array.getElem_toList] at h2
 
 /-- 疎配列を列番号で引く。JS の `while (row[j].position < c - r) j++` と、
 その後の「ちょうどか」の判定にあたる。 -/
@@ -78,37 +96,32 @@ theorem rep_read (row : Rowj) (r n : Nat) (V : Nat → Nat) (h : Rep row r n V)
             (row[firstAtLeast row (c - r)]'hj).val else 0
         else 0) = V c
   rcases Nat.lt_or_ge c r with hcr | hrc
-  · -- 列 `r` 未満：セルは無く、密表現も 0
-    rw [hzero c hcr]
+  · rw [hzero c hcr]
     split
-    · rename_i hj
-      split
-      · rename_i he
-        exfalso
-        have := (row[firstAtLeast row (c - r)]'hj).pos
-        omega
+    · split
+      · exfalso; omega
       · rfl
     · rfl
   · rcases Nat.eq_zero_or_pos (V c) with hv | hv
-    · -- 死んだ列：ちょうどのセルがあれば `live` に反する
-      rw [hv]
+    · rw [hv]
       split
       · rename_i hj
         split
         · rename_i he
-          have h1 := h.val _ hj
-          have h2 := h.live _ hj
+          have h1 := h.val _ (mem_of_getElem row _ hj)
+          have h2 := h.live _ (mem_of_getElem row _ hj)
           rw [he] at h1
           omega
         · rfl
       · rfl
-    · -- 生きた列：`cover` のセルを `firstAtLeast` が指す
-      obtain ⟨i, hi, hci⟩ := h.cover c hrc hcn hv
-      have hpi : (row[i]'hi).pos = c - r := by omega
+    · obtain ⟨x, hx, hcx⟩ := h.cover c hrc hcn hv
+      obtain ⟨i, hi, hix⟩ := getElem_of_mem row hx
+      have hpi : (row[i]'hi).pos = c - r := by rw [hix]; omega
+      have hci : (row[i]'hi).pos + r = c := by rw [hix]; exact hcx
       have hfa : firstAtLeast row (c - r) = i :=
-        firstAtLeast_eq_of_mem row h.mono (c - r) i hi hpi
+        firstAtLeast_eq_of_mem row h.posMono (c - r) i hi hpi
       simp only [hfa, dif_pos hi, if_pos hci]
-      rw [h.val i hi, hci]
+      rw [h.val _ (mem_of_getElem row i hi), hci]
 
 /-! ## `assignParents` は表現を保つ
 
@@ -132,26 +145,39 @@ theorem assignParents_val (prev : Option Rowj) (row : Rowj) (i : Nat)
 theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r n : Nat) (V : Nat → Nat)
     (h : Rep row r n V) : Rep (assignParents prev row) r n V := by
   have hsize := assignParents_size prev row
+  have key : ∀ x ∈ (assignParents prev row).toList,
+      ∃ i, ∃ hi : i < row.size, (row[i]'hi).pos = x.pos ∧ (row[i]'hi).val = x.val := by
+    intro x hx
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+    exact ⟨i, by omega,
+      by rw [← hix]; exact (assignParents_pos prev row i hi (by omega)).symm,
+      by rw [← hix]; exact (assignParents_val prev row i hi (by omega)).symm⟩
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · intro i j hi hj hij
-    rw [assignParents_pos prev row i hi (by omega),
+  · rw [List.pairwise_iff_getElem]
+    intro i j hi hj hij
+    rw [Array.length_toList] at hi hj
+    rw [Array.getElem_toList, Array.getElem_toList,
+      assignParents_pos prev row i hi (by omega),
       assignParents_pos prev row j hj (by omega)]
-    exact h.mono i j (by omega) (by omega) hij
-  · intro i hi
-    rw [assignParents_val prev row i hi (by omega),
-      assignParents_pos prev row i hi (by omega)]
-    exact h.val i (by omega)
-  · intro i hi
-    rw [assignParents_val prev row i hi (by omega)]
-    exact h.live i (by omega)
-  · intro i hi
-    rw [assignParents_pos prev row i hi (by omega)]
-    exact h.bound i (by omega)
+    exact h.posMono i j (by omega) (by omega) hij
+  · intro x hx
+    obtain ⟨i, hi, hp, hv⟩ := key x hx
+    rw [← hv, ← hp]
+    exact h.val _ (mem_of_getElem row i hi)
+  · intro x hx
+    obtain ⟨i, hi, _, hv⟩ := key x hx
+    rw [← hv]
+    exact h.live _ (mem_of_getElem row i hi)
+  · intro x hx
+    obtain ⟨i, hi, hp, _⟩ := key x hx
+    rw [← hp]
+    exact h.bound _ (mem_of_getElem row i hi)
   · intro c hrc hcn hv
-    obtain ⟨i, hi, hci⟩ := h.cover c hrc hcn hv
-    refine ⟨i, by omega, ?_⟩
-    rw [assignParents_pos prev row i (by omega) hi]
-    exact hci
+    obtain ⟨x, hx, hcx⟩ := h.cover c hrc hcn hv
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem row hx
+    refine ⟨(assignParents prev row)[i]'(by omega), mem_of_getElem _ i (by omega), ?_⟩
+    rw [assignParents_pos prev row i (by omega) hi, hix]
+    exact hcx
 
 /-! ## 行 0 -/
 
@@ -171,25 +197,201 @@ theorem rep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
     show s[i]?.getD 1 = _
     rw [List.getElem?_eq_getElem h]
     rfl
+  have key : ∀ x ∈ (row0 s).toList, ∃ i, ∃ hi : i < s.length,
+      x = { pos := i, val := s[i]'hi, par := none } := by
+    intro x hx
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+    exact ⟨i, by omega, by rw [← hix, hget i hi]⟩
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
-  · intro i j hi hj hij
-    rw [hget i hi, hget j hj]
+  · rw [List.pairwise_iff_getElem]
+    intro i j hi hj hij
+    rw [Array.length_toList] at hi hj
+    rw [Array.getElem_toList, Array.getElem_toList, hget i hi, hget j hj]
     exact hij
-  · intro i hi
-    rw [hget i hi]
-    show s[i]'(by omega) = (ofSequence s).value (i + 0)
-    rw [Nat.add_zero, hval i (by omega)]
-  · intro i hi
-    rw [hget i hi]
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := key x hx
+    subst hix
+    show s[i]'hi = (ofSequence s).value (i + 0)
+    rw [Nat.add_zero, hval i hi]
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := key x hx
+    subst hix
     exact hs _ (List.getElem_mem _)
-  · intro i hi
-    rw [hget i hi]
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := key x hx
+    subst hix
     show i + 0 < s.length
     omega
   · intro c _ hcn _
-    refine ⟨c, by omega, ?_⟩
+    refine ⟨(row0 s)[c]'(by omega), mem_of_getElem _ c (by omega), ?_⟩
     rw [hget c (by omega)]
     show c + 0 = c
     omega
+
+/-! ## 階差行
+
+JS の `nextRow` は「親を持つセルだけを残し、`position` を 1 減らし、値を親との差に
+する」。これが密表現の `Row.difference` にあたる。
+
+`position` を 1 減らすところは自然数の切り捨て引き算なので、`position = 0` のセルが
+残ると単調性が壊れる。壊れないのは、親を持つセルの `position` が 1 以上だからである
+（親は左にあるので `position` が真に小さい列が存在する）。この事実には `par` が森に
+対応していること（`ParRep`）が要る。 -/
+
+/-- `nextRow` が 1 セルに対して行う操作。 -/
+def stepCell (row : Rowj) (c : Cell) : Option Cell :=
+  match c.par with
+  | none => none
+  | some p =>
+    if hp : p < row.size then
+      some { pos := c.pos - 1, val := c.val - (row[p]'hp).val, par := none }
+    else none
+
+theorem nextRow_toList_aux (row : Rowj) :
+    ∀ (l : List Cell) (acc : Rowj),
+      (l.foldl (fun acc c =>
+        match c.par with
+        | none => acc
+        | some p => if hp : p < row.size then
+            acc.push { pos := c.pos - 1, val := c.val - row[p].val, par := none }
+          else acc) acc).toList = acc.toList ++ l.filterMap (stepCell row) := by
+  intro l
+  induction l with
+  | nil => intro acc; simp
+  | cons x t ih =>
+      intro acc
+      cases hp : x.par with
+      | none => simp [stepCell, hp, ih]
+      | some p => by_cases hlt : p < row.size <;> simp [stepCell, hp, hlt, ih]
+
+theorem nextRow_toList (row : Rowj) :
+    (nextRow row).toList = row.toList.filterMap (stepCell row) := by
+  have h := nextRow_toList_aux row row.toList #[]
+  rw [Array.foldl_toList] at h
+  simp only [Array.toList_empty, List.nil_append] at h
+  exact h
+
+theorem stepCell_some {row : Rowj} {x y : Cell} (h : stepCell row x = some y) :
+    ∃ p, ∃ hp : p < row.size, x.par = some p ∧
+      y = { pos := x.pos - 1, val := x.val - (row[p]'hp).val, par := none } := by
+  unfold stepCell at h
+  cases hp : x.par with
+  | none => rw [hp] at h; dsimp only at h; cases h
+  | some p =>
+      rw [hp] at h
+      dsimp only at h
+      by_cases hlt : p < row.size
+      · rw [dif_pos hlt] at h
+        exact ⟨p, hlt, rfl, (Option.some.inj h).symm⟩
+      · rw [dif_neg hlt] at h
+        cases h
+
+/-- `par` が森 `F` に対応している。添字ではなく列番号で読んだ形。 -/
+def ParRep (row : Rowj) (r : Nat) (F : ParentForest) : Prop :=
+  ∀ x ∈ row.toList,
+    match x.par with
+    | none => F.parent (x.pos + r) = none
+    | some p => ∃ hp : p < row.size, F.parent (x.pos + r) = some ((row[p]'hp).pos + r)
+
+/-- 残るセルの `position` は 1 以上。親は左にあるからである。 -/
+theorem pos_pos_of_step {row : Rowj} {r : Nat} {F : ParentForest} (hpar : ParRep row r F)
+    {x y : Cell} (hx : x ∈ row.toList) (h : stepCell row x = some y) : 0 < x.pos := by
+  obtain ⟨p, hp, hxp, _⟩ := stepCell_some h
+  have hP := hpar x hx
+  rw [hxp] at hP
+  obtain ⟨hp', hF⟩ := hP
+  have hlt := F.parent_left hF
+  omega
+
+/-- 残るセル 1 つぶんの事実。 -/
+theorem step_facts (row : Rowj) (r n : Nat) (a : Row)
+    (hrep : Rep row r n a.value) (hpar : ParRep row r a.forest)
+    {x y : Cell} (hx : x ∈ row.toList) (h : stepCell row x = some y) :
+    y.pos + (r + 1) = x.pos + r ∧
+      y.val = a.difference (y.pos + (r + 1)) ∧ 0 < y.val := by
+  obtain ⟨p, hp, hxp, hy⟩ := stepCell_some h
+  have hpos := pos_pos_of_step hpar hx h
+  have hcol : y.pos + (r + 1) = x.pos + r := by
+    subst hy
+    show x.pos - 1 + (r + 1) = x.pos + r
+    omega
+  have hP := hpar x hx
+  rw [hxp] at hP
+  obtain ⟨hp', hF⟩ := hP
+  have hxv := hrep.val x hx
+  have hpv := hrep.val _ (mem_of_getElem row p hp')
+  have hdiff : a.difference (x.pos + r) =
+      a.value (x.pos + r) - a.value ((row[p]'hp').pos + r) := by
+    simp only [Row.difference, hF]
+  have hyv : y.val = x.val - (row[p]'hp').val := by rw [hy]
+  refine ⟨hcol, ?_, ?_⟩
+  · rw [hcol, hdiff, hyv, ← hxv, ← hpv]
+  · rw [hyv]
+    have hd : 0 < a.difference (x.pos + r) := (a.difference_pos_iff _).mpr ⟨_, hF⟩
+    rw [hdiff] at hd
+    omega
+
+/-- **階差行も表現になっている。** -/
+theorem rep_nextRow (row : Rowj) (r n : Nat) (a : Row)
+    (hrep : Rep row r n a.value) (hpar : ParRep row r a.forest) :
+    Rep (nextRow row) (r + 1) n a.difference := by
+  have hmem : ∀ y ∈ (nextRow row).toList, ∃ x ∈ row.toList, stepCell row x = some y := by
+    intro y hy
+    rw [nextRow_toList] at hy
+    exact List.mem_filterMap.mp hy
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · rw [nextRow_toList]
+    apply List.pairwise_filterMap.mpr
+    refine List.Pairwise.imp_of_mem ?_ hrep.pairwise
+    intro u v hu hv huv y hy y' hy'
+    obtain ⟨_, _, _, hyu⟩ := stepCell_some hy
+    obtain ⟨_, _, _, hyv⟩ := stepCell_some hy'
+    have h1 := pos_pos_of_step hpar hu hy
+    subst hyu
+    subst hyv
+    show u.pos - 1 < v.pos - 1
+    omega
+  · intro y hy
+    obtain ⟨x, hx, hs⟩ := hmem y hy
+    exact (step_facts row r n a hrep hpar hx hs).2.1
+  · intro y hy
+    obtain ⟨x, hx, hs⟩ := hmem y hy
+    exact (step_facts row r n a hrep hpar hx hs).2.2
+  · intro y hy
+    obtain ⟨x, hx, hs⟩ := hmem y hy
+    have hc := (step_facts row r n a hrep hpar hx hs).1
+    rw [hc]
+    exact hrep.bound x hx
+  · intro c hrc hcn hv
+    obtain ⟨q, hq⟩ := (a.difference_pos_iff c).mp hv
+    have hva : 0 < a.value c := by
+      have := a.difference_le c
+      omega
+    obtain ⟨x, hx, hcx⟩ := hrep.cover c (by omega) hcn hva
+    have hP := hpar x hx
+    have hxp : ∃ p, x.par = some p := by
+      cases hpx : x.par with
+      | none =>
+          exfalso
+          rw [hpx] at hP
+          rw [hcx, hq] at hP
+          cases hP
+      | some p => exact ⟨p, rfl⟩
+    obtain ⟨p, hpx⟩ := hxp
+    rw [hpx] at hP
+    obtain ⟨hp', _⟩ := hP
+    refine ⟨{ pos := x.pos - 1, val := x.val - (row[p]'hp').val, par := none }, ?_, ?_⟩
+    · rw [nextRow_toList]
+      refine List.mem_filterMap.mpr ⟨x, hx, ?_⟩
+      simp only [stepCell, hpx]
+      rw [dif_pos hp']
+    · have hs : stepCell row x =
+          some { pos := x.pos - 1, val := x.val - (row[p]'hp').val, par := none } := by
+        simp only [stepCell, hpx]
+        rw [dif_pos hp']
+      have hf := (step_facts row r n a hrep hpar hx hs).1
+      show x.pos - 1 + (r + 1) = c
+      have hf' : x.pos - 1 + (r + 1) = x.pos + r := hf
+      omega
 
 end Yukito

@@ -434,8 +434,28 @@ cover  生きている列はすべてセルとして現れる
 親にもならない。行 1 以降では死んでいるので、上限が効くのは行 0 だけである。
 行 0 が入力列を表すことは示した（`rep_row0`）。
 
-残るのは `nextRow`（階差行の構成）が表現を保つことと、`par` が
-`restrictedParent` に対応することである。
+`nextRow`（階差行の構成）が表現を保つことも示した（`rep_nextRow`）。JS の
+`nextRow` は「親を持つセルだけを残し、`position` を 1 減らし、値を親との差にする」
+で、これが密表現の `Row.difference` にあたる。
+
+`position` を 1 減らすところは自然数の切り捨て引き算なので、`position = 0` のセルが
+残ると単調性が壊れる。壊れないのは、親を持つセルの `position` が 1 以上だから
+である（親は左にあるので `position` が真に小さい列が存在する）。この事実には
+`par` が森に対応していること（`ParRep`）が要る。
+
+```
+stepCell       nextRow が 1 セルに対して行う操作
+nextRow_toList 畳み込みが filterMap であること
+ParRep         par が森に対応している（列番号で読んだ形）
+pos_pos_of_step  残るセルの position は 1 以上
+step_facts     残るセル 1 つぶんの事実（列・値・正値）
+rep_nextRow    階差行も表現になっている
+```
+
+残るのは `assignParents` が計算する `par` が `restrictedParent` に対応すること、
+すなわち `ParRep` を実際に立てることである。ここで `searchUpper` が
+`chainFind`（`Diagonal.lean`）に、`firstAtLeast` のずれが
+`firstLiveNotSmaller_ofSequence` に繋がる。
 
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。
