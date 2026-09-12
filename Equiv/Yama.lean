@@ -343,4 +343,78 @@ theorem yamaContext_height_other (S : Setting) (y : Nat) (hy hpar hh) (j i : Nat
     rw [if_neg (by omega), if_neg (by rw [hsrc]; omega), hsrc]
     rfl
 
+/-! ## コピー先の山の親
+
+原文の `TerminalCopy.parent` の 3 分岐が、JS の枝と 1 対 1 に対応する。 -/
+
+theorem yamaContext_parent_orig (S : Setting) (y : Nat) (hy hpar hh) (r c : Nat)
+    (hc : c < S.n - 1) :
+    (yamaContext S y hy hpar hh).parent r c = (rows S.tower.base r).forest.parent c :=
+  (yamaContext S y hy hpar hh).parent_original hc r
+
+/-- 置き換えの継ぎ目、`level` より下の段。元の列は最後の列 `x`、桁上げは `i−1`。 -/
+theorem yamaContext_parent_seam_low (S : Setting) (y : Nat) (hy hpar hh) (r i : Nat)
+    (hi : 0 < i) (hr : r < height S.tower.base (S.n - 1) - 1) :
+    (yamaContext S y hy hpar hh).parent r
+        ((yamaContext S y hy hpar hh).coordinates.y
+          + (yamaContext S y hy hpar hh).coordinates.length * i)
+      = ((rows S.tower.base r).forest.parent (S.n - 1)).map
+          ((yamaContext S y hy hpar hh).coordinates.parentCopy (i - 1)) := by
+  obtain ⟨hsrc, hblk⟩ := coord_source_block_seam (yamaContext S y hy hpar hh).coordinates i hi
+  have hL := (yamaContext S y hy hpar hh).coordinates.root_add_length
+  have hmul : (yamaContext S y hy hpar hh).coordinates.length * 1
+      ≤ (yamaContext S y hy hpar hh).coordinates.length * i := Nat.mul_le_mul_left _ hi
+  have hone : (yamaContext S y hy hpar hh).coordinates.length * 1
+      = (yamaContext S y hy hpar hh).coordinates.length := Nat.mul_one _
+  have hlv : (yamaContext S y hy hpar hh).level = height S.tower.base (S.n - 1) - 1 := rfl
+  unfold TerminalCopy.Context.parent
+  rw [if_neg (by omega), if_neg (by rintro ⟨_, h2⟩; rw [hlv] at h2; omega), hsrc, hblk]
+  rfl
+
+/-- 置き換えの継ぎ目、`level` 以上の段。元の列は根 `y`、桁上げは無し。 -/
+theorem yamaContext_parent_seam_high (S : Setting) (y : Nat) (hy hpar hh) (r i : Nat)
+    (hi : 0 < i) (hr : height S.tower.base (S.n - 1) - 1 ≤ r) :
+    (yamaContext S y hy hpar hh).parent r
+        ((yamaContext S y hy hpar hh).coordinates.y
+          + (yamaContext S y hy hpar hh).coordinates.length * i)
+      = (rows S.tower.base r).forest.parent y := by
+  obtain ⟨hsrc, _⟩ := coord_source_block_seam (yamaContext S y hy hpar hh).coordinates i hi
+  have hL := (yamaContext S y hy hpar hh).coordinates.root_add_length
+  have hmul : (yamaContext S y hy hpar hh).coordinates.length * 1
+      ≤ (yamaContext S y hy hpar hh).coordinates.length * i := Nat.mul_le_mul_left _ hi
+  have hone : (yamaContext S y hy hpar hh).coordinates.length * 1
+      = (yamaContext S y hy hpar hh).coordinates.length := Nat.mul_one _
+  have hlv : (yamaContext S y hy hpar hh).level = height S.tower.base (S.n - 1) - 1 := rfl
+  unfold TerminalCopy.Context.parent
+  rw [if_neg (by omega), if_pos ⟨hsrc, by rw [hlv]; omega⟩]
+  rfl
+
+/-- 置き換えでない継ぎ目。元の列は `j`、桁上げは `i`。 -/
+theorem yamaContext_parent_other (S : Setting) (y : Nat) (hy hpar hh) (r j i : Nat)
+    (hj1 : y < j) (hj2 : j < S.n - 1) :
+    (yamaContext S y hy hpar hh).parent r
+        (j + (yamaContext S y hy hpar hh).coordinates.length * i)
+      = ((rows S.tower.base r).forest.parent j).map
+          ((yamaContext S y hy hpar hh).coordinates.parentCopy i) := by
+  rcases Nat.eq_zero_or_pos i with hi | hi
+  · subst hi
+    rw [Nat.mul_zero, Nat.add_zero, yamaContext_parent_orig S y hy hpar hh r j hj2]
+    cases (rows S.tower.base r).forest.parent j with
+    | none => rfl
+    | some p =>
+        simp only [Option.map_some]
+        rw [(yamaContext S y hy hpar hh).coordinates.parentCopy_zero]
+  · obtain ⟨hsrc, hblk⟩ := coord_source_block (yamaContext S y hy hpar hh).coordinates j i
+      hj1 hj2
+    have hL := (yamaContext S y hy hpar hh).coordinates.root_add_length
+    have hmul : (yamaContext S y hy hpar hh).coordinates.length * 1
+        ≤ (yamaContext S y hy hpar hh).coordinates.length * i := Nat.mul_le_mul_left _ hi
+    have hone : (yamaContext S y hy hpar hh).coordinates.length * 1
+        = (yamaContext S y hy hpar hh).coordinates.length := Nat.mul_one _
+    have hyy : (yamaContext S y hy hpar hh).coordinates.y = y := rfl
+    have hxx : (yamaContext S y hy hpar hh).coordinates.x = S.n - 1 := rfl
+    unfold TerminalCopy.Context.parent
+    rw [if_neg (by omega), if_neg (by rintro ⟨h1, _⟩; rw [hsrc] at h1; omega), hsrc, hblk]
+    rfl
+
 end Yukito
