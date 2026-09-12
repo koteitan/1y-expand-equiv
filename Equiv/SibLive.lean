@@ -68,4 +68,31 @@ theorem sibling_case_descent (base : Row) (k : Nat) {t q1 q2 : Nat}
     (rows base (k+1)).value q2 ≤ (rows base (k+1)).value q1 :=
   (succ_sibling_descent base k h1 h2).mpr hgoal
 
+/-- 場合 3 の結合部。合流点の直上にある `z` について、`q2` 側は最大性で、
+`q1` 側は再帰で押さえ、連鎖する。 -/
+theorem sibling_case_meet {F : ParentForest} {U : Nat → Nat} {t z q1 q2 : Nat}
+    (h2 : restrictedParent F U q2 = some t)
+    (hz : ZeroY.Forest.Ancestor F.parent q2 z)
+    (htz : t < z) (hzpos : 0 < U z)
+    (hrec : U z ≤ U q1) : U q2 ≤ U q1 := by
+  have := one_of_ancestor t q2 z h2 hz htz hzpos
+  omega
+
+/-! ## 残っているもの
+
+場合 3 では、合流点 `m` の直上にある `q1` 側の要素 `u` が `q1` 自身であることが
+要る。そうであれば `q1` と `z` が兄弟になり、`sibling_case_meet` で閉じる。
+
+`u < q1` になると閉じない。実際、liveness を外した反例
+（列 `(1,2,4,8,11,8)` の行 2）を降ろすと、層 1 で合流点 `2` に対し
+`u = 3 < q1 = 4` となる。つまり **`u = q1` を保証しているのが liveness である**。
+
+したがって残るのは次の 2 つ。
+
+* liveness から `u = q1` を出すこと
+* 3 択を `(層, q2)` の辞書式順序で回す整礎帰納の組み立て
+
+値 12 までの探索では、実際の配置で `u < q1` は 1 度も起きなかった（合流点の
+使用 5 件はすべて `u = q1`）。 -/
+
 end Yukito
