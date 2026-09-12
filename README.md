@@ -530,6 +530,10 @@ parRep_assignParents  assignParents の親 = restrictedParent
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。
 
+セルには `forced` を持たせてある。JS の `forcedParent` で、入力が `"値v親"` の形
+だったときに立ち、親探索を飛ばす。素の数から作った行では常に `false` だが、抽出段が
+作る列は `"v"` を含みうるので、写しておく必要がある（`NoForced` で持ち回る）。
+
 ## 残っている課題
 
 ```

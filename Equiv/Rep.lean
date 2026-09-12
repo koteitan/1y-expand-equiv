@@ -164,13 +164,37 @@ theorem assignParents_pos (prev : Option Rowj) (row : Rowj) (i : Nat)
     (hi : i < (assignParents prev row).size) (hi' : i < row.size) :
     ((assignParents prev row)[i]'hi).pos = (row[i]'hi').pos := by
   simp only [assignParents, Array.getElem_mapIdx]
-  cases prev <;> rfl
+  split
+  · rfl
+  · cases prev <;> rfl
 
 theorem assignParents_val (prev : Option Rowj) (row : Rowj) (i : Nat)
     (hi : i < (assignParents prev row).size) (hi' : i < row.size) :
     ((assignParents prev row)[i]'hi).val = (row[i]'hi').val := by
   simp only [assignParents, Array.getElem_mapIdx]
+  split
+  · rfl
+  · cases prev <;> rfl
+
+/-- 強制親のセルが無いこと。素の数から作った行は常にこれを満たす。 -/
+def NoForced (row : Rowj) : Prop := ∀ x ∈ row.toList, x.forced = false
+
+theorem noForced_assignParents (prev : Option Rowj) (row : Rowj) (h : NoForced row) :
+    NoForced (assignParents prev row) := by
+  intro x hx
+  obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+  have hsz := assignParents_size prev row
+  have hi' : i < row.size := by omega
+  have hf := h _ (mem_of_getElem row i hi')
+  rw [← hix]
+  simp only [assignParents, Array.getElem_mapIdx, hf]
   cases prev <;> rfl
+
+theorem noForced_row0 (s : List Nat) : NoForced (row0 s) := by
+  intro x hx
+  obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+  rw [← hix]
+  simp only [row0, Array.getElem_mapIdx]
 
 theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r n : Nat) (V : Nat → Nat)
     (h : Rep row r n V) : Rep (assignParents prev row) r n V := by
@@ -232,9 +256,11 @@ theorem row0_val (s : List Nat) (i : Nat) (hi : i < (row0 s).size) :
   simp only [row0, Array.getElem_mapIdx, List.getElem_toArray]
 
 theorem assignParents_none_par (row : Rowj) (i : Nat)
-    (hi : i < (assignParents none row).size) (hi' : i < row.size) :
+    (hi : i < (assignParents none row).size) (hi' : i < row.size)
+    (hf : (row[i]'hi').forced = false) :
     ((assignParents none row)[i]'hi).par = searchBase row i ((row[i]'hi').pos) := by
-  simp only [assignParents, Array.getElem_mapIdx]
+  simp only [assignParents, Array.getElem_mapIdx, hf]
+  rfl
 
 /-- 行 0 は入力列そのものを表す。 -/
 theorem rep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
@@ -432,6 +458,13 @@ theorem rep_read_par (row : Rowj) (r n : Nat) (a : Row) (h : Rep row r n a.value
         obtain ⟨hp', hFc⟩ := hP
         simp only [readIdx, dif_pos hp']
         exact hFc.symm
+
+theorem noForced_nextRow (row : Rowj) : NoForced (nextRow row) := by
+  intro x hx
+  rw [nextRow_toList] at hx
+  obtain ⟨y, _, hy⟩ := List.mem_filterMap.mp hx
+  obtain ⟨p, hp, _, hyx⟩ := stepCell_some hy
+  rw [hyx]
 
 /-- **階差行も表現になっている。** -/
 theorem rep_nextRow (row : Rowj) (r n : Nat) (a : Row)

@@ -261,11 +261,13 @@ theorem searchUpper_lt (prev row : Rowj) (i : Nat) :
       · rw [dif_neg hp] at h; cases h
 
 theorem assignParents_some_par (pv row : Rowj) (i : Nat)
-    (hi : i < (assignParents (some pv) row).size) (hi' : i < row.size) :
+    (hi : i < (assignParents (some pv) row).size) (hi' : i < row.size)
+    (hf : (row[i]'hi').forced = false) :
     ((assignParents (some pv) row)[i]'hi).par =
       searchUpper pv row i (pv.size + 1)
         (some (firstAtLeast pv ((row[i]'hi').pos + 1))) := by
-  simp only [assignParents, Array.getElem_mapIdx]
+  simp only [assignParents, Array.getElem_mapIdx, hf]
+  rfl
 
 /-- 親を持つ列は入力列の中にある。 -/
 theorem col_lt_of_parent (s : List Nat) (k a b : Nat)
@@ -310,7 +312,8 @@ theorem parRep_assignParents (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
     (prev row : Rowj)
     (hprev : Rep prev k s.length (rows (ofSequence s) k).value)
     (hpar : ParRep prev k (rows (ofSequence s) k).forest)
-    (hrow : Rep row (k + 1) s.length (rows (ofSequence s) (k + 1)).value) :
+    (hrow : Rep row (k + 1) s.length (rows (ofSequence s) (k + 1)).value)
+    (hnf : NoForced row) :
     ParRep (assignParents (some prev) row) (k + 1)
       (rows (ofSequence s) (k + 1)).forest := by
   intro y hy
@@ -356,7 +359,8 @@ theorem parRep_assignParents (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
     rw [← hbig]
     exact chainFind_eq_restrictedParent' _ _ _ _ (by omega)
   -- 場合分け
-  rw [← hiy, assignParents_some_par prev row i hi hi', hstart, hfa0, hpos]
+  rw [← hiy, assignParents_some_par prev row i hi hi' (hnf _ (mem_of_getElem row i hi')),
+    hstart, hfa0, hpos]
   cases hsu : searchUpper prev row i (prev.size + 1) (some p0) with
   | none =>
       rw [hsu] at hstep

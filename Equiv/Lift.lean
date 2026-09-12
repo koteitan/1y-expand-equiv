@@ -45,7 +45,8 @@ theorem parRep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
     rw [assignParents_pos none (row0 s) i hi hi', row0_pos s i hi']
   have hp : ((assignParents none (row0 s))[i]'hi).par
       = restrictedParent linearForest (ofSequence s).value i := by
-    rw [assignParents_none_par (row0 s) i hi hi', row0_pos s i hi',
+    rw [assignParents_none_par (row0 s) i hi hi' (noForced_row0 s _ (mem_of_getElem _ i hi')),
+      row0_pos s i hi',
       searchBase_eq_scanLeft s i hi' i (Nat.le_refl _),
       restrictedParent_linear (ofSequence s).value (ofSequence_positive s hs) i]
   rw [← hiy, hp, hpos]
@@ -101,6 +102,7 @@ theorem mountainGo_rep (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
                 (rows (ofSequence s) (k + 1)).value :=
               rep_assignParents (some cur) (nextRow cur) (k + 1) s.length _ hnr
             have hnpar := parRep_assignParents s hs k cur (nextRow cur) hrep hpar hnr
+              (noForced_nextRow cur)
             have hr' : r < (mountainGo (assignParents (some cur) (nextRow cur)) f).length := by
               simp at hr; omega
             have h := ih (assignParents (some cur) (nextRow cur)) (k + 1) hnrep hnpar r hr'

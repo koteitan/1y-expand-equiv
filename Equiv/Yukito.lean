@@ -19,11 +19,14 @@ JS 側の 1 セルは `{value, position, parentIndex}` である。行 `r` の
 
 namespace Yukito
 
-/-- JS の 1 セル。`par` は同じ行の配列添字（JS の `parentIndex`、`-1` は `none`）。 -/
+/-- JS の 1 セル。`par` は同じ行の配列添字（JS の `parentIndex`、`-1` は `none`）。
+`forced` は JS の `forcedParent` で、入力が `"値v親"` の形だったときに立ち、
+親探索を飛ばす。素の数から作った行では常に `false` である。 -/
 structure Cell where
   pos : Nat
   val : Nat
   par : Option Nat
+  forced : Bool := false
   deriving Repr, DecidableEq
 
 /-- 行は JS の `lastLayer`（`position` 昇順の疎配列）。 -/
@@ -93,13 +96,16 @@ def nextRow (row : Rowj) : Rowj :=
         acc.push { pos := c.pos - 1, val := c.val - row[p].val, par := none }
       else acc
 
-/-- 行に親を割り当てる。`isBase` は JS の `calculatedMountain.length == 1`。 -/
+/-- 行に親を割り当てる。`prev = none` が JS の `calculatedMountain.length == 1`。
+`forced` が立ったセルは JS が `continue` で飛ばすので、そのまま返す。 -/
 def assignParents (prev : Option Rowj) (row : Rowj) : Rowj :=
   row.mapIdx fun i c =>
-    match prev with
-    | none     => { c with par := searchBase row i c.pos }
-    | some pv  => { c with par := searchUpper pv row i (pv.size + 1)
-                             (some (firstAtLeast pv (c.pos + 1))) }
+    if c.forced then c
+    else
+      match prev with
+      | none     => { c with par := searchBase row i c.pos }
+      | some pv  => { c with par := searchUpper pv row i (pv.size + 1)
+                               (some (firstAtLeast pv (c.pos + 1))) }
 
 /-- 入力列から行 0 を作る。 -/
 def row0 (s : List Nat) : Rowj :=
