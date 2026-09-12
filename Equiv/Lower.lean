@@ -822,4 +822,158 @@ theorem hasCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
     hfuel i j hjy hjx]
   omega
 
+/-! ## `ShapeRep` の `cover` -/
+
+/-- **原文の高さ `m` 以下の列は段 `m` に載る。** -/
+theorem cover_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep m c : Nat)
+    (hc : c < x + (expP M mfuel).len * nrep)
+    (hm : m ≤ (lowerContext S y x hyx hroot hhigher).height c) :
+    HasCol (fujiRaw M mfuel nd nrep) m c := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  rcases Nat.lt_or_ge c x with hcx | hcx
+  · rw [lowerContext_height_orig hyx hroot hhigher c (by omega)] at hm
+    have hml : m < (expRes M).length := by
+      have := height_lt_expRes_length S M hM hn hM2 c (by omega)
+      omega
+    exact hasCol_fujiIters_old M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M) m c
+      (hasCol_cutChild S M hM hn (expCutH M) hcuth m c (by omega) hm hml)
+  · obtain ⟨i2, j2, hi2, hi2n, hj2y, hj2x, hceq⟩ :=
+      col_decomp y x (expP M mfuel).len nrep c hlen (by omega) hyx hcx hc
+    have hc' : c = j2 + (x - y) * i2 := by rw [hceq, hlen]
+    rw [hceq]
+    refine hasCol_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+      nd nrep m i2 j2 hi2 hi2n hj2y hj2x ?_
+    rw [← hc']
+    exact hm
+
+/-! ## `ShapeRep` の `cellCol` -/
+
+/-- **段 `m` にあるセルの列は原文の高さ `m` 以上。** -/
+theorem cellCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep m t : Nat) (d : Cell)
+    (hd : (rowAt (fujiRaw M mfuel nd nrep) m)[t]? = some d) :
+    m ≤ (lowerContext S y x hyx hroot hhigher).height (d.pos + m) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  rcases cell_fujiIters M (expP M mfuel) nd (expRes M).length mfuel
+      (fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher
+        i2 j2 _ _)
+      nrep (expRes M) m t d hd
+    with hold | ⟨i2, j2, hi2, _, hj2y, hj2x, hkmax, hceq⟩
+  · obtain ⟨hlive, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcuth m t d hold
+    rw [lowerContext_height_orig hyx hroot hhigher (d.pos + m) (by omega)]
+    exact hlive
+  · have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+    have hsum : (expP M mfuel).badRootSeam + (expP M mfuel).len
+        = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by rw [hsm, hacl]; omega)
+    have hj2x' : j2 < x := by omega
+    have hj2y' : y ≤ j2 := by omega
+    have hc' : d.pos + m = j2 + (x - y) * i2 := by rw [hceq, hlen]
+    rw [hc']
+    have hkm := kmaxAt_lower S M hM mfuel hn hM2 (expP M mfuel) hbh hsm hcut hx hyx hroot
+      hhigher hfuel i2 j2 hj2y' hj2x'
+    omega
+
+/-! ## 元からあるセルについての条件
+
+`cutChild` から残った列 `c < n−1` のセルは、原文でも元の山の親をそのまま持つ。 -/
+
+theorem parNone_orig_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (y x : Nat) (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (m t : Nat) (d : Cell) (hd : (rowAt (expRes M) m)[t]? = some d) (hp : d.par = none) :
+    (lowerContext S y x hyx hroot hhigher).parent m (d.pos + m) = none := by
+  obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m t d hd
+  have hts : t < (rowAt (expRes M) m).size := lt_size_of_getElem? hd
+  have hm : m < (expRes M).length := by
+    rcases Nat.lt_or_ge m (expRes M).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hdM : (rowAt M m)[t]? = some d := by
+    rw [← rowAt_cutChild_getElem? M (expCutH M) m t hm hts]
+    exact hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hdM
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hdM
+    exact Option.some.inj hdM
+  have hmM : m < M.length := by
+    have h2 : (expRes M).length ≤ M.length := cutChild_length_le M (expCutH M)
+    omega
+  have hF := parRep_none S M hM m hmM t htM (by rw [hdt]; exact hp)
+  rw [hdt] at hF
+  rw [(lowerContext S y x hyx hroot hhigher).parent_original
+    (show d.pos + m ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x by
+      show d.pos + m ≤ x; omega)]
+  exact hF
+
+theorem parCol_orig_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (y x : Nat) (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (st : List Rowj) (m t : Nat) (d : Cell) (hd : (rowAt (expRes M) m)[t]? = some d)
+    (hext : RowExt (rowAt (expRes M) m) (rowAt st m))
+    (p : Nat) (hp : d.par = some p) :
+    ∃ hp' : p < (rowAt st m).size,
+      (lowerContext S y x hyx hroot hhigher).parent m (d.pos + m)
+        = some (((rowAt st m)[p]'hp').pos + m) := by
+  obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m t d hd
+  have hts : t < (rowAt (expRes M) m).size := lt_size_of_getElem? hd
+  have hm : m < (expRes M).length := by
+    rcases Nat.lt_or_ge m (expRes M).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hdM : (rowAt M m)[t]? = some d := by
+    rw [← rowAt_cutChild_getElem? M (expCutH M) m t hm hts]
+    exact hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hdM
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hdM
+    exact Option.some.inj hdM
+  have hmM : m < M.length := by
+    have h2 : (expRes M).length ≤ M.length := cutChild_length_le M (expCutH M)
+    omega
+  obtain ⟨hpM, hF⟩ := parRep_some S M hM m hmM t htM p (by rw [hdt]; exact hp)
+  rw [hdt] at hF
+  have hpt : p < t := (par_index_lt S M hM m hmM t p htM (by rw [hdt]; exact hp)).2
+  have hpc : p < (rowAt (expRes M) m).size := by omega
+  have hpe : (rowAt (expRes M) m)[p]? = (rowAt M m)[p]? :=
+    rowAt_cutChild_getElem? M (expCutH M) m p hm hpc
+  obtain ⟨hp', hpeq⟩ := hext.getElem p hpc
+  refine ⟨hp', ?_⟩
+  rw [(lowerContext S y x hyx hroot hhigher).parent_original
+    (show d.pos + m ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x by
+      show d.pos + m ≤ x; omega), lowerContext_row, hF]
+  have hcell : (rowAt st m)[p]'hp' = (rowAt M m)[p]'hpM := by
+    rw [hpeq]
+    rw [Array.getElem?_eq_getElem hpc, Array.getElem?_eq_getElem hpM] at hpe
+    exact Option.some.inj hpe
+  rw [hcell]
+
 end Yukito
