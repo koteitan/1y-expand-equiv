@@ -991,4 +991,90 @@ theorem parCol_orig_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1
     exact Option.some.inj hpe
   rw [hcell]
 
+/-! ## 上りの判定と元の段の上界 -/
+
+/-- **JS の上り判定は原文の `InCone`。** -/
+theorem hasc_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (P : FujiParams) (y x : Nat)
+    (hbh : P.badRootHeight = height S.tower.base y) (hsm : P.badRootSeam = y)
+    (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyn : y < S.n) (j : Nat) (hjn : j < S.n) :
+    isAscAt M P j mfuel = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j := by
+  have hbhlen : height S.tower.base y < M.length := hM.tall y hyn
+  show isAscending M P.badRootHeight P.badRootSeam j mfuel = true ↔ _
+  rw [hbh, hsm]
+  exact isAscending_iff_inCone M hM hyx hroot hhigher j mfuel hbhlen hjn hfuel
+
+/-- **継ぎ目でない列では、元の段はその列の高さ以下。** -/
+theorem srcRow_le_other (S : Setting) (P : FujiParams) (y x : Nat)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x)
+    (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (i k j : Nat) (hi : 0 < i) (hjy : y < j) (hjx : j ≤ x) (isRep isAsc : Bool)
+    (hrep : isRep = false)
+    (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
+    (hk : k ≤ (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)) :
+    fujiSrcRowAt P i k isRep isAsc ≤ height S.tower.base j := by
+  rw [lowerContext_height_other hyx hroot hhigher j i hjy hjx] at hk
+  rw [fujiSrcRowAt_eq P hbh hcut i k isRep isAsc (by rw [hrep]; intro hc; cases hc)]
+  rcases Decidable.em ((lowerContext S y x hyx hroot hhigher).InCone j) with hc | hc
+  · rw [if_pos hc] at hk
+    have hfl : height S.tower.base y ≤ height S.tower.base j := hc.1
+    rcases Decidable.em (isAsc = true ∧ height S.tower.base y ≤ k) with hcc | hcc
+    · rw [if_pos hcc, hrep]
+      simp only [Bool.false_eq_true, if_false, Nat.sub_zero, Nat.max_def]
+      split <;> omega
+    · rw [if_neg hcc]
+      rcases Decidable.em (height S.tower.base y ≤ k) with h1 | h1
+      · exact absurd ⟨hasc.mpr hc, h1⟩ hcc
+      · omega
+  · rw [if_neg hc] at hk
+    have hnot : isAsc = false := by
+      cases hA : isAsc with
+      | true => exact absurd (hasc.mp hA) hc
+      | false => rfl
+    rw [if_neg (by rw [hnot]; rintro ⟨h1, -⟩; cases h1)]
+    exact hk
+
+/-- **継ぎ目の列では、元の段は `x` の高さ以下。** -/
+theorem srcRow_le_seam (S : Setting) (P : FujiParams) (y x : Nat)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x)
+    (hyx : y < x)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (i k : Nat) (hi : 0 < i) (isRep isAsc : Bool) (hasct : isAsc = true)
+    (hk : k ≤ height S.tower.base y
+      + (height S.tower.base x - height S.tower.base y) * i) :
+    fujiSrcRowAt P i k isRep isAsc ≤ height S.tower.base x := by
+  obtain ⟨m, rfl⟩ : ∃ m, i = m + 1 := ⟨i - 1, by omega⟩
+  have hsucc : (m + 1) * (height S.tower.base x - height S.tower.base y)
+      = m * (height S.tower.base x - height S.tower.base y)
+        + (height S.tower.base x - height S.tower.base y) := Nat.succ_mul _ _
+  have hm1 : (m + 1) - 1 = m := by omega
+  have hcomm : (height S.tower.base x - height S.tower.base y) * (m + 1)
+      = (m + 1) * (height S.tower.base x - height S.tower.base y) := Nat.mul_comm _ _
+  have hcomm2 : (height S.tower.base x - height S.tower.base y) * m
+      = m * (height S.tower.base x - height S.tower.base y) := Nat.mul_comm _ _
+  rw [fujiSrcRowAt_eq P hbh hcut (m + 1) k isRep isAsc (fun _ => hk)]
+  rcases Decidable.em (isAsc = true ∧ height S.tower.base y ≤ k) with hc | hc
+  · rw [if_pos hc]
+    cases isRep with
+    | false =>
+        simp only [Bool.false_eq_true, if_false, Nat.sub_zero, Nat.max_def]
+        split <;> omega
+    | true =>
+        simp only [if_true, hm1, Nat.max_def]
+        split <;> omega
+  · rw [if_neg hc]
+    have hlt : k < height S.tower.base y := by
+      rcases Nat.lt_or_ge k (height S.tower.base y) with h1 | h1
+      · exact h1
+      · exact absurd ⟨hasct, h1⟩ hc
+    omega
+
 end Yukito
