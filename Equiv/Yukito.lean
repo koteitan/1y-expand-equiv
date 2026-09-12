@@ -455,7 +455,7 @@ def fujiSource (P : FujiParams) (i k : Nat) (isRep : Bool) : Nat × Bool :=
   else (k - d * i, !P.yamakazi && isRep)
 
 /-- 段 `k = 0 … kmax−1` を積む。 -/
-def fujiRows (M : List Rowj) (P : FujiParams) (nd : Rowj) (i j : Nat) (isRep : Bool) :
+def fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool) :
     Nat → List Rowj → List Rowj
   | 0, res => res
   | kmax + 1, res =>
@@ -463,11 +463,11 @@ def fujiRows (M : List Rowj) (P : FujiParams) (nd : Rowj) (i j : Nat) (isRep : B
       let sysx := fujiSource P i kmax isRep
       let sx := sourceIdx M sysx.1 j sysx.2
       let ir := if isRep then 1 else 0
-      let topVal := readValAt nd (j + P.len * i)
+      let topVal := nd (j + P.len * i)
       pushAt res kmax (fujiCell M P (rowAt res kmax) sysx.1 sx kmax i j (i - ir) topVal)
 
 /-- 継ぎ目の列 `j = badRootSeam … badRootSeam+t−1` を回す。 -/
-def fujiSeams (M : List Rowj) (P : FujiParams) (nd : Rowj) (i afterCutHeight ascFuel : Nat) :
+def fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i afterCutHeight ascFuel : Nat) :
     Nat → List Rowj → List Rowj
   | 0, res => res
   | t + 1, res =>
@@ -481,7 +481,7 @@ def fujiSeams (M : List Rowj) (P : FujiParams) (nd : Rowj) (i afterCutHeight asc
       fujiRows M P nd i j isRep kmax res
 
 /-- 繰り返し `i = 1 … n`。 -/
-def fujiIters (M : List Rowj) (P : FujiParams) (nd : Rowj) (afterCutHeight ascFuel : Nat) :
+def fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (afterCutHeight ascFuel : Nat) :
     Nat → List Rowj → List Rowj
   | 0, res => res
   | i + 1, res =>
@@ -543,5 +543,56 @@ def dropEmptyTop : List Rowj → List Rowj
   decreasing_by
     simp only [List.length_take, List.length_cons]
     omega
+
+/-! ## `expand` の入口
+
+`badRootSeamHeight` と `afterCutMountain` は JS で計算されるが、その後どこでも使われて
+いないので写さない。
+
+`newDiagonal` は `.value` しか読まれないので、値の関数 `Nat → Nat` として持つ。
+JS は `newDiagonal[0].push(newDiagonal[0][j])` で同じセルの参照を積むため
+`position` が重複するが、値だけを見るぶんには影響しない。 -/
+
+/-- 添字で値を読む。 -/
+def valAtIdx (row : Rowj) (i : Nat) : Nat := if h : i < row.size then (row[i]'h).val else 0
+
+/-- 列 `j` を含む最上段。JS の `badRootHeight` の走査。 -/
+def topRowWithCol (M : List Rowj) (j : Nat) : Nat → Option Nat
+  | 0 => none
+  | i + 1 => if hasCol M i j then some i else topRowWithCol M j i
+
+/-- 山崎噴火の枝での `newDiagonal` の値。`base` は対角の行 0 から最後を落としたもの。
+そのあと区間 `[seam, len)` を周期的に繰り返す。 -/
+def yamaVal (base : Rowj) (seam len : Nat) (c : Nat) : Nat :=
+  if c < len then valAtIdx base c
+  else valAtIdx base (seam + (c - len) % (len - seam))
+
+/-- 行 0 の値の列。JS の出力（`stringify` した並び）。 -/
+def expandOut (M : List Rowj) : List Nat := (rowAt M 0).toList.map (·.val)
+
+/-- JS の `expand`。`nrep` が展開の回数 `n`、`mfuel` が山を作る燃料、
+`efuel` が抽出の再帰の上限。 -/
+def expandJS (nrep mfuel : Nat) : Nat → List Rowj → List Rowj
+  | 0, _ => []
+  | efuel + 1, M =>
+    let row0 := rowAt M 0
+    let n := row0.size
+    let hasPar := if h : n - 1 < row0.size then ((row0[n - 1]'h).par).isSome else false
+    if !hasPar then
+      fillValues (dropEmptyTop (M.set 0 row0.pop))
+    else
+      let cutH := (topRowOfLast M n M.length).getD 0
+      let seam := (getBadRoot M mfuel mfuel).getD 0
+      let dg := calcMountainFrom (parseDiag (calcDiagonal M)) mfuel
+      let yama := lastVal (rowAt dg 0) = 1
+      let nd : Nat → Nat :=
+        if yama then yamaVal (rowAt dg 0).pop seam (n - 1)
+        else valAtIdx (rowAt (expandJS nrep mfuel efuel dg) 0)
+      let cutH' := if yama then cutH - 1 else cutH
+      let bh := if yama then cutH - 1 else (topRowWithCol M seam M.length).getD 0
+      let res := cutChild M cutH
+      let acl := (rowAt res 0).size
+      let P : FujiParams := ⟨seam, bh, cutH', acl, yama⟩
+      fillValues (dropEmptyTop (fujiIters M P nd res.length mfuel nrep res))
 
 end Yukito

@@ -103,4 +103,22 @@ namespace Yukito
 #guard getBadRoot (calcMountain [1, 3, 4, 3] 8) 8 8 = some 0
 #guard getBadRoot (calcMountain [1, 4, 5, 3] 8) 8 8 = some 0
 
+/-! ## `expand`
+
+期待値は `script.js` の `expand(s, n, true)` を実行して得たもの。分岐を一通り
+通す例を選んである（親なしで末尾を落とす枝、山崎噴火の枝、再帰の枝、`n = 2`）。 -/
+
+private def runExpand (s : List Nat) (n : Nat) : List Nat :=
+  expandOut (expandJS n 12 12 (calcMountain s 12))
+
+#guard runExpand [1, 1] 1 = [1]
+#guard runExpand [1, 2] 1 = [1, 1]
+#guard runExpand [1, 3, 3] 1 = [1, 3, 2, 5]
+#guard runExpand [1, 3, 3] 2 = [1, 3, 2, 5, 4, 9]
+#guard runExpand [1, 2, 4, 8] 1 = [1, 2, 4, 7]
+#guard runExpand [1, 3, 2, 5] 1 = [1, 3, 2, 4]
+#guard runExpand [1, 1, 2, 3, 3] 1 = [1, 1, 2, 3, 2, 3]
+#guard runExpand [1, 3, 4, 3] 1 = [1, 3, 4, 2, 5, 9]
+#guard runExpand [1, 2, 3] 2 = [1, 2, 2, 2]
+
 end Yukito

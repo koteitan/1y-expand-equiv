@@ -991,9 +991,26 @@ dropEmptyTop  末尾の空の段を落とす
 枝は `sy`（元の段）と `sx`（元のセルを行の最後から取るか）の選び方だけが違うので、
 `fujiSource` にまとめた。
 
-残るのは、これらを繋ぐ `expand` の入口（`cutHeight` などの計算と `newDiagonal` の
-再帰）と、`#guard` による突き合わせである。そのあとが 2（層の再帰）と
-3（森のコピー）で、3 が全体の大半である。
+入口も写した。
+
+```
+valAtIdx       添字で値を読む
+topRowWithCol  列 j を含む最上段（badRootHeight の走査）
+yamaVal        山崎噴火の枝での newDiagonal の値（周期的なコピー）
+expandJS       expand 本体
+expandOut      行 0 の値の列（JS の出力）
+```
+
+`badRootSeamHeight` と `afterCutMountain` は JS で計算されるがその後どこでも使われて
+いないので写していない。`newDiagonal` は `.value` しか読まれないので値の関数
+`Nat → Nat` として持つ。JS は `newDiagonal[0].push(newDiagonal[0][j])` で同じセルの
+参照を積むため `position` が重複するが、値だけを見るぶんには影響しない。
+
+**写しは `script.js` の `expand` の出力と一致した。** 長さ 2〜5・値 4 以下・`n ∈ {1,2}`
+の 680 例で食い違いなし。分岐を一通り通す 9 例を `#guard` に固定してある
+（`YukitoCheck.lean`）。
+
+残るのは 2（層の再帰）と 3（森のコピー）の証明で、3 が全体の大半である。
 
 ## 残っている課題
 
