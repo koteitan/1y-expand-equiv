@@ -1087,7 +1087,130 @@ reconstructedValues graphs W = (List.range W).map (assemble graphs (fun _ => 1))
 ```
 
 で、`W = x + N*(x − z.column)`。`x = afterCutLength`、`x − z.column = len` なので
-**幅は一致する。** 残る義務は各列での値の一致である。
+**幅は一致する。**
+
+### 値の層は閉じた
+
+疎な山が密な山を表していることを `ShapeRep` として書いた（`Shape.lean`）。
+
+```
+mono     各段の位置は真に増加
+parLt    親の添字は自分より前
+cellCol  段 r にあるセルの列は高さ r 以上
+cover    高さ r 以上の列は段 r にある
+parCol   親を持つセルの親の列は密な山の親
+parNone  親を持たないセルは密な山でも根
+valZero  親を持つセルの値は未確定（0）
+valTop   親を持たないセルの値は頂の値
+topPos   頂の値は正
+tall     段が足りている
+```
+
+`ShapeRep Rs G top W` から、`value_of_diff_prefix`（`value_of_diff` の前半だけ版）を
+使って
+
+```
+expandOut (fillValues Rs) = (List.range W).map (Reconstruction.value G top 0)
+```
+
+が出る（`expandOut_eq_value`）。原文は
+
+```
+assemble (G :: rest) top c = Reconstruction.value G (assemble rest top) 0 c
+```
+
+なので、`top = assemble rest (fun _ => 1)` とすれば**そのまま同じ式**である。
+
+途中で使った橋渡しは次の 3 つ。
+
+```
+readValAt_eq_readVal  r ≤ c なら position で読むのと列で読むのは同じ
+readVal_of_index      添字で読んだ値はその列で読んだ値
+posMono_fillValues    埋めは位置と親を変えないので単調性も保つ
+```
+
+JS が 1 つ上の段を position `pos−1` で引くのが「同じ列を引くこと」に等しいのは
+`r+1 ≤ c` のときである。値 0 のセルは親を持つので頂ではなく、列 > 段だから
+条件は満たされる。
+
+**つまり残る義務は `ShapeRep` を作ることだけになった。**
+
+### 山崎噴火の枝
+
+JS の `yama` は「対角の最後の値が 1」、すなわち bad root がその層自身で見つかること
+である。原文の `expandedMountain` は層 `k` について
+
+```
+k < K  : badAtLowerContext
+k = K  : badAtTerminalMountain
+k > K  : OrdinaryCopy
+```
+
+と分かれるので、`yama` の枝が `k = K`（`badAtTerminalMountain`）にあたる。
+
+落差 `d = cutHeight − badRootHeight` はこの枝では 0 である（`cutHeight' =
+badRootHeight = cutH − 1`）。そこで枝の選び方が単純になる。
+
+```
+fujiSource_yama   d = 0 かつ yamakazi のとき
+                    fujiSource P i k isRep = (k, isRep && k < badRootHeight)
+kmaxAt_yama       積む段の数は継ぎ目の高さそのもの（上りの判定によらない）
+kmaxAt_le_yama    d ≤ len が自明なので kmax ≤ j + len*i + 1 が出る
+```
+
+原文の `TerminalCopy.Context` は
+
+```
+height c = if c < x then M.height c
+           else if source c = x then M.height y else M.height (source c)
+parent r c = if c < x then (M.row r).parent c
+             else if source c = x ∧ level ≤ r then (M.row r).parent y
+             else ((M.row r).parent (source c)).map (parentCopy (block c))
+```
+
+で、`source c = y+1 + (c−y−1) % L`、`block c = (c−y−1)/L`、`L = x−y`、
+`level` は `M.height x = level + 1` を満たす段である。JS 側の継ぎ目 `j` は
+`y ≤ j < x` を走り列 `j + L*i` に写る。JS の `badRootHeight` は `level` にあたる。
+
+座標と親の対応を式として揃えた。
+
+```
+coord_source_block       y < j < x なら source (j+L*i) = j、block = i
+coord_source_block_seam  0 < i なら source (y+L*i) = x、block = i−1
+srcColYama               元の列は isRep かつ k < badRootHeight なら x、そうでなければ j
+sourceIdx_col            列 j が段 k で生きていれば sourceIdx はその列のセル
+sourceIdx_last_col       列 x が段 k で生きていれば行の最後のセルはその列
+parRep_some / parRep_none  疎配列の親を密表現の親として読む
+fujiCell_par_parentCopy  積むセルの親の列 = parentCopy shifts（元の親の列）
+fujiCellAt_par_yama      それを山崎噴火の枝に当てはめた形
+parentCopy_of_parent_y   根 y の親は y より左なので桁上げは恒等
+```
+
+`j = y` が原文の retained seam（`source = x`）にあたり、そのときの桁上げは `i−1`。
+JS が渡す `shifts = i − ir`（`ir` は `isRep` なら 1）と一致する。最後の
+`parentCopy_of_parent_y` が、原文が `level ≤ r` の場合に `parentCopy` を掛けず
+JS が掛ける、という見かけの違いを埋める。
+
+子を切る操作も原文と同じである。
+
+```
+size_rowAt_cutChild      cutH 以下の段は最後のセルが 1 つ減る
+rowAt_cutChild_getElem?  残ったセルは元のセルそのもの
+```
+
+JS は列 `x` を切ってから `i = 1` の継ぎ目 `j = y` で列 `y + L = x` を積み直す。
+原文はこれを「`source x = x`、`height x = M.height y`」と書いている。
+
+新しい対角の値も形が揃った。
+
+```
+expNd_yama_source0  expNd c = valAtIdx (対角の行 0) (source0 c)
+```
+
+原文の `assemble_expanded_above` は、`K+1` 段目以上のコピーを畳むと
+`ordinaryContext.copyValue (layers a (K+1)).row.value` になると言う。
+`layers a (K+1)` の値は `layers a K` の `topValue`、すなわち対角の値なので、
+これは上の式と同じものである。
 
 ### 値の埋め
 
