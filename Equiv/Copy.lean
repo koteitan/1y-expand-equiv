@@ -2033,4 +2033,24 @@ theorem parentPos_some (S : Setting) (M : List Rowj) (hM : MtRep S M) (P : FujiP
     congr 1
     omega
 
+/-- **親の位置が今の段にあれば、積むセルは親を持つ。** -/
+theorem fujiCell_par_isSome (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal z : Nat) (hmono : PosMono cur)
+    (hpp : parentPos M P sy sx k shifts = some z)
+    (u : Nat) (hu : u < cur.size) (hpos : (cur[u]'hu).pos = z) :
+    (fujiCell M P cur sy sx k i j shifts topVal).par = some u := by
+  rw [fujiCell_par, hpp]
+  dsimp only
+  exact lookupPos_of_pos cur hmono z u hu hpos
+
+theorem fujiCellAt_par_isSome (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i j : Nat) (isRep : Bool) (res : List Rowj) (k z : Nat)
+    (hmono : PosMono (rowAt res k))
+    (hpp : parentPos M P (fujiSource P i k isRep).1
+      (sourceIdx M (fujiSource P i k isRep).1 j (fujiSource P i k isRep).2) k
+      (i - (if isRep then 1 else 0)) = some z)
+    (u : Nat) (hu : u < (rowAt res k).size) (hpos : ((rowAt res k)[u]'hu).pos = z) :
+    (fujiCellAt M P nd i j isRep res k).par = some u :=
+  fujiCell_par_isSome M P (rowAt res k) _ _ k i j _ _ z hmono hpp u hu hpos
+
 end Yukito
