@@ -39,6 +39,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Sibling.lean` | 兄弟の単調性。行 0 では真、一般の行では偽であることの記録 |
 | `Equiv/FirstLive.lean` | 「最初に生きている列」の条件から出ること。`j` の親が `root` になる |
 | `Equiv/SibLive.lean` | 生きた左の兄弟についての単調性。基底と 2 つの場合、liveness の伝播 |
+| `Equiv/Tower.lean` | 森の塔。frame と値を層ごとに並べ、行 0 を特別扱いせずに済ませる |
 
 ## 座標の対応
 
@@ -148,6 +149,21 @@ root_pos_down        root がその層で生きていることも出る
 ```
 U e ≤ U j     j と e は F 兄弟で j < e、j は生きている
 ```
+
+これを回す帰納のために `Tower.lean` で層を並べた。
+
+```
+frameAt 0     = linearForest
+frameAt (k+1) = (rows (ofSequence s) k).forest
+towerVal k    = (rows (ofSequence s) k).value
+```
+
+この形にすると行 0 を特別扱いせずに済む。層 0 の frame は線形森なので
+
+* 相異なる 2 列は兄弟になれない（親は必ず 1 つ前の列）
+* `q1 < q2` なら常に `q1` は `q2` の祖先
+
+したがって降下は層 0 で必ず場合 1 になって止まる。
 
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち

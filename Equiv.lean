@@ -10,3 +10,4 @@ import Equiv.NoCross
 import Equiv.Sibling
 import Equiv.FirstLive
 import Equiv.SibLive
+import Equiv.Tower
