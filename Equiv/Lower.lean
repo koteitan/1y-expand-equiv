@@ -94,4 +94,38 @@ theorem lowerContext_height_other (hyx : y < x) (hroot) (hhigher) (j i : Nat)
   rw [hc]
   exact (lowerContext S y x hyx hroot hhigher).height_encode hj1 hj2 i
 
+/-- 継ぎ目自身は `InCone`。 -/
+theorem inCone_seam (hyx : y < x) (hroot) (hhigher) :
+    (lowerContext S y x hyx hroot hhigher).InCone y := by
+  refine ⟨Nat.le_refl _, ?_⟩
+  exact ParentForest.root_of_parent_none _
+    (parent_none_at_top S.tower.base S.tower.hpos y)
+
+/-- **JS の `kmax` は原文の高さ + 1。** -/
+theorem kmaxAt_eq_height_lower (M : List Rowj) (hM : MtRep S M) (P : FujiParams)
+    (hyx : y < x) (hroot) (hhigher)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hsm : P.badRootSeam = y) (hcut : P.cutHeight = height S.tower.base x)
+    (ach af i j : Nat) (hj1 : y ≤ j) (hj2 : j < x) (hjn : j < S.n)
+    (hsh : seamHeightOf M j ach = height S.tower.base j + 1)
+    (hbhlen : height S.tower.base y < M.length)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ af) :
+    kmaxAt M P i j ach af
+      = (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i) + 1 := by
+  have hasc := isAscending_iff_inCone M hM hyx hroot hhigher j af hbhlen hjn hfuel
+  unfold kmaxAt
+  dsimp only
+  rw [hbh, hsm, hcut, hsh]
+  rcases Decidable.em (j = y) with hje | hjne
+  · subst hje
+    rw [lowerContext_height_seam hyx hroot hhigher i,
+      if_pos (hasc.mpr (inCone_seam hyx hroot hhigher))]
+    rw [Nat.mul_comm]
+    omega
+  · rw [lowerContext_height_other hyx hroot hhigher j i (by omega) (by omega)]
+    rcases Decidable.em ((lowerContext S y x hyx hroot hhigher).InCone j) with hc | hc
+    · rw [if_pos (hasc.mpr hc), if_pos hc, Nat.mul_comm]
+      omega
+    · rw [if_neg (fun h => hc (hasc.mp h)), if_neg hc]
+
 end Yukito
