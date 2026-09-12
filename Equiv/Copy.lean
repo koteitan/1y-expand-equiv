@@ -739,4 +739,93 @@ theorem kmaxAt_le (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
   · omega
   · omega
 
+/-! ## 覆えば密
+
+位置が真に増加していて、列が `0 … W−1` をちょうど覆うなら、その疎配列は密である。 -/
+
+theorem dense_of_cover (row : Rowj) (W : Nat) (hmono : PosMono row)
+    (hb : ∀ (t : Nat) (d : Cell), row[t]? = some d → d.pos < W)
+    (hc : ∀ c, c < W → ∃ (t : Nat) (d : Cell), row[t]? = some d ∧ d.pos = c) :
+    row.size = W ∧ ∀ (t : Nat) (ht : t < row.size), (row[t]'ht).pos = t := by
+  have key : ∀ c, c ≤ W →
+      c ≤ row.size ∧ ∀ (t : Nat) (ht : t < row.size), t < c → (row[t]'ht).pos = t := by
+    intro c
+    induction c with
+    | zero => intro _; exact ⟨Nat.zero_le _, fun t ht h => absurd h (by omega)⟩
+    | succ c ih =>
+        intro hcW
+        obtain ⟨hcs, hpos⟩ := ih (by omega)
+        obtain ⟨t, d, hd, hdc⟩ := hc c (by omega)
+        have hts : t < row.size := lt_size_of_getElem? hd
+        have hdt : (row[t]'hts) = d := by
+          rw [Array.getElem?_eq_getElem hts] at hd
+          exact Option.some.inj hd
+        have htc : t = c := by
+          rcases Nat.lt_trichotomy t c with h | h | h
+          · exfalso
+            have h1 := hpos t hts h
+            rw [hdt, hdc] at h1
+            omega
+          · exact h
+          · exfalso
+            have hcs' : c < row.size := by omega
+            have h1 := hmono c t hcs' hts h
+            have h2 := posMono_add row hmono c 0 c (by omega) hcs' (by omega)
+            rw [hdt, hdc] at h1
+            omega
+        subst htc
+        refine ⟨by omega, fun u hu hut => ?_⟩
+        rcases Nat.lt_or_ge u t with h | h
+        · exact hpos u hu h
+        · have hue : u = t := by omega
+          subst hue
+          rw [hdt, hdc]
+  obtain ⟨hW, hall⟩ := key W (Nat.le_refl _)
+  have hsz : row.size ≤ W := by
+    rcases Nat.lt_or_ge W row.size with h | h
+    · exfalso
+      have hposW := posMono_add row hmono W 0 W (by omega) h (by omega)
+      have hbW := hb W (row[W]'h) (Array.getElem?_eq_getElem h)
+      omega
+    · exact h
+  exact ⟨by omega, fun t ht => hall t ht (by omega)⟩
+
+/-! ## 継ぎ目の高さの上限 -/
+
+theorem seamHeightOf_le (M : List Rowj) (j : Nat) :
+    ∀ hi : Nat, seamHeightOf M j hi ≤ hi := by
+  intro hi
+  induction hi with
+  | zero => exact Nat.le_refl 0
+  | succ h ih =>
+      rw [seamHeightOf]
+      split
+      · exact Nat.le_refl _
+      · omega
+
+/-- **継ぎ目の高さは列より 1 だけ大きい以下。** 段が足りていれば
+`seamHeightOf M j hi = height j + 1 ≤ j + 1` である。 -/
+theorem seamHeightOf_le_succ (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
+    (hj : j < S.n) (hi : Nat) (h1 : hi ≤ M.length) (h2 : height S.tower.base j < hi) :
+    seamHeightOf M j hi ≤ j + 1 := by
+  rw [seamHeightOf_eq S M hM j hj hi h1 h2]
+  have := height_le_self' S.tower.base S.tower.hpos j
+  omega
+
+/-- 継ぎ目の高さは正。 -/
+theorem seamHeightOf_pos (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
+    (hj : j < S.n) (hi : Nat) (h1 : hi ≤ M.length) (h2 : height S.tower.base j < hi) :
+    0 < seamHeightOf M j hi := by
+  rw [seamHeightOf_eq S M hM j hj hi h1 h2]
+  omega
+
+/-- 継ぎ目の高さが正なら、積む段の数も正。 -/
+theorem kmaxAt_pos (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hs : 0 < seamHeightOf M j ach) : 0 < kmaxAt M P i j ach af := by
+  unfold kmaxAt
+  dsimp only
+  split
+  · omega
+  · omega
+
 end Yukito
