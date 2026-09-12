@@ -1546,6 +1546,34 @@ isAscending_iff_root isAscending M bh seam j fuel = true
 同じ条件である。継ぎ目 `y` は段 `floor = height y` で頂なので親を持たず、
 「祖先に届く」と「根が一致する」が同値になる。
 
+そこでコピー先の山を組み立てた（`Lower.lean`）。
+
+```
+lowerContext S y x …        こちらの Setting から LowerCopy.Context を作る
+lowerContext_floor / _rise  floor = height y、rise = height x − height y
+lowerContext_inCone         InCone c ↔ (height y ≤ height c ∧ 段 height y の根が y)
+isAscending_iff_inCone      **JS の isAscending は InCone そのもの**
+inCone_seam                 継ぎ目自身は InCone（その段で頂だから根）
+lowerContext_height_orig    c ≤ x では高さは元の山のまま
+lowerContext_height_seam    height (y + (x−y)*i) = height y + i*rise
+lowerContext_height_other   y < j ≤ x なら
+                              height (j + (x−y)*i)
+                                = if InCone j then height j + i*rise else height j
+kmaxAt_eq_height_lower      **JS の kmax = 原文の高さ + 1**
+```
+
+`kmaxAt_eq_height_lower` で、この枝についても山の形（高さ）が一致した。
+残るのは親の対応で、原文の
+
+```
+parent r c = … else if InCone s ∧ floor ≤ r then
+               if r < floor + b*rise then ((M.row floor).parent s).map (· + b*length)
+               else ((M.row (r − b*rise)).parent s).map (· + b*length)
+             else ((M.row r).parent s).map (parentCopy b)
+```
+
+の真ん中の 2 つが JS の Br replace / Br extend にあたる。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
