@@ -1334,7 +1334,7 @@ theorem sourceIdx_yama_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (P : FujiParams) (j k : Nat) (isRep : Bool) (hk : k < M.length) (hn : 1 < S.n)
     (hkj : k ≤ j) (hj : j < S.n)
     (hlive : 0 < (rows S.tower.base k).value j)
-    (hlast : 0 < (rows S.tower.base k).value (S.n - 1)) :
+    (hbh : P.badRootHeight ≤ height S.tower.base (S.n - 1)) :
     ∃ h : sourceIdx M k j (isRep && decide (k < P.badRootHeight)) < (rowAt M k).size,
       ((rowAt M k)[sourceIdx M k j (isRep && decide (k < P.badRootHeight))]'h).pos + k
         = srcColYama S P j k isRep := by
@@ -1342,7 +1342,11 @@ theorem sourceIdx_yama_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
   cases hb : isRep && decide (k < P.badRootHeight) with
   | true =>
       rw [if_pos rfl]
-      exact sourceIdx_last_col S M hM k j hk hn hlast
+      have hkb : k < P.badRootHeight := by
+        have h2 : isRep = true ∧ (k < P.badRootHeight) := by simpa using hb
+        exact h2.2
+      exact sourceIdx_last_col S M hM k j hk hn
+        ((live_iff_le_height S.tower.base (S.tower.hpos (S.n - 1)) k).mpr (by omega))
   | false =>
       rw [if_neg (by simp)]
       exact sourceIdx_col S M hM k j hk hkj hj hlive
@@ -1353,7 +1357,7 @@ theorem fujiCellAt_par_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (hy : P.yamakazi = true) (hd : P.cutHeight = P.badRootHeight)
     (hk : k < M.length) (hn : 1 < S.n) (hkj : k ≤ j) (hj : j < S.n)
     (hlive : 0 < (rows S.tower.base k).value j)
-    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
+    (hbh : P.badRootHeight ≤ height S.tower.base (S.n - 1))
     (C : CopyCoordinates.Context) (hcy : C.y = P.badRootSeam) (hcL : C.length = P.len)
     (p : Nat) (hp : (fujiCellAt M P nd i j isRep res k).par = some p) :
     ∃ (hp' : p < (rowAt res k).size) (q : Nat),
@@ -1366,7 +1370,7 @@ theorem fujiCellAt_par_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
       (sourceIdx M k j (isRep && decide (k < P.badRootHeight))) k i j
       (i - (if isRep then 1 else 0)) (nd (j + P.len * i)) (Nat.le_refl _) hk C hcy hcL p hp
   obtain ⟨hsx', hcolsrc⟩ :=
-    sourceIdx_yama_col S M hM P j k isRep hk hn hkj hj hlive hlast
+    sourceIdx_yama_col S M hM P j k isRep hk hn hkj hj hlive hbh
   rw [hcolsrc] at hq
   exact ⟨hp', q, hq, hcol⟩
 

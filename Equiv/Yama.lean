@@ -480,7 +480,6 @@ theorem fujiCellAt_parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (hi : 0 < i) (hjy : y ≤ j) (hjx : j < S.n - 1)
     (hk : k < M.length) (hkj : k ≤ j)
     (hlive : 0 < (rows S.tower.base k).value j)
-    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
     (p : Nat)
     (hp : (fujiCellAt M (expP M mfuel) nd i j (isRepAt (expP M mfuel) j) res k).par = some p) :
     ∃ hp' : p < (rowAt res k).size,
@@ -497,7 +496,7 @@ theorem fujiCellAt_parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
   obtain ⟨hp', q, hq, hcol⟩ :=
     fujiCellAt_par_yama S M hM (expP M mfuel) nd i j (isRepAt (expP M mfuel) j) res k
       (expP_yamakazi M mfuel hyama) (expP_yama_cut M mfuel hyama) hk hn hkj (by omega)
-      hlive hlast (yamaContext S y hy hpar hh).coordinates hcy hcL p hp
+      hlive (by rw [hbh]; omega) (yamaContext S y hy hpar hh).coordinates hcy hcL p hp
   refine ⟨hp', ?_⟩
   rcases Decidable.em (j = y) with hjeq | hjne
   · have hrep : isRepAt (expP M mfuel) j = true := by
@@ -677,7 +676,6 @@ theorem fujiCellAt_par_some_of_parent (S : Setting) (M : List Rowj) (hM : MtRep 
     (hi : 0 < i) (ht : t < (expP M mfuel).len)
     (hk : k < M.length) (hkj : k ≤ y + t)
     (hlivej : 0 < (rows S.tower.base k).value (y + t))
-    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
     (hmono : PosMono (rowAt st k))
     (hpc : (yamaContext S y hy hpar hh).parent k ((y + t) + (expP M mfuel).len * i) = some pc)
     (hcov : HasCol st k pc) :
@@ -695,9 +693,11 @@ theorem fujiCellAt_par_some_of_parent (S : Setting) (M : List Rowj) (hM : MtRep 
     have h2 := rowMountain_height_le ((yamaContext S y hy hpar hh).toRowMountain) pc
     omega
   -- 元のセルの列
+  have hbh : (expP M mfuel).badRootHeight = height S.tower.base (S.n - 1) - 1 :=
+    expP_badRootHeight_yama S M hM hn mfuel hyama
   obtain ⟨hsx, hcolsrc⟩ :=
     sourceIdx_yama_col S M hM (expP M mfuel) (y + t) k (isRepAt (expP M mfuel) (y + t))
-      hk hn hkj (by omega) hlivej hlast
+      hk hn hkj (by omega) hlivej (by rw [hbh]; omega)
   rw [srcColYama_eq S M hM hn mfuel hyama y hseam (y + t) k] at hcolsrc
   have hF : (rows S.tower.base k).forest.parent
       (((rowAt M k)[sourceIdx M k (y + t)
@@ -740,7 +740,6 @@ theorem fujiCellAt_parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (hi : 0 < i) (ht : t < (expP M mfuel).len)
     (hk : k < M.length) (hkj : k ≤ y + t)
     (hlivej : 0 < (rows S.tower.base k).value (y + t))
-    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
     (hmono : PosMono (rowAt st k))
     (hcov : ∀ pc, pc < (y + t) + (expP M mfuel).len * i →
       k ≤ (yamaContext S y hy hpar hh).height pc → HasCol st k pc)
@@ -756,7 +755,7 @@ theorem fujiCellAt_parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
       have hge : k ≤ (yamaContext S y hy hpar hh).height pc :=
         ((yamaContext S y hy hpar hh).toRowMountain).parent_endpoint hp
       obtain ⟨u, hu⟩ := fujiCellAt_par_some_of_parent S M hM mfuel hn hyama y hy hpar hh h0
-        hseam nd st i t k pc hi ht hk hkj hlivej hlast hmono hp (hcov pc hlt hge)
+        hseam nd st i t k pc hi ht hk hkj hlivej hmono hp (hcov pc hlt hge)
       rw [hu] at hnone
       exact absurd hnone (by simp)
 
