@@ -260,4 +260,30 @@ theorem root_pos_down (base : Row) (root : Nat) (m k : Nat)
     0 < (rows base k).value root :=
   (value_lt_of_fparent base k root (fparent_succ_down base root m k h)).1
 
+/-! ## `RootChildAdjacent` のうち片付く場合
+
+`e` を `root` の `F` 子で `p` の鎖にあるものとすると `root + 1 ≤ e` である。
+`root + 1 = e` のときは最大性で閉じる。`e` は `p` の `F` 祖先（または `p` 自身）
+なので `U p ≤ U e`、`root = Φ.parent p` から `U root < U p`、あわせて
+`U root < U (root + 1)` となり、`root` が `root + 1` の親候補になる。 -/
+
+/-- `root + 1` が `p` の `F` 祖先（または `p` 自身）で、その `F` 親が `root` なら、
+`root + 1` は生きている。 -/
+theorem rootChildAdjacent_of_ancestor (hc : Compat F U) {root p : Nat}
+    (hp : restrictedParent F U p = some root)
+    (hf : F.parent (root + 1) = some root)
+    (hep : ZeroY.Forest.Ancestor F.parent p (root + 1) ∨ root + 1 = p) :
+    restrictedParent F U (root + 1) ≠ none := by
+  have hpos : 0 < U (root + 1) := (hc (root + 1)).mpr ⟨root, hf⟩
+  obtain ⟨_, hUroot, hUp, _⟩ := (restrictedParent_some_iff F U p root).mp hp
+  -- U p ≤ U (root+1)
+  have hle : U p ≤ U (root + 1) := by
+    rcases hep with hanc | heq
+    · exact one_of_ancestor root p (root + 1) hp hanc (by omega) hpos
+    · subst heq; exact Nat.le_refl _
+  intro hnone
+  have := (restrictedParent_none_iff F U (root + 1)).mp hnone root
+    (ParentForest.ancestor_of_zeroY (Relation.TransGen.single hf)) hUroot
+  omega
+
 end Yukito

@@ -123,6 +123,18 @@ fparent_succ_down  下まで回した形。行 k+m で成り立てば行 k で�
 
 したがって `j = root + 1` さえ言えれば、`j` の親が `root` であることが
 すべての層で従う。線形 frame まで降りると `root = j - 1` になり整合する。
+値の不等式も同時に降りる。
+
+```
+value_lt_of_fparent  F 親が root なら その層で U root < U (root+1)
+value_lt_down        行 k+m で成り立てば行 k でも成り立つ
+root_pos_down        root がその層で生きていることも出る
+```
+
+`RootChildAdjacent` については、`root + 1` が `p` の `F` 祖先（または `p` 自身）
+である場合を証明した（`rootChildAdjacent_of_ancestor`）。`e` を `root` の `F` 子で
+`p` の鎖にあるものとすると `root + 1 ≤ e` であり、`root + 1 = e` のときが
+これにあたる。残るのは `root + 1 < e` の場合である。
 
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち
