@@ -303,4 +303,99 @@ theorem parentPos_eq (M : List Rowj) (P : FujiParams) (sy sx k shifts q : Nat)
           · exact absurd hq (by simp)
   · exact absurd hq (by simp)
 
+/-! ## 子を切る
+
+`cutChild res cutH` は段 `0 … cutH` の最後のセルを落とし、最上段が空なら段ごと落とす。 -/
+
+/-- 段 `i` の最後のセルを落とす 1 歩。 -/
+def popStep (r : List Rowj) (i : Nat) : List Rowj :=
+  if i < r.length then r.set i ((r.getD i #[]).pop) else r
+
+theorem rowAt_take_lt (L : List Rowj) (k m : Nat) (h : m < k) :
+    rowAt (L.take k) m = rowAt L m := by
+  rw [rowAt_getElem?, rowAt_getElem?, List.getElem?_take_of_lt h]
+
+theorem popFold_length : ∀ (n : Nat) (res : List Rowj),
+    ((List.range n).foldl popStep res).length = res.length := by
+  intro n
+  induction n with
+  | zero => intro res; rfl
+  | succ n ih =>
+      intro res
+      rw [List.range_succ, List.foldl_append]
+      simp only [List.foldl_cons, List.foldl_nil, popStep]
+      split
+      · rw [List.length_set, ih]
+      · exact ih res
+
+/-- **段 `m ≤ cutH` は最後のセルが 1 つ減る。** -/
+theorem rowAt_popFold : ∀ (n : Nat) (res : List Rowj) (m : Nat),
+    rowAt ((List.range n).foldl popStep res) m
+      = if m < n then (rowAt res m).pop else rowAt res m := by
+  intro n
+  induction n with
+  | zero => intro res m; rw [if_neg (show ¬ m < 0 by omega)]; rfl
+  | succ n ih =>
+      intro res m
+      have hlen := popFold_length n res
+      rw [List.range_succ, List.foldl_append]
+      simp only [List.foldl_cons, List.foldl_nil, popStep]
+      split
+      · next hn =>
+          rcases Decidable.em (m = n) with hm | hm
+          · have hA : ((List.range n).foldl popStep res).getD n #[] = rowAt res n := by
+              rw [show ((List.range n).foldl popStep res).getD n #[]
+                    = rowAt ((List.range n).foldl popStep res) n from rfl,
+                ih res n, if_neg (show ¬ n < n by omega)]
+            rw [hm, rowAt_set_self _ _ _ hn, if_pos (show n < n + 1 by omega), hA]
+          · rw [rowAt_set_of_ne _ _ _ _ hm, ih res m]
+            rcases Nat.lt_or_ge m n with h | h
+            · rw [if_pos h, if_pos (show m < n + 1 by omega)]
+            · rw [if_neg (show ¬ m < n by omega), if_neg (show ¬ m < n + 1 by omega)]
+      · next hn =>
+          rw [ih res m]
+          rcases Nat.lt_or_ge m n with h | h
+          · rw [if_pos h, if_pos (show m < n + 1 by omega)]
+          · rcases Decidable.em (m = n) with hm | hm
+            · have hres : rowAt res m = #[] := rowAt_of_ge res m (by omega)
+              rw [if_neg (show ¬ m < n by omega), if_pos (show m < n + 1 by omega), hres]
+              rfl
+            · rw [if_neg (show ¬ m < n by omega), if_neg (show ¬ m < n + 1 by omega)]
+
+theorem cutChild_eq (res : List Rowj) (cutH : Nat) :
+    cutChild res cutH
+      = (if 0 < ((List.range (cutH + 1)).foldl popStep res).length ∧
+            (rowAt ((List.range (cutH + 1)).foldl popStep res)
+              (((List.range (cutH + 1)).foldl popStep res).length - 1)).size = 0
+          then ((List.range (cutH + 1)).foldl popStep res).take
+            (((List.range (cutH + 1)).foldl popStep res).length - 1)
+          else (List.range (cutH + 1)).foldl popStep res) := rfl
+
+theorem cutChild_length_le (res : List Rowj) (cutH : Nat) :
+    (cutChild res cutH).length ≤ res.length := by
+  have hlen := popFold_length (cutH + 1) res
+  rw [cutChild_eq]
+  split
+  · rw [List.length_take]
+    simp only [Nat.min_def]
+    split <;> omega
+  · omega
+
+/-- **子を切ったあとの段。** 残っている段については、`cutH` 以下なら最後のセルが
+1 つ減り、それより上は変わらない。 -/
+theorem rowAt_cutChild (res : List Rowj) (cutH m : Nat) (h : m < (cutChild res cutH).length) :
+    rowAt (cutChild res cutH) m
+      = if m < cutH + 1 then (rowAt res m).pop else rowAt res m := by
+  rw [cutChild_eq] at h
+  rw [← rowAt_popFold (cutH + 1) res m, cutChild_eq]
+  rcases Decidable.em (0 < ((List.range (cutH + 1)).foldl popStep res).length ∧
+      (rowAt ((List.range (cutH + 1)).foldl popStep res)
+        (((List.range (cutH + 1)).foldl popStep res).length - 1)).size = 0) with hc | hc
+  · rw [if_pos hc] at h ⊢
+    rw [List.length_take] at h
+    refine rowAt_take_lt _ _ _ ?_
+    simp only [Nat.min_def] at h
+    split at h <;> omega
+  · rw [if_neg hc]
+
 end Yukito
