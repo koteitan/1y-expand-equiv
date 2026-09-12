@@ -1178,4 +1178,23 @@ theorem rowExt_state_to_yamaRs (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat)
   exact rowExt_state_to_final M (expP M mfuel) nd (expRes M).length mfuel (expRes M) m i' t' nrep
     hi ht
 
+/-- 積むセルの列（山崎噴火の枝、`kmax` の範囲から）。 -/
+theorem fujiCellAt_col_yama (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
+    (isRep : Bool) (st : List Rowj) (hyama : expYama M mfuel)
+    (hm : m < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel) :
+    (fujiCellAt M (expP M mfuel) nd i j isRep st m).pos + m = j + (expP M mfuel).len * i := by
+  have hk := kmaxAt_le_yama' M (expP M mfuel) i j (expRes M).length mfuel
+    (expP_yama_cut M mfuel hyama)
+  exact fujiCellAt_col M (expP M mfuel) nd i j isRep st m (by omega)
+
+/-- **積んだセルが親を持たないなら、その値は新しい対角のその列の値。** -/
+theorem valTop_push_yama (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
+    (isRep : Bool) (st : List Rowj) (hyama : expYama M mfuel)
+    (hm : m < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel)
+    (hp : (fujiCellAt M (expP M mfuel) nd i j isRep st m).par = none) :
+    (fujiCellAt M (expP M mfuel) nd i j isRep st m).val
+      = nd ((fujiCellAt M (expP M mfuel) nd i j isRep st m).pos + m) := by
+  rw [fujiCellAt_col_yama M mfuel nd i j m isRep st hyama hm]
+  exact fujiCellAt_val_of_par_none M (expP M mfuel) nd i j isRep st m hp
+
 end Yukito
