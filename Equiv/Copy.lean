@@ -255,4 +255,52 @@ theorem rowExt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ac
       rw [fujiIters_succ]
       exact RowExt.trans (ih res m) (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
 
+/-! ## 積むセルの列と親の列 -/
+
+/-- **積むセルの列は `j + len * i`。** どの段でも同じ列に積む。 -/
+theorem fujiCell_col (M : List Rowj) (P : FujiParams) (cur : Rowj) (sy sx k i j shifts : Nat)
+    (topVal : Nat) (h : k ≤ j + P.len * i) :
+    (fujiCell M P cur sy sx k i j shifts topVal).pos + k = j + P.len * i := by
+  show (j + P.len * i - k) + k = j + P.len * i
+  omega
+
+/-- **親の列は「元の親の列 + 桁上げ」。** `parentPos` はそれを段 `k` の position に
+直したものである。 -/
+theorem parentPos_eq (M : List Rowj) (P : FujiParams) (sy sx k shifts q : Nat)
+    (hsy : sy ≤ k) (hq : parentPos M P sy sx k shifts = some q) :
+    ∃ hx : sx < (rowAt M sy).size, ∃ sp, ((rowAt M sy)[sx]'hx).par = some sp ∧
+      ∃ hp : sp < (rowAt M sy).size,
+        q + k = ((rowAt M sy)[sp]'hp).pos + sy
+          + (if P.badRootSeam ≤ ((rowAt M sy)[sp]'hp).pos + sy then shifts * P.len else 0) := by
+  unfold parentPos at hq
+  dsimp only at hq
+  split at hq
+  · next hx =>
+      cases hpar : ((rowAt M sy)[sx]'hx).par with
+      | none => rw [hpar] at hq; exact absurd hq (by simp)
+      | some sp =>
+          rw [hpar] at hq
+          dsimp only at hq
+          split at hq
+          · next hp =>
+              split at hq
+              · next hs =>
+                  split at hq
+                  · next hcond =>
+                      refine ⟨hx, sp, hpar, hp, ?_⟩
+                      rw [if_pos hs]
+                      have he := Option.some.inj hq
+                      omega
+                  · exact absurd hq (by simp)
+              · next hs =>
+                  split at hq
+                  · next hcond =>
+                      refine ⟨hx, sp, hpar, hp, ?_⟩
+                      rw [if_neg hs]
+                      have he := Option.some.inj hq
+                      omega
+                  · exact absurd hq (by simp)
+          · exact absurd hq (by simp)
+  · exact absurd hq (by simp)
+
 end Yukito
