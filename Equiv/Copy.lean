@@ -2053,4 +2053,16 @@ theorem fujiCellAt_par_isSome (M : List Rowj) (P : FujiParams) (nd : Nat → Nat
     (fujiCellAt M P nd i j isRep res k).par = some u :=
   fujiCell_par_isSome M P (rowAt res k) _ _ k i j _ _ z hmono hpp u hu hpos
 
+/-- `HasCol` から添字と位置を取り出す。 -/
+theorem hasCol_pos (res : List Rowj) (k c : Nat) (h : HasCol res k c) :
+    ∃ (u : Nat) (hu : u < (rowAt res k).size), ((rowAt res k)[u]'hu).pos + k = c := by
+  obtain ⟨t, d, hd, hdc⟩ := h
+  have ht : t < (rowAt res k).size := lt_size_of_getElem? hd
+  refine ⟨t, ht, ?_⟩
+  have hdt : (rowAt res k)[t]'ht = d := by
+    rw [Array.getElem?_eq_getElem ht] at hd
+    exact Option.some.inj hd
+  rw [hdt]
+  exact hdc
+
 end Yukito
