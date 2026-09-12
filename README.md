@@ -1618,8 +1618,27 @@ rootInterval_of_rootMono : RootMono S → RootInterval S
 
 還元は `rootAt r y = y ≤ rootAt r j ≤ rootAt r x = y` による（`rootAt r y = y` は
 `height y = r` と `top_root` から、`height y = r` は `root_height` から）。
-単調性のほうが素直な主張で、森の非交差性そのものである。**この 1 本が
-`k < K` の枝に残る唯一の義務である。**
+
+さらに単調性を「辺の内側に根は無い」へ還元した。
+
+```
+NoRootInside S :=
+  ∀ r c p w, 段 r で c の親が p → p < w < c → w は段 r で生きている →
+    段 r で w は根でない
+rootMono_of_noRootInside : NoRootInside S → RootMono S
+```
+
+還元は `c2` についての強い帰納法の中で `c1` についての強い帰納法を回す。
+`c2` が根なら `root c1 ≤ c1 ≤ c2`、`c2` の親 `p` が `c1` 以上なら外側の帰納法、
+`p < c1 < c2` なら `NoRootInside` から `c1` に親 `q` があり、`q ≤ p` なら外側、
+`p < q` なら内側の帰納法で閉じる。
+
+`NoRootInside` の**第 1 の場合（`w` が `c` の frame 祖先）は証明した**
+（`noRootInside_ancestor`）。`p` が最大の候補なので `U c ≤ U w`、また `p` と `w` は
+どちらも `c` の frame 祖先で `p < w` だから `p` は `w` の frame 祖先になり、
+`0 < U p < U c ≤ U w` から `w` は親を持つ。
+
+**残るのは `w` が `c` の frame 祖先でない場合だけである。**
 
 ### 元からあるセルについての条件（済）
 
