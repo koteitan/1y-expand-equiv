@@ -1,0 +1,154 @@
+import Equiv.Tower
+import Equiv.Chain
+
+/-!
+# 右隣の兄弟の単調性
+
+山の段に残っていた 1 本を閉じる。示すのは次である。
+
+```
+root の restricted 親を共有する root+1 と e があり root+1 < e なら
+  U e ≤ U (root+1)
+```
+
+一般の兄弟についてこれは**偽**である（`Sibling.lean` の反例）。効いているのは
+片方が `root + 1`、すなわち `root` の右隣であるという条件である。
+
+## これまで詰まっていた所
+
+層 `k` で兄弟なら差分の関係で目標は層 `k−1` に移る（`tower_case_descent`）。
+ところが移った先で `e` は `root` の**子**とは限らず、`root` の子孫でしかない。
+そこで 3 択（祖先・兄弟・どちらでもない）に分かれ、3 番目が閉じなかった。
+
+## 抜け道
+
+一段下がる**前に** `e` を `root` の子まで引き上げる。`root` は層 `k` の frame で
+`e` の祖先なので、`root` の子で `e` に至る道の上にあるもの `a` が取れる
+（`child_toward`）。
+
+* `a = root + 1` なら `root + 1` は `e` の祖先なので、`restrictedParent` の
+  最大性がそのまま効いて終わる。
+* `a ≠ root + 1` なら `root + 1 < a` であり、最大性から `U e ≤ U a` が出る。
+  そして `a` と `root + 1` は **frame の親を共有する**ので、差分の関係で
+  `U a ≤ U (root+1)` は一段下のまったく同じ主張になる。
+
+つまり `e` を `a` に置き換えてから降りると、主張の形が層をまたいで変わらない。
+3 択に分かれるのは `e` を引き上げずに降りたからであった。
+
+## 段の対応
+
+`frameAt s (m+1) = restrictedParent (frameAt s m) (towerVal s m)` なので、
+`(frameAt s (m+1)).parent x = some root` は「層 `m` の restricted 親が `root`」
+を意味する。結論の値は `towerVal s (m+1)` である。層を 1 つ取り違えると
+成り立たなくなるので、両方を `SibSucc` の定義に明示する。
+
+基底は層 0 である。`frameAt s 0` は線形森なので `root < q < e` なる列はすべて
+`e` の祖先であり、最大性がそのまま効く。
+-/
+
+namespace Yukito
+
+open OneY OneY.Numeric
+
+/-- `restrictedParent` の親が `root` で、その列が `root + 1` なら、
+frame の親も `root` である。祖先は `root + 1` 未満なので `root` 以下、
+`root` 自身が祖先なので親はちょうど `root` になる。 -/
+theorem fparent_of_succ {F : ParentForest} {U : Nat → Nat} {root : Nat}
+    (hj : restrictedParent F U (root + 1) = some root) :
+    F.parent (root + 1) = some root := by
+  obtain ⟨ha, _, _, _⟩ := (restrictedParent_some_iff F U (root + 1) root).mp hj
+  have ha' : F.Ancestor root (root + 1) := ParentForest.ancestor_of_zeroY ha
+  obtain ⟨w, hw⟩ := ancestor_parent_exists' ha'
+  have h1 : root ≤ w := ancestor_le_of_parent hw ha'
+  have h2 : w < root + 1 := F.parent_left hw
+  have hwe : w = root := by omega
+  rw [hwe] at hw
+  exact hw
+
+/-- liveness の正確な段。層 `m+1` の frame で親を持つことと、
+層 `m+1` の値が正であることは同値である。 -/
+theorem frame_parent_iff_pos (s : List Nat) (m q : Nat) :
+    (∃ z, (frameAt s (m + 1)).parent q = some z) ↔ 0 < towerVal s (m + 1) q :=
+  rows_parent_iff_next_live (ofSequence s) m q
+
+/-- 層 `m` の主張。`root` の restricted 子である `root+1` と `e` について、
+一段上の値で単調性が成り立つ。 -/
+def SibSucc (s : List Nat) (m : Nat) : Prop :=
+  ∀ root e, (frameAt s (m + 1)).parent (root + 1) = some root →
+    (frameAt s (m + 1)).parent e = some root → root + 1 < e →
+      towerVal s (m + 1) e ≤ towerVal s (m + 1) (root + 1)
+
+/-- **山の段の残り 1 本。** 数列の要素がすべて正なら、すべての層で成り立つ。 -/
+theorem sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : ∀ m, SibSucc s m := by
+  intro m
+  induction m with
+  | zero =>
+    intro root e h1 h2 hlt
+    refine tower_case_descent s h1 h2 ?_
+    rw [frameAt_step] at h2
+    exact sibling_mono_zero (fun p => ofSequence_positive s hs p) h2 (by omega) hlt
+  | succ m ih =>
+    intro root e h1 h2 hlt
+    refine tower_case_descent s h1 h2 ?_
+    rw [frameAt_step] at h1 h2
+    -- `F = frameAt s (m+1)`、`U = towerVal s (m+1)`
+    have hFj : (frameAt s (m + 1)).parent (root + 1) = some root := fparent_of_succ h1
+    have hposj : 0 < towerVal s (m + 1) (root + 1) :=
+      (frame_parent_iff_pos s m (root + 1)).mp ⟨root, hFj⟩
+    have hanc : (frameAt s (m + 1)).Ancestor root e :=
+      ParentForest.ancestor_of_zeroY
+        ((restrictedParent_some_iff _ _ e root).mp h2).1
+    obtain ⟨a, hFa, hae⟩ := child_toward hanc
+    have hra : root < a := (frameAt s (m + 1)).parent_left hFa
+    by_cases haj : a = root + 1
+    · subst haj
+      rcases hae with hanc' | heq
+      · exact one_of_ancestor root e (root + 1) h2
+          (ParentForest.ancestor_to_zeroY hanc') hra hposj
+      · exact absurd heq (by omega)
+    · have hlta : root + 1 < a := by omega
+      have hposa : 0 < towerVal s (m + 1) a :=
+        (frame_parent_iff_pos s m a).mp ⟨root, hFa⟩
+      have hea : towerVal s (m + 1) e ≤ towerVal s (m + 1) a := by
+        rcases hae with hanc' | heq
+        · exact one_of_ancestor root e a h2
+            (ParentForest.ancestor_to_zeroY hanc') hra hposa
+        · rw [heq]
+          exact Nat.le_refl _
+      have haj' : towerVal s (m + 1) a ≤ towerVal s (m + 1) (root + 1) :=
+        ih root a hFj hFa hlta
+      omega
+
+/-! ## 山の段への接続
+
+`SibSucc` は行の形で書き直せる。`frameAt s (m+1) = (rows (ofSequence s) m).forest`、
+`towerVal s (m+1) = (rows (ofSequence s) (m+1)).value` がどちらも定義そのままだから
+である。これを `one_of_nonancestor` に入れると、残っていた仮定 `hsib` が消える。 -/
+
+/-- 行の形で書いた `SibSucc`。 -/
+theorem sibSucc_rows (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m root e : Nat)
+    (hj : (rows (ofSequence s) m).forest.parent (root + 1) = some root)
+    (he : (rows (ofSequence s) m).forest.parent e = some root)
+    (hlt : root + 1 < e) :
+    (rows (ofSequence s) (m + 1)).value e ≤
+      (rows (ofSequence s) (m + 1)).value (root + 1) :=
+  sibSucc s hs m root e hj he hlt
+
+/-- **非祖先の場合の (1)。** 仮定 `hsib` が `sibSucc` で埋まり、消える。 -/
+theorem one_of_nonancestor_closed (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m : Nat)
+    {root p e : Nat}
+    (hp : (rows (ofSequence s) (m + 1)).forest.parent p = some root)
+    (hj : (rows (ofSequence s) (m + 1)).forest.parent (root + 1) = some root)
+    (he : (rows (ofSequence s) m).forest.parent e = some root)
+    (hanc : ZeroY.Forest.Ancestor (rows (ofSequence s) m).forest.parent p e ∨ e = p) :
+    (rows (ofSequence s) (m + 1)).value p ≤
+      (rows (ofSequence s) (m + 1)).value (root + 1) := by
+  refine one_of_nonancestor (compat_rows (ofSequence s) m) hp he hanc ?_
+  rcases Nat.lt_or_ge (root + 1) e with hlt | hge
+  · exact sibSucc_rows s hs m root e (fparent_succ_step (ofSequence s) m root hj) he hlt
+  · have hre := (rows (ofSequence s) m).forest.parent_left he
+    have heq : e = root + 1 := by omega
+    rw [heq]
+    exact Nat.le_refl _
+
+end Yukito

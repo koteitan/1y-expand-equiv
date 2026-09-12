@@ -1,4 +1,5 @@
 import Equiv.Tower
+import Equiv.Chain
 import OneY.Pseudo
 
 /-!
@@ -82,36 +83,6 @@ theorem stop_iff_candidate (M : RowMountain) {c p : Nat} (hc : 0 < M.height c)
       (M.height p = M.height c ∨ M.height p + 1 = M.height c) := by
   have hge := chain_height_ge M h
   omega
-
-/-! ## 森の鎖についての小補題 -/
-
-/-- 祖先を持つ列は親を持つ。 -/
-theorem ancestor_parent_exists' {F : ParentForest} {a c : Nat}
-    (ha : F.Ancestor a c) : ∃ q, F.parent c = some q := by
-  cases ha with
-  | direct hp => exact ⟨_, hp⟩
-  | step _ hp => exact ⟨_, hp⟩
-
-/-- 鎖の分解。`c` の祖先は、親 `q` そのものか、`q` の祖先である。 -/
-theorem ancestor_cases {F : ParentForest} {a c q : Nat}
-    (hq : F.parent c = some q) (ha : F.Ancestor a c) : a = q ∨ F.Ancestor a q := by
-  cases ha with
-  | direct hp =>
-      rw [hq] at hp
-      injection hp with h
-      exact Or.inl h.symm
-  | step h hp =>
-      rw [hq] at hp
-      injection hp with he
-      subst he
-      exact Or.inr h
-
-/-- 親は最も右の祖先。 -/
-theorem ancestor_le_of_parent {F : ParentForest} {a c q : Nat}
-    (hq : F.parent c = some q) (ha : F.Ancestor a c) : a ≤ q := by
-  rcases ancestor_cases hq ha with he | h
-  · omega
-  · exact Nat.le_of_lt h.lt
 
 /-! ## 脚歩行
 
