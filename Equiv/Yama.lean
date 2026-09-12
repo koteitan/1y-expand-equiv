@@ -1266,4 +1266,34 @@ theorem rowsMono_state (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
     ((expP M mfuel).badRootSeam + (expP M mfuel).len + (expP M mfuel).len * i')
     hb1 (by omega) hm1).1
 
+/-! ## `ShapeRep` の `parNone`（`yamaRs` の形） -/
+
+theorem parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
+    (hd : (rowAt (yamaRs M mfuel nd nrep) m)[u]? = some d) (hp : d.par = none) :
+    (yamaContext S y hy hpar hh).parent m (d.pos + m) = none := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  rcases yamaRs_cell S M hM mfuel y hseam nd nrep m u d hd
+    with hold | ⟨i', t', hi', ht', hk', hde⟩
+  · exact parNone_orig_yama S M hM hn y hy hpar hh hcut m u d hold hp
+  · obtain ⟨hjx, hmh, hmM, hmj, hlivej⟩ :=
+      push_side S M hM mfuel hn hM2 hyama y hy hseam i' t' m ht' hk'
+    have hcol : d.pos + m = (y + t') + (expP M mfuel).len * (i' + 1) := by
+      rw [hde]
+      exact fujiCellAt_col_yama M mfuel nd (i' + 1) (y + t') m _ _ hyama hk'
+    rw [hcol]
+    refine fujiCellAt_parNone_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam nd _
+      (i' + 1) t' m (by omega) ht' hmM hmj hlivej
+      (rowsMono_state S M hM mfuel hn hM2 hyama y hy hseam nd i' t' m) ?_ ?_
+    · intro pc hlt hge
+      exact hasCol_state S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd i' t' m pc ht' hlt hge
+    · rw [← hde]
+      exact hp
+
 end Yukito
