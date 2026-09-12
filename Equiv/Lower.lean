@@ -1077,4 +1077,181 @@ theorem srcRow_le_seam (S : Setting) (P : FujiParams) (y x : Nat)
       · exact absurd ⟨hasct, h1⟩ hc
     omega
 
+/-! ## 積んだセルの補助条件
+
+`m < kmaxAt` から、段と列についての条件がまとめて出る。 -/
+
+theorem push_side_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (i' t' m : Nat) (ht' : t' < (expP M mfuel).len)
+    (hk' : m < kmaxAt M (expP M mfuel) (i' + 1) (y + t') (expRes M).length mfuel) :
+    y + t' < x ∧
+      m ≤ (lowerContext S y x hyx hroot hhigher).height ((y + t') + (x - y) * (i' + 1)) ∧
+      fujiSrcRowAt (expP M mfuel) (i' + 1) m (isRepAt (expP M mfuel) (y + t'))
+          (isAscAt M (expP M mfuel) (y + t') mfuel) < M.length ∧
+      (isRepAt (expP M mfuel) (y + t') = false →
+        0 < (rows S.tower.base (fujiSrcRowAt (expP M mfuel) (i' + 1) m
+          (isRepAt (expP M mfuel) (y + t'))
+          (isAscAt M (expP M mfuel) (y + t') mfuel))).value (y + t')) ∧
+      (isRepAt (expP M mfuel) (y + t') = true →
+        0 < (rows S.tower.base (fujiSrcRowAt (expP M mfuel) (i' + 1) m
+          (isRepAt (expP M mfuel) (y + t'))
+          (isAscAt M (expP M mfuel) (y + t') mfuel))).value (S.n - 1)) ∧
+      ((y + t') = y → m ≤ height S.tower.base y
+        + (height S.tower.base x - height S.tower.base y) * (i' + 1)) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hjx : y + t' < x := by omega
+  have hjn : y + t' < S.n := by omega
+  have hasc := hasc_lower S M hM mfuel (expP M mfuel) y x hbh hsm hyx hroot hhigher hfuel
+    (by omega) (y + t') hjn
+  have hm : m ≤ (lowerContext S y x hyx hroot hhigher).height ((y + t') + (x - y) * (i' + 1)) := by
+    have := kmaxAt_lower S M hM mfuel hn hM2 (expP M mfuel) hbh hsm hcut hx hyx hroot hhigher
+      hfuel (i' + 1) (y + t') (by omega) hjx
+    omega
+  -- 継ぎ目の列のときの段の上界
+  have hseamk : (y + t') = y → m ≤ height S.tower.base y
+      + (height S.tower.base x - height S.tower.base y) * (i' + 1) := by
+    intro he
+    have hcomm : (i' + 1) * (height S.tower.base x - height S.tower.base y)
+        = (height S.tower.base x - height S.tower.base y) * (i' + 1) := Nat.mul_comm _ _
+    rw [he, lowerContext_height_seam hyx hroot hhigher (i' + 1)] at hm
+    omega
+  -- 元の段の上界
+  have hsyj : isRepAt (expP M mfuel) (y + t') = false →
+      fujiSrcRowAt (expP M mfuel) (i' + 1) m (isRepAt (expP M mfuel) (y + t'))
+        (isAscAt M (expP M mfuel) (y + t') mfuel) ≤ height S.tower.base (y + t') := by
+    intro hrep
+    have hne : y + t' ≠ y := by
+      intro he
+      have : isRepAt (expP M mfuel) (y + t') = true := by
+        show decide (y + t' = (expP M mfuel).badRootSeam) = true
+        rw [hsm, he]
+        simp
+      rw [this] at hrep
+      cases hrep
+    exact srcRow_le_other S (expP M mfuel) y x hbh hcut hyx hroot hhigher (i' + 1) m (y + t')
+      (by omega) (by omega) (by omega) _ _ hrep hasc hm
+  have hsyx : isRepAt (expP M mfuel) (y + t') = true →
+      fujiSrcRowAt (expP M mfuel) (i' + 1) m (isRepAt (expP M mfuel) (y + t'))
+        (isAscAt M (expP M mfuel) (y + t') mfuel) ≤ height S.tower.base x := by
+    intro hrep
+    have he : y + t' = y := by
+      have := of_decide_eq_true hrep
+      omega
+    have hasct : isAscAt M (expP M mfuel) (y + t') mfuel = true := by
+      rw [he] at hasc ⊢
+      exact hasc.mpr (inCone_seam hyx hroot hhigher)
+    exact srcRow_le_seam S (expP M mfuel) y x hbh hcut hyx hhigher (i' + 1) m (by omega) _ _
+      hasct (hseamk he)
+  have htallj : height S.tower.base (y + t') < M.length := hM.tall (y + t') hjn
+  have htallx : height S.tower.base x < M.length := hM.tall x (by omega)
+  refine ⟨hjx, hm, ?_, ?_, ?_, hseamk⟩
+  · rcases Decidable.em (isRepAt (expP M mfuel) (y + t') = true) with hrep | hrep
+    · have := hsyx hrep
+      omega
+    · have hf : isRepAt (expP M mfuel) (y + t') = false := by
+        cases h : isRepAt (expP M mfuel) (y + t') with
+        | true => exact absurd h hrep
+        | false => rfl
+      have := hsyj hf
+      omega
+  · intro hrep
+    exact (live_iff_le_height S.tower.base (S.tower.hpos (y + t')) _).mpr (hsyj hrep)
+  · intro hrep
+    have hxn : x = S.n - 1 := hx
+    rw [← hxn]
+    exact (live_iff_le_height S.tower.base (S.tower.hpos x) _).mpr (hsyx hrep)
+
+/-! ## 積む時点での被覆と単調性 -/
+
+theorem rowsMono_state_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (nd : Nat → Nat) (i' t' : Nat) :
+    RowsMono (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hsum : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by rw [hsm, hacl]; omega)
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher i2 j2 _ _
+  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
+    rw [hacl]
+    exact colLt_cutChild S M hM (expCutH M) hn (Nat.le_of_eq hcuth.symm)
+  obtain ⟨hm1, hb1⟩ := fujiIters_invariant M (expP M mfuel) nd (expRes M).length mfuel hkm i'
+    (expRes M) (expP M mfuel).afterCutLength hcolLt (by omega)
+    (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM))
+  have hmul : (expP M mfuel).len * (i' + 1)
+      = (expP M mfuel).len * i' + (expP M mfuel).len := Nat.mul_succ _ _
+  exact (fujiSeams_invariant M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel hkm t'
+    (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))
+    ((expP M mfuel).badRootSeam + (expP M mfuel).len + (expP M mfuel).len * i')
+    hb1 (by omega) hm1).1
+
+theorem hasCol_state_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (i' t k pc : Nat) (ht : t < (expP M mfuel).len)
+    (hlt : pc < (y + t) + (expP M mfuel).len * (i' + 1))
+    (hk : k ≤ (lowerContext S y x hyx hroot hhigher).height pc) :
+    HasCol (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) k pc := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher i2 j2 _ _
+  rcases Nat.lt_or_ge pc x with hpc | hpc
+  · have hkh : k ≤ height S.tower.base pc := by
+      rwa [lowerContext_height_orig hyx hroot hhigher pc (by omega)] at hk
+    have hkl : k < (expRes M).length := by
+      have := height_lt_expRes_length S M hM hn hM2 pc (by omega)
+      omega
+    have hres : HasCol (expRes M) k pc :=
+      hasCol_cutChild S M hM hn (expCutH M) hcuth k pc (by omega) hkh hkl
+    exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+      (hasCol_fujiIters_old M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M) k pc hres)
+  · obtain ⟨i2, j2, hi2, hi2n, hj2y, hj2x, hpceq⟩ :=
+      col_decomp y x (expP M mfuel).len (i' + 1) pc hlen (by omega) hyx hpc (by omega)
+    have hpc' : pc = j2 + (x - y) * i2 := by rw [hpceq, hlen]
+    have hkmax : k < kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel := by
+      rw [kmaxAt_lower S M hM mfuel hn hM2 (expP M mfuel) hbh hsm hcut hx hyx hroot hhigher
+        hfuel i2 j2 hj2y hj2x, ← hpc']
+      omega
+    rcases col_lt_lex y x (expP M mfuel).len hlen (by omega) j2 i2 (y + t) (i' + 1)
+      hj2y hj2x (by omega) (by omega) (by omega) with hlex | ⟨hie, hje⟩
+    · rw [hpceq]
+      exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+        (hasCol_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm i' (expRes M) k i2 j2
+          hi2 (by omega) (by omega) (by omega) hkmax)
+    · rw [hpceq, hie]
+      exact hasCol_fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel hkm t
+        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M)) k j2
+        (by omega) (by omega) (by rw [← hie]; exact hkmax)
+
 end Yukito
