@@ -159,4 +159,33 @@ theorem height_lt_expRes_length (S : Setting) (M : List Rowj) (hM : MtRep S M)
           omega
     omega
 
+/-! ## 積む段の数は「継ぎ目の列の高さ + 1」 -/
+
+/-- **山崎噴火の枝では、継ぎ目の列 `j` について `kmax = height j + 1`。** -/
+theorem kmaxAt_expRes_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel) (i j : Nat)
+    (hj : j < S.n - 1) :
+    kmaxAt M (expP M mfuel) i j (expRes M).length mfuel = height S.tower.base j + 1 := by
+  rw [kmaxAt_yama M (expP M mfuel) i j _ _ (expP_yama_cut M mfuel hyama)]
+  exact seamHeightOf_eq S M hM j (by omega) (expRes M).length
+    (cutChild_length_le M (expCutH M)) (height_lt_expRes_length S M hM hn hM2 j hj)
+
+/-- **コピーで作った列は「元の列の高さ」まで届く。** -/
+theorem hasCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (nrep mfuel efuel : Nat) (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (m i j : Nat) (hi : 0 < i) (hin : i ≤ nrep)
+    (hjy : (expP M mfuel).badRootSeam ≤ j) (hjx : j < S.n - 1)
+    (hm : m ≤ height S.tower.base j)
+    (h0 : 0 < (expRes M).length) :
+    HasCol (fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length mfuel nrep
+      (expRes M)) m (j + (expP M mfuel).len * i) := by
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
+  refine hasCol_fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length mfuel
+    (fun i' j' => kmaxAt_le_yama' M (expP M mfuel) i' j' _ _ (expP_yama_cut M mfuel hyama))
+    nrep (expRes M) m i j hi hin hjy (by omega) ?_
+  rw [kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama i j hjx]
+  omega
+
 end Yukito
