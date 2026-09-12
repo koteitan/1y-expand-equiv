@@ -632,4 +632,81 @@ theorem fujiCellAt_parCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
     isRepAt_eq_lower P hsm j]
   rfl
 
+/-- **JS が親を見つけなければ原文でも根。** -/
+theorem fujiCellAt_parNone_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (P : FujiParams) (hyk : P.yamakazi = false)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x)
+    (hsm : P.badRootSeam = y) (hlen : P.len = x - y) (hx : x = S.n - 1)
+    (hyx : y < x) (hroot) (hhigher)
+    (nd : Nat → Nat) (st : List Rowj) (i j k : Nat) (isAsc : Bool)
+    (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
+    (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x)
+    (hk : k ≤ height S.tower.base y
+      + (height S.tower.base x - height S.tower.base y) * i)
+    (hry : fujiSrcRowAt P i k (isRepAt P j) isAsc < M.length)
+    (hn : 1 < S.n) (hkj : k ≤ j)
+    (hlive : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
+    (hlast : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
+    (hmono : PosMono (rowAt st k))
+    (hcov : ∀ pc, pc < j + (x - y) * i →
+      k ≤ (lowerContext S y x hyx hroot hhigher).height pc → HasCol st k pc)
+    (hnone : (fujiCellAt M P nd i j (isRepAt P j) isAsc st k).par = none) :
+    (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = none := by
+  cases hp : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) with
+  | none => rfl
+  | some pc =>
+      exfalso
+      have hpcM : ((lowerContext S y x hyx hroot hhigher).toRowMountain.row k).parent
+          (j + (x - y) * i) = some pc := hp
+      have hlt : pc < j + (x - y) * i :=
+        ((lowerContext S y x hyx hroot hhigher).toRowMountain.row k).parent_left hpcM
+      have hge : k ≤ (lowerContext S y x hyx hroot hhigher).height pc :=
+        ((lowerContext S y x hyx hroot hhigher).toRowMountain).parent_endpoint hpcM
+      obtain ⟨u, hu⟩ :=
+        fujiCellAt_par_some_of_parent_lower S M hM P hyk hbh hcut hsm hlen hx hyx hroot hhigher
+          nd st i j k pc isAsc hasc hi hjy hjx hk hry hn hkj hlive hlast hmono
+          (hcov pc hlt hge) hp
+      rw [hu] at hnone
+      exact absurd hnone (by simp)
+
+/-! ## 積む段の数
+
+この枝では `kmax` は原文の高さ + 1 である（`kmaxAt_eq_height_lower`）。
+`expRes` を使う形にしておく。 -/
+
+/-- **`kmax` は原文の高さ + 1（`expRes` の形）。** -/
+theorem kmaxAt_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (P : FujiParams)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hsm : P.badRootSeam = y) (hcut : P.cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x) (hroot) (hhigher)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (i j : Nat) (hj1 : y ≤ j) (hj2 : j < x) :
+    kmaxAt M P i j (expRes M).length mfuel
+      = (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i) + 1 := by
+  have hjn : j < S.n := by omega
+  have hbhlen : height S.tower.base y < M.length := hM.tall y (by omega)
+  exact kmaxAt_eq_height_lower M hM P hyx hroot hhigher hbh hsm hcut
+    (expRes M).length mfuel i j hj1 hj2 hjn
+    (seamHeightOf_expRes S M hM hn hM2 j (by omega)) hbhlen hfuel
+
+/-- **積む段の数は列より小さい。** 山の高さが列以下であることから出る。 -/
+theorem kmaxAt_le_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (P : FujiParams)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hsm : P.badRootSeam = y) (hcut : P.cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (i j : Nat) (hj1 : y ≤ j) (hj2 : j < x) :
+    kmaxAt M P i j (expRes M).length mfuel ≤ j + (x - y) * i + 1 := by
+  rw [kmaxAt_lower S M hM mfuel hn hM2 P hbh hsm hcut hx hyx hroot hhigher hfuel i j hj1 hj2]
+  have hle : (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)
+      ≤ j + (x - y) * i :=
+    rowMountain_height_le ((lowerContext S y x hyx hroot hhigher).toRowMountain)
+      (j + (x - y) * i)
+  omega
+
 end Yukito

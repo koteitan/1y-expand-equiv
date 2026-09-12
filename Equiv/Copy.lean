@@ -966,6 +966,14 @@ def expP (M : List Rowj) (mfuel : Nat) : FujiParams :=
    (rowAt (expRes M) 0).size,
    expYama M mfuel⟩
 
+/-- Mt.Fuji シェルを回した結果（値の埋め前）。 -/
+def fujiRaw (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List Rowj :=
+  fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)
+
+/-- 値の埋めに渡す疎な山。 -/
+def fujiRs (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List Rowj :=
+  dropEmptyTop (fujiRaw M mfuel nd nrep)
+
 /-- **`expand` の `some` の枝。** -/
 theorem expandJS_some (nrep mfuel efuel : Nat) (M : List Rowj)
     (h : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
