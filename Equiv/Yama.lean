@@ -971,7 +971,9 @@ theorem valTop_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 
 /-- **列が `n−1` より小さいセルは元からあるセルである。** 積んだセルの列は
 `y + L*i ≥ y + L = n−1` だからである。 -/
 theorem cell_orig_of_col_lt (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
-    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length)
+    (hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1)
     (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
     (nd : Nat → Nat) (nrep m t : Nat) (d : Cell)
     (hd : (rowAt (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)) m)[t]?
@@ -980,9 +982,6 @@ theorem cell_orig_of_col_lt (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfue
     (rowAt (expRes M) m)[t]? = some d := by
   have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
   have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
-  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
-      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
-    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
   rcases cell_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm nrep (expRes M) m t d hd
     with hold | ⟨i2, j2, hi2, _, hj2y, _, _, hceq⟩
   · exact hold
@@ -1041,7 +1040,7 @@ theorem tall_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
 
 /-! ## `ShapeRep` の `mono` と `parLt` -/
 
-theorem parLt_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+theorem parLt_fujiRs (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     (nd : Nat → Nat) (nrep : Nat) :
     ParLt (dropEmptyTop
       (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M))) :=
@@ -1112,7 +1111,9 @@ theorem colVal_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel :
     rw [← hrow]
     exact hdRs
   have hdOrig : (rowAt (expRes M) r)[t]? = some ((rowAt (fujiRs M mfuel nd nrep) r)[t]'ht) :=
-    cell_orig_of_col_lt S M hM mfuel hn hM2 hyama y hy hseam nd nrep r t _ hdRaw (by omega)
+    cell_orig_of_col_lt S M hM mfuel hn hM2
+      (fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama))
+      y hy hseam nd nrep r t _ hdRaw (by omega)
   obtain ⟨hval, hvpos⟩ := cutChild_cell_val S M hM (expCutH M) r t _ hdOrig
   -- 段が足りているか
   have htall : (yamaContext S y hy hpar hh).height c < (fujiRs M mfuel nd nrep).length :=
@@ -1121,7 +1122,7 @@ theorem colVal_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel :
   rw [hpos] at hval
   rcases Nat.lt_or_ge (r + 1) (fujiRs M mfuel nd nrep).length with hlt | hge
   · rw [colVal, colVal_top (fujiRs M mfuel nd nrep)
-      (parLt_yama S M hM mfuel nd nrep).dep r hlt t ht
+      (parLt_fujiRs S M hM mfuel nd nrep).dep r hlt t ht
       (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hpos (by omega), hval]
   · rw [colVal, colVal_top_last (fujiRs M mfuel nd nrep) r (by omega) t ht
       (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hpos, hval]
@@ -1430,7 +1431,7 @@ theorem step_push_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
           exact fujiCellAt_val_of_par_some M (expP M mfuel) nd (i' + 1) (y + t')
             (isRepAt (expP M mfuel) (y + t')) _ _ r q (by rw [← hde]; exact hq)
       exact colVal_step_col (fujiRs M mfuel nd nrep)
-        (parLt_yama S M hM mfuel nd nrep).dep r (by omega) i hi
+        (parLt_fujiRs S M hM mfuel nd nrep).dep r (by omega) i hi
         (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hposi (by omega) hval
         q hq hq' p hpq
 
@@ -1448,7 +1449,7 @@ theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
     ShapeRep (fujiRs M mfuel nd nrep) ((yamaContext S y hy hpar hh).toRowMountain) nd
       ((S.n - 1) + (expP M mfuel).len * nrep) where
   mono := rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep
-  parLt := (parLt_yama S M hM mfuel nd nrep).dep
+  parLt := (parLt_fujiRs S M hM mfuel nd nrep).dep
   cellCol := fun r i h =>
     cellCol_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r i _
       (getElem?_dropEmptyTop (fujiRaw M mfuel nd nrep) r i _ (Array.getElem?_eq_getElem h))

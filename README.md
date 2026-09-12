@@ -59,7 +59,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Copy.lean` | Mt.Fuji シェルの三重ループの構造・座標・出力の幅 |
 | `Equiv/Shape.lean` | **`ShapeRep` と値の層の結論**（`expandOut_eq_value`） |
 | `Equiv/Yama.lean` | 山崎噴火の枝（原文の層 `k = K`）の組み立て |
-| `Equiv/Lower.lean` | `k < K` の枝（原文の `badAtLowerContext`）のコピー先の山 |
+| `Equiv/Lower.lean` | **`k < K` の枝（原文の `badAtLowerContext`）の組み立て**（`shapeRep_lower`） |
 
 ## 座標の対応
 
@@ -1629,7 +1629,35 @@ sourceIdx_lower_col     JS の元のセルの列（継ぎ目なら n−1、そ�
 ```
 
 `lowerContext_parent_src` が山崎噴火の枝の `yamaContext_parent_src` にあたる。
-残るのは JS 側のセルとの突き合わせと `ShapeRep` の組み立てである。
+
+JS 側のセルとの突き合わせも済んだ。
+
+```
+fujiCellAt_par_lower              JS のセルの親は元の段の元の列の親の写し
+fujiCellAt_par_some_of_parent_lower  原文に親があれば JS も見つける
+fujiCellAt_parCol_lower           JS の親のセルの列は原文の親
+fujiCellAt_parNone_lower          JS が親を見つけなければ原文でも根
+```
+
+**落差は幅を超えない。** 段 `r ∈ [floor, height x]` について `rootAt r x` は
+真に増え、`rootAt floor x = y`、`rootAt (height x) x = x` なので
+
+```
+rise = height x − floor ≤ x − y = len      rise_le_length
+```
+
+である。これで `kmaxAt` の一様な上界が取れ、三重ループの不変量が使える。
+
+これらから **`k < K` の枝でも `ShapeRep` が構成できた**。
+
+```
+rowsMono_lower / cover_lower / cellCol_lower / tall_lower
+parNone_lower / parCol_lower / valTop（valTop_exp）
+step_orig_lower / step_push_lower
+shapeRep_lower       **ShapeRep（k < K の枝）**
+expandOut_lower      JS の出力 = 原文の復元値
+expandJS_out_lower   JS の expand の枝そのもので書いた形
+```
 
 ### 元からあるセルについての条件（済）
 
@@ -1746,17 +1774,20 @@ bad root    済
 値の層      済（ShapeRep → expandOut_eq_value）
 森のコピー  山崎噴火の枝（原文の層 k = K）は済
             （shapeRep_yama / yamaContext_eq / expNd_eq_assemble）
-            k < K の枝（badAtLowerContext）は山の高さと、原文側の親を
-            元の段・元の列に開くところまで済（lowerContext /
-            kmaxAt_eq_height_lower / lowerContext_parent_src）。
-            JS 側のセルとの突き合わせと ShapeRep は未
+            k < K の枝（badAtLowerContext）も ShapeRep まで済
+            （shapeRep_lower / expandJS_out_lower）。
+            原文の badAtLowerContext との同定は未
 層の再帰    未
 ```
 
-山崎噴火の枝については、JS の出力が原文の
-`Reconstruction.value (badAtTerminalMountain …) (assemble（K+1 段目以上）) 0`
-の並びに一致するところまで来た。残るのは `k < K` の枝（`badAtLowerContext`）で
-親の対応と `ShapeRep` を組むことと、JS の再帰がその枝を降りていくことの対応である。
+どちらの枝についても、JS の出力が原文の `Reconstruction.value (…) nd 0` の並びに
+一致するところまで来た。残るのは
+
+* こちらの `lowerContext` が原文の `badAtLowerContext` そのものであることの同定
+  （`k = K` の枝の `yamaContext_eq` にあたる）
+* JS の再帰（`expandJS … dg`）が原文の層の `assemble` に対応すること
+
+の 2 つである。
 
 ## ビルド
 

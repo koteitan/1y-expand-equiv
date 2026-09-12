@@ -1386,4 +1386,253 @@ theorem parCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
     rw [hcol, hcolp]
     rw [hpeq]
 
+/-! ## 元からある列の値 -/
+
+/-- **元からある列の値は元の山の値のまま。** -/
+theorem colVal_orig_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep r c : Nat) (hc : c < x)
+    (hlive : r ≤ height S.tower.base c) :
+    colVal (fujiRs M mfuel nd nrep) r c = (rows S.tower.base r).value c := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher i2 j2 _ _
+  have hG : (lowerContext S y x hyx hroot hhigher).height c = height S.tower.base c :=
+    lowerContext_height_orig hyx hroot hhigher c (by omega)
+  have hcovL : HasCol (fujiRaw M mfuel nd nrep) r c :=
+    cover_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep r c
+      (by omega) (by omega)
+  have hcov : HasCol (fujiRs M mfuel nd nrep) r c := hasCol_dropEmptyTop _ r c hcovL
+  obtain ⟨t, ht, hpos⟩ := hasCol_pos _ r c hcov
+  have hdRs : (rowAt (fujiRs M mfuel nd nrep) r)[t]?
+      = some ((rowAt (fujiRs M mfuel nd nrep) r)[t]'ht) := Array.getElem?_eq_getElem ht
+  have hrow : rowAt (fujiRs M mfuel nd nrep) r = rowAt (fujiRaw M mfuel nd nrep) r :=
+    rowAt_dropEmptyTop_of_cell _ r t _ hdRs
+  have hdRaw : (rowAt (fujiRaw M mfuel nd nrep) r)[t]?
+      = some ((rowAt (fujiRs M mfuel nd nrep) r)[t]'ht) := by
+    rw [← hrow]
+    exact hdRs
+  have hdOrig : (rowAt (expRes M) r)[t]? = some ((rowAt (fujiRs M mfuel nd nrep) r)[t]'ht) :=
+    cell_orig_of_col_lt S M hM mfuel hn hM2 hkm y (by omega) hsm nd nrep r t _ hdRaw
+      (by omega)
+  obtain ⟨hval, hvpos⟩ := cutChild_cell_val S M hM (expCutH M) r t _ hdOrig
+  have htall : (lowerContext S y x hyx hroot hhigher).height c
+      < (fujiRs M mfuel nd nrep).length :=
+    tall_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep c
+      (by omega)
+  have hrlen : r < (fujiRs M mfuel nd nrep).length := by omega
+  rw [hpos] at hval
+  rcases Nat.lt_or_ge (r + 1) (fujiRs M mfuel nd nrep).length with hlt | hge
+  · rw [colVal, colVal_top (fujiRs M mfuel nd nrep)
+      (parLt_fujiRs S M hM mfuel nd nrep).dep r hlt t ht
+      (rowsMono_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher nd nrep r)
+      c hpos (by omega), hval]
+  · rw [colVal, colVal_top_last (fujiRs M mfuel nd nrep) r (by omega) t ht
+      (rowsMono_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher nd nrep r)
+      c hpos, hval]
+
+/-- **`ShapeRep` の `step`（元からある列）。** -/
+theorem step_orig_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep r c p : Nat) (hc : c < x)
+    (hp : (lowerContext S y x hyx hroot hhigher).parent r c = some p) :
+    colVal (fujiRs M mfuel nd nrep) r c
+      = colVal (fujiRs M mfuel nd nrep) r p
+        + colVal (fujiRs M mfuel nd nrep) (r + 1) c := by
+  rw [(lowerContext S y x hyx hroot hhigher).parent_original
+    (show c ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x by
+      show c ≤ x; omega), lowerContext_row] at hp
+  have hpc : p < c := (rows S.tower.base r).forest.parent_left hp
+  have hfp : ((mountainOf' S).row r).parent c = some p := hp
+  have hrc : r < height S.tower.base c := (mountainOf' S).parent_source hfp
+  have hrp : r ≤ height S.tower.base p := (mountainOf' S).parent_endpoint hfp
+  rw [colVal_orig_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+      nd nrep r c hc (by omega),
+    colVal_orig_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+      nd nrep r p (by omega) hrp,
+    colVal_orig_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+      nd nrep (r + 1) c hc (by omega)]
+  exact rows_diff S.tower.base r c p hp
+
+/-- **`ShapeRep` の `step`（コピーで積んだ列）。** -/
+theorem step_push_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nd : Nat → Nat) (nrep r c p : Nat)
+    (hc : c < x + (expP M mfuel).len * nrep) (hcx : x ≤ c)
+    (hp : (lowerContext S y x hyx hroot hhigher).parent r c = some p) :
+    colVal (fujiRs M mfuel nd nrep) r c
+      = colVal (fujiRs M mfuel nd nrep) r p
+        + colVal (fujiRs M mfuel nd nrep) (r + 1) c := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hpM : ((lowerContext S y x hyx hroot hhigher).toRowMountain.row r).parent c = some p := hp
+  have hrh : r < (lowerContext S y x hyx hroot hhigher).height c :=
+    ((lowerContext S y x hyx hroot hhigher).toRowMountain).parent_source hpM
+  have hhc : (lowerContext S y x hyx hroot hhigher).height c ≤ c :=
+    rowMountain_height_le ((lowerContext S y x hyx hroot hhigher).toRowMountain) c
+  have htall := tall_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+    nd nrep c hc
+  have hcov : HasCol (fujiRs M mfuel nd nrep) r c :=
+    hasCol_dropEmptyTop _ r c
+      (cover_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep
+        r c hc (by omega))
+  obtain ⟨i, hi, hposi⟩ := hasCol_pos _ r c hcov
+  have hd : (rowAt (fujiRs M mfuel nd nrep) r)[i]?
+      = some ((rowAt (fujiRs M mfuel nd nrep) r)[i]'hi) := Array.getElem?_eq_getElem hi
+  have hpn : ((rowAt (fujiRs M mfuel nd nrep) r)[i]'hi).par ≠ none := by
+    intro hnone
+    have := parNone_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
+      nd nrep r i _ hd hnone
+    rw [hposi, hp] at this
+    exact absurd this (by simp)
+  cases hq : ((rowAt (fujiRs M mfuel nd nrep) r)[i]'hi).par with
+  | none => exact absurd hq hpn
+  | some q =>
+      obtain ⟨hq', hcolq⟩ := parCol_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot
+        hhigher hfuel hyk nd nrep r i _ hd q hq
+      rw [hposi, hp] at hcolq
+      have hpq : ((rowAt (fujiRs M mfuel nd nrep) r)[q]'hq').pos + r = p :=
+        (Option.some.inj hcolq).symm
+      have hval : ((rowAt (fujiRs M mfuel nd nrep) r)[i]'hi).val = 0 := by
+        rcases fujiRs_cell S M hM mfuel y hsm nd nrep r i _ hd
+          with hold | ⟨i', t', _, _, _, hde⟩
+        · exfalso
+          obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcuth r i _ hold
+          omega
+        · rw [hde]
+          exact fujiCellAt_val_of_par_some M (expP M mfuel) nd (i' + 1) (y + t')
+            (isRepAt (expP M mfuel) (y + t')) _ _ r q (by rw [← hde]; exact hq)
+      exact colVal_step_col (fujiRs M mfuel nd nrep)
+        (parLt_fujiRs S M hM mfuel nd nrep).dep r (by omega) i hi
+        (rowsMono_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher nd nrep r)
+        c hposi (by omega) hval q hq hq' p hpq
+
+/-! ## **`ShapeRep` の構成（`k < K` の枝）** -/
+
+theorem shapeRep_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    ShapeRep (fujiRs M mfuel nd nrep)
+      ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd
+      (x + (expP M mfuel).len * nrep) where
+  mono := rowsMono_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher nd nrep
+  parLt := (parLt_fujiRs S M hM mfuel nd nrep).dep
+  cellCol := fun r i h =>
+    cellCol_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep r i _
+      (getElem?_dropEmptyTop (fujiRaw M mfuel nd nrep) r i _ (Array.getElem?_eq_getElem h))
+  cover := fun r c hc hr => by
+    obtain ⟨i, hi, hpos⟩ := hasCol_pos _ r c (hasCol_dropEmptyTop _ r c
+      (cover_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep
+        r c hc hr))
+    exact ⟨i, hi, hpos⟩
+  parCol := fun r i h p hp =>
+    parCol_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk nd nrep
+      r i _ (Array.getElem?_eq_getElem h) p hp
+  parNone := fun r i h hp =>
+    parNone_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk nd nrep
+      r i _ (Array.getElem?_eq_getElem h) hp
+  step := fun r c p hc hp => by
+    rcases Nat.lt_or_ge c x with h | h
+    · exact step_orig_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+        nd nrep r c p h hp
+    · exact step_push_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
+        nd nrep r c p hc h hp
+  valTop := fun r i h hp =>
+    valTop_exp S M hM mfuel hn
+      (fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut
+        (expP_len_lower S M hM mfuel (expRes_length_pos M hM2) y x hsm hx) hroot hhigher
+        i2 j2 _ _)
+      y hsm (expCutH_eq S M hM hn) nd hnd nrep r i _ (Array.getElem?_eq_getElem h) hp
+  topPos := hndpos
+  tall := fun c hc =>
+    tall_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel nd nrep c hc
+
+/-! ## **`k < K` の枝の出力** -/
+
+/-- **JS の出力は原文の復元値そのもの（`k < K` の枝）。** -/
+theorem expandOut_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    expandOut (fillValues (fujiRs M mfuel nd nrep))
+      = (List.range (x + (expP M mfuel).len * nrep)).map
+          (Reconstruction.value ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd 0) := by
+  have hsz0 : (S.n - 1) + (expP M mfuel).len * nrep = x + (expP M mfuel).len * nrep := by
+    rw [hx]
+  obtain ⟨hsz, hpos⟩ := row0_fujiRs S M hM mfuel hn hM2
+    (fun i2 j2 => kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut
+      (expP_len_lower S M hM mfuel (expRes_length_pos M hM2) y x hsm hx) hroot hhigher i2 j2 _ _)
+    y (by omega) hsm nd nrep
+  rw [hsz0] at hsz
+  exact expandOut_eq_value (fujiRs M mfuel nd nrep)
+    ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd _
+    (shapeRep_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
+      nd hnd hndpos nrep) hsz hpos
+
+/-- JS の `expand` の枝そのもので書いた形。 -/
+theorem expandJS_out_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nrep efuel : Nat)
+    (hnd : ∀ c, c < S.n - 1 → expNd nrep mfuel efuel M c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < expNd nrep mfuel efuel M c)
+    (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
+    expandOut (expandJS nrep mfuel (efuel + 1) M)
+      = (List.range (x + (expP M mfuel).len * nrep)).map
+          (Reconstruction.value ((lowerContext S y x hyx hroot hhigher).toRowMountain)
+            (expNd nrep mfuel efuel M) 0) := by
+  rw [expandJS_some nrep mfuel efuel M hhas]
+  exact expandOut_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
+    (expNd nrep mfuel efuel M) hnd hndpos nrep
+
 end Yukito
