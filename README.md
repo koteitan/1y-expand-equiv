@@ -40,7 +40,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/FirstLive.lean` | 「最初に生きている列」の条件から出ること。`j` の親が `root` になる |
 | `Equiv/SibLive.lean` | 生きた左の兄弟についての単調性。基底と 2 つの場合、liveness の伝播 |
 | `Equiv/Tower.lean` | 森の塔。frame と値を層ごとに並べ、行 0 を特別扱いせずに済ませる |
-| `Equiv/SibSucc.lean` | **右隣の兄弟の単調性。山の段の残り 1 本** |
+| `Equiv/SibSucc.lean` | **右隣の兄弟の単調性と `RootChildAdjacent`。山の段の残り 2 本** |
 | `Equiv/Chain.lean` | 親鎖についての小補題 |
 | `Equiv/Extract.lean` | 抽出段。JS の脚歩行が Phyrion の `Pseudo.parent` に一致すること |
 | `Equiv/Diagonal.lean` | 抽出段。対角の親が `rawExtract` の親に一致すること |
@@ -136,17 +136,10 @@ value_lt_down        行 k+m で成り立てば行 k でも成り立つ
 root_pos_down        root がその層で生きていることも出る
 ```
 
-`RootChildAdjacent` については、`root + 1` が `p` の `F` 祖先（または `p` 自身）
-である場合を証明した（`rootChildAdjacent_of_ancestor`）。`e` を `root` の `F` 子で
-`p` の鎖にあるものとすると `root + 1 ≤ e` であり、`root + 1 = e` のときが
-これにあたる。残るのは `root + 1 < e` の場合である。この場合は
-「`root` が `root+1` の `F'` 祖先である」ことと「その層で値の大小が成り立つ」ことが
-互いを要求して噛み合わない。
-
-ただし `RootChildAdjacent` は必須ではない。`fparent_eq_root` は
-「間の列が死んでいる」という条件だけで `F.parent j = root` を与えるので、
-`j` と `e` が `F` 兄弟であることは `j = root + 1` を経由せずに出る
-（`j_e_siblings`）。非祖先の場合の組み上げも済んでいる（`one_of_nonancestor`）。
+`RootChildAdjacent` は下で証明する（`rootChildAdjacent_tower`）。以前は
+「必須ではない」と書いていたが、それは `j = root + 1` を経由しない一般形
+（`F` 兄弟で `j` が生きていれば足りる）を目指していたときの話である。その一般形は
+**偽**なので、`j = root + 1` は必須である。
 
 これで残る義務は次の 1 本になった。
 
@@ -205,6 +198,40 @@ one_of_nonancestor_closed  非祖先の場合の (1)。仮定 hsib が消える
 `(frameAt s (m+1)).parent x = some root` は「層 `m` の restricted 親が `root`」
 を意味する。結論の値は `towerVal s (m+1)` である。層を 1 つ取り違えると
 成り立たなくなるので、両方を `SibSucc` の定義に明示してある。
+
+## 最左の子は右隣（`RootChildAdjacent`）
+
+`SibSucc` があると、次が層に関する帰納で出る。
+
+```
+root が層 k の frame で子を持つなら、frame での root+1 の親は root である
+```
+
+すなわち **`root` の最左の子は `root + 1`** である。これが `RootChildAdjacent` で、
+JS の `firstAtLeast` が指す列が `root + 1` であることを与える。
+
+帰納の 1 段はこうである。`e` を `root` の restricted 子とすると、`root` は frame で
+`e` の祖先なので、`root` の frame 子 `a` で `e` に至る道の上にあるものが取れる。
+1 つ下の段の主張から `root + 1` も `root` の frame 子である。あとは
+
+```
+W e ≤ W a         restrictedParent の最大性（a は e の祖先）
+W a ≤ W (root+1)  SibSucc（a と root+1 は frame 兄弟で root+1 ≤ a）
+W root < W e      e の restricted 親が root であること
+```
+
+を繋いで `W root < W (root+1)` を得る。`root` は `root+1` の frame 親なので最も右の
+祖先でもあり、restricted 親の条件をすべて満たす。基底の層では frame が線形森なので
+`sibling_mono_zero` がそのまま効く。
+
+```
+leftmost_child           主定理
+rootChildAdjacent_tower  RootChildAdjacent が全層で成り立つ
+leftmost_child_rows      行の形で書いたもの
+```
+
+`SibSucc` と `RootChildAdjacent` は循環していない。`SibSucc` の証明は
+`RootChildAdjacent` を使わない。
 
 ### 潰した道（記録）
 
@@ -337,11 +364,15 @@ JS は対角を文字列にしてから `calcMountain` に渡す。素の数と�
 ## 残っている課題
 
 ```
-山の段    (a) と (1) は済。JS 側の疎配列との橋渡しが残り
+山の段    (a)、(1)、RootChildAdjacent は済。残りは組み上げと疎配列との橋渡し
 抽出段    密表現での対応は済。疎配列との橋渡しが残り
 bad root  未
 コピー層  未
 ```
+
+山の段の組み上げとは、`FirstLiveNotSmaller`（`RootCase.lean` で定義した、
+JS が鎖の根で指す列が親にならないという主張）を、上の部品から実際に組み立てる
+ことである。部品は揃った。
 
 コピー層が全体の大半である。
 

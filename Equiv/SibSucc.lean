@@ -151,4 +151,97 @@ theorem one_of_nonancestor_closed (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m : 
     rw [heq]
     exact Nat.le_refl _
 
+/-! ## 最左の子は右隣（`RootChildAdjacent`）
+
+`SibSucc` があると、次が層に関する帰納で出る。
+
+```
+root が層 k の frame で子を持つなら、frame での root+1 の親は root である
+```
+
+すなわち **`root` の最左の子は `root + 1`** である。これは `RootChildAdjacent`
+そのもので、JS の `firstAtLeast` が指す列が `root + 1` であることを与える。
+
+帰納の 1 段はこうである。`e` を `root` の restricted 子とすると、`root` は
+frame で `e` の祖先なので、`root` の frame 子 `a` で `e` に至る道の上にあるものが
+取れる。1 つ下の段の主張から `root + 1` も `root` の frame 子である。あとは
+
+```
+W e ≤ W a        restrictedParent の最大性（a は e の祖先）
+W a ≤ W (root+1) SibSucc（a と root+1 は frame 兄弟で root+1 ≤ a）
+W root < W e     e の親が root であること
+```
+
+を繋いで `W root < W (root+1)` を得る。`root` は `root+1` の frame 親なので
+最も右の祖先でもあり、restricted 親の条件をすべて満たす。 -/
+
+/-- **最左の子は右隣。** `root` が層 `k+1` の frame で子を持つなら、
+`root + 1` もその子である。 -/
+theorem leftmost_child (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
+    ∀ k root e, (frameAt s (k + 1)).parent e = some root →
+      (frameAt s (k + 1)).parent (root + 1) = some root := by
+  intro k
+  induction k with
+  | zero =>
+    intro root e h
+    rw [frameAt_step] at h ⊢
+    obtain ⟨hanc, hpr, hlt, _⟩ := (restrictedParent_some_iff _ _ e root).mp h
+    have hre : root < e := ZeroY.Forest.ancestor_lt (frameAt s 0).parent_left hanc
+    have hpos : ∀ p, 0 < towerVal s 0 p := fun p => ofSequence_positive s hs p
+    have hstep : towerVal s 0 root < towerVal s 0 (root + 1) := by
+      rcases Nat.lt_or_ge (root + 1) e with hgt | hle
+      · have hq := sibling_mono_zero hpos h (show root < root + 1 by omega) hgt
+        omega
+      · have heq : e = root + 1 := by omega
+        rw [← heq]
+        exact hlt
+    refine (restrictedParent_some_iff _ _ (root + 1) root).mpr
+      ⟨(linear_anc_zeroY (root + 1) root).mpr (by omega), hpr, hstep, ?_⟩
+    intro q hq _ _
+    have := (linear_anc_zeroY (root + 1) q).mp hq
+    omega
+  | succ k ih =>
+    intro root e h
+    rw [frameAt_step] at h ⊢
+    obtain ⟨hanc, hpr, hlt, hmax⟩ := (restrictedParent_some_iff _ _ e root).mp h
+    obtain ⟨a, hFa, hae⟩ := child_toward (ParentForest.ancestor_of_zeroY hanc)
+    have hra : root < a := (frameAt s (k + 1)).parent_left hFa
+    have hFj : (frameAt s (k + 1)).parent (root + 1) = some root := ih root a hFa
+    have hposa : 0 < towerVal s (k + 1) a :=
+      (frame_parent_iff_pos s k a).mp ⟨root, hFa⟩
+    have hea : towerVal s (k + 1) e ≤ towerVal s (k + 1) a := by
+      rcases hae with ha' | heq
+      · rcases Nat.lt_or_ge (towerVal s (k + 1) a) (towerVal s (k + 1) e) with hx | hx
+        · have := hmax a (ParentForest.ancestor_to_zeroY ha') hposa hx
+          omega
+        · exact hx
+      · rw [heq]
+        exact Nat.le_refl _
+    have haj : towerVal s (k + 1) a ≤ towerVal s (k + 1) (root + 1) := by
+      rcases Nat.lt_or_ge (root + 1) a with hx | hx
+      · exact sibSucc s hs k root a hFj hFa hx
+      · have heq : a = root + 1 := by omega
+        rw [heq]
+        exact Nat.le_refl _
+    refine (restrictedParent_some_iff _ _ (root + 1) root).mpr
+      ⟨ParentForest.ancestor_to_zeroY (ParentForest.Ancestor.direct hFj), hpr,
+        by omega, ?_⟩
+    intro q hq _ _
+    exact ancestor_le_of_parent hFj (ParentForest.ancestor_of_zeroY hq)
+
+/-- **`RootChildAdjacent` は山のすべての層で成り立つ。** -/
+theorem rootChildAdjacent_tower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat) :
+    RootChildAdjacent (frameAt s k) (towerVal s k) := by
+  intro root p hp
+  rw [← frameAt_step] at hp ⊢
+  rw [leftmost_child s hs k root p hp]
+  intro hn
+  cases hn
+
+/-- 行の形。`root` が行 `k` の森で子を持つなら、`root + 1` もその子である。 -/
+theorem leftmost_child_rows (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k root e : Nat)
+    (h : (rows (ofSequence s) k).forest.parent e = some root) :
+    (rows (ofSequence s) k).forest.parent (root + 1) = some root :=
+  leftmost_child s hs k root e h
+
 end Yukito
