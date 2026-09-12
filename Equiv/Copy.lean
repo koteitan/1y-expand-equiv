@@ -836,7 +836,7 @@ theorem kmaxAt_pos (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
 
 theorem hasCol0_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
     (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1)
-    (hkpos : ∀ i j, 0 < kmaxAt M P i j ach af)
+    (hkpos : ∀ i r, r < P.len → 0 < kmaxAt M P i (P.badRootSeam + r) ach af)
     (hlenpos : 0 < P.len) (hlen : P.badRootSeam + P.len = P.afterCutLength)
     (n : Nat) (res : List Rowj)
     (hd0 : ∀ c, c < P.afterCutLength → HasCol res 0 c) :
@@ -863,14 +863,14 @@ theorem hasCol0_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (a
     have hmul : P.len * (q + 1) = P.len * q + P.len := Nat.mul_succ _ _
     have hcol : (P.badRootSeam + r) + P.len * (q + 1) = c := by omega
     have hh := hasCol_fujiIters M P nd ach af hkm n res 0 (q + 1) (P.badRootSeam + r)
-      (by omega) (by omega) (by omega) (by omega) (hkpos (q + 1) (P.badRootSeam + r))
+      (by omega) (by omega) (by omega) (by omega) (hkpos (q + 1) r hmod)
     rw [hcol] at hh
     exact hh
 
 /-- **行 0 は密。** 大きさは `afterCutLength + len * n`、位置は添字そのもの。 -/
 theorem row0_dense_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
     (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1)
-    (hkpos : ∀ i j, 0 < kmaxAt M P i j ach af)
+    (hkpos : ∀ i r, r < P.len → 0 < kmaxAt M P i (P.badRootSeam + r) ach af)
     (hlenpos : 0 < P.len) (hlen : P.badRootSeam + P.len = P.afterCutLength)
     (n : Nat) (res : List Rowj) (hmono : RowsMono res)
     (hb : ColLt res P.afterCutLength)
@@ -969,7 +969,8 @@ theorem expandOut_some (nrep mfuel efuel : Nat) (M : List Rowj)
           then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true)
     (hkm : ∀ i' j', kmaxAt M (expP M mfuel) i' j' (expRes M).length mfuel
       ≤ j' + (expP M mfuel).len * i' + 1)
-    (hkpos : ∀ i j, 0 < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel)
+    (hkpos : ∀ i r, r < (expP M mfuel).len →
+      0 < kmaxAt M (expP M mfuel) i ((expP M mfuel).badRootSeam + r) (expRes M).length mfuel)
     (hlenpos : 0 < (expP M mfuel).len)
     (hseam : (expP M mfuel).badRootSeam ≤ (expP M mfuel).afterCutLength)
     (hmono : RowsMono (expRes M))
