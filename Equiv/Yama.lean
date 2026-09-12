@@ -919,4 +919,43 @@ theorem parCol_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 
     exact Option.some.inj hpe
   rw [hcell]
 
+/-- **元からあるセルが親を持たないなら、その値は頂の値。** -/
+theorem valTop_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (m t : Nat) (d : Cell) (hd : (rowAt (expRes M) m)[t]? = some d) (hp : d.par = none) :
+    d.val = topValue S.tower.base (d.pos + m) := by
+  obtain ⟨hlive, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m t d hd
+  have hts : t < (rowAt (expRes M) m).size := lt_size_of_getElem? hd
+  have hm : m < (expRes M).length := by
+    rcases Nat.lt_or_ge m (expRes M).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hdM : (rowAt M m)[t]? = some d := by
+    rw [← rowAt_cutChild_getElem? M (expCutH M) m t hm hts]
+    exact hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hdM
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hdM
+    exact Option.some.inj hdM
+  have hmM : m < M.length := by
+    have h2 : (expRes M).length ≤ M.length := cutChild_length_le M (expCutH M)
+    omega
+  have hF := parRep_none S M hM m hmM t htM (by rw [hdt]; exact hp)
+  rw [hdt] at hF
+  have hme : m = height S.tower.base (d.pos + m) := by
+    rcases Nat.eq_or_lt_of_le hlive with he | hlt
+    · exact he
+    · exfalso
+      obtain ⟨q, hq⟩ :=
+        (parent_exists_iff_lt_height S.tower.base (S.tower.hpos (d.pos + m)) m).mpr hlt
+      rw [hF] at hq
+      exact absurd hq (by simp)
+  have hrep := rep_top S M hM m hmM
+  have hval := hrep.val d (by rw [← hdt]; exact mem_of_getElem _ t htM)
+  show d.val = (rows S.tower.base (height S.tower.base (d.pos + m))).value (d.pos + m)
+  rw [← hme]
+  simpa using hval
+
 end Yukito
