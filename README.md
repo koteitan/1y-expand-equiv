@@ -1058,8 +1058,34 @@ lookupPos_of_rowExt       積む時点で引いた親の添字は最終形でも
 積む列は `(i,j)` の辞書式順で真に増えるので、末尾への積み足しで各段の位置の単調性が
 保たれる。これらは 2 つの仮定
 「継ぎ目の高さ ≤ `j+1`」と「切りの落差 `d` ≤ コピー 1 つぶんの長さ」
-のもとで成り立つ（`kmaxAt_le`）。前者は `seamHeightOf_eq` と `height_le_self` から出る。
+のもとで成り立つ（`kmaxAt_le`）。前者は `seamHeightOf_le_succ` として証明した
+（`seamHeightOf_eq` と `height_le_self'` から出る）。残る仮定は `d ≤ len` だけである。
 「元の段 ≤ 行き先の段」は枝の形から直ちに出る（`fujiSource_le`）。
+
+### 出力の幅は一致する（済）
+
+`badRootSeam + len = afterCutLength` なので、繰り返し `i` の継ぎ目の列 `j` は列
+`j + len*i` に写り、`i = 1 … n` で `afterCutLength … afterCutLength + len*n − 1` を
+隙間なく埋める。もとの `0 … afterCutLength−1` と合わせて、行 0 は
+`0 … afterCutLength + len*n − 1` をちょうど覆う。
+
+```
+dense_of_cover        位置が真に増加し列を覆うなら、大きさ = 幅、位置 = 添字
+row0_dense_fujiIters  行 0 の大きさは afterCutLength + len*n
+expandJS_some         some の枝の展開（expP / expNd / expRes を名前付きにした）
+expandOut_eq_range    出力は列 0 … W−1 の値を並べたもの
+expandOut_some        expandOut (expandJS …)
+                        = (List.range (afterCutLength + len*nrep)).map (列の値)
+```
+
+Phyrion 側は
+
+```
+reconstructedValues graphs W = (List.range W).map (assemble graphs (fun _ => 1))
+```
+
+で、`W = x + N*(x − z.column)`。`x = afterCutLength`、`x − z.column = len` なので
+**幅は一致する。** 残る義務は各列での値の一致である。
 
 ### 値の埋め
 

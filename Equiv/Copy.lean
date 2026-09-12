@@ -910,4 +910,78 @@ theorem badRootSeam_add_len (P : FujiParams) (h : P.badRootSeam ≤ P.afterCutLe
   show P.badRootSeam + (P.afterCutLength - P.badRootSeam) = P.afterCutLength
   omega
 
+/-! ## `expand` の `some` の枝の展開
+
+`expandJS` の本体で使う値を名前付きにして、枝を書き下せるようにする。 -/
+
+/-- 切る段。 -/
+def expCutH (M : List Rowj) : Nat := (topRowOfLast M (rowAt M 0).size M.length).getD 0
+
+/-- bad root の列。 -/
+def expSeam (M : List Rowj) (mfuel : Nat) : Nat := (getBadRoot M mfuel mfuel).getD 0
+
+/-- 対角から作る山。 -/
+def expDg (M : List Rowj) (mfuel : Nat) : List Rowj :=
+  calcMountainFrom (parseDiag (calcDiagonal M)) mfuel
+
+/-- 山崎噴火の枝か。 -/
+def expYama (M : List Rowj) (mfuel : Nat) : Prop := lastVal (rowAt (expDg M mfuel) 0) = 1
+
+instance (M : List Rowj) (mfuel : Nat) : Decidable (expYama M mfuel) :=
+  inferInstanceAs (Decidable (_ = _))
+
+/-- 新しい対角の値。 -/
+def expNd (nrep mfuel efuel : Nat) (M : List Rowj) : Nat → Nat :=
+  if expYama M mfuel then
+    yamaVal (rowAt (expDg M mfuel) 0).pop (expSeam M mfuel) ((rowAt M 0).size - 1)
+  else valAtIdx (rowAt (expandJS nrep mfuel efuel (expDg M mfuel)) 0)
+
+/-- 子を切ったあとの山。 -/
+def expRes (M : List Rowj) : List Rowj := cutChild M (expCutH M)
+
+/-- Mt.Fuji シェルのパラメータ。 -/
+def expP (M : List Rowj) (mfuel : Nat) : FujiParams :=
+  ⟨expSeam M mfuel,
+   if expYama M mfuel then expCutH M - 1
+     else (topRowWithCol M (expSeam M mfuel) M.length).getD 0,
+   if expYama M mfuel then expCutH M - 1 else expCutH M,
+   (rowAt (expRes M) 0).size,
+   expYama M mfuel⟩
+
+/-- **`expand` の `some` の枝。** -/
+theorem expandJS_some (nrep mfuel efuel : Nat) (M : List Rowj)
+    (h : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
+    expandJS nrep mfuel (efuel + 1) M
+      = fillValues (dropEmptyTop (fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M)
+          (expRes M).length mfuel nrep (expRes M))) := by
+  simp only [expandJS, h, Bool.not_true, Bool.false_eq_true, if_false]
+  rfl
+
+/-- 埋めと空段落としのあとの行 0 の大きさ。 -/
+theorem row0_size_final (L : List Rowj) :
+    (rowAt (fillValues (dropEmptyTop L)) 0).size = (rowAt L 0).size := by
+  rw [fillValues_size, dropEmptyTop_row0 L.length L (Nat.le_refl _)]
+
+/-- **`some` の枝の出力の形。** 幅は `afterCutLength + len * nrep` である。 -/
+theorem expandOut_some (nrep mfuel efuel : Nat) (M : List Rowj)
+    (h : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true)
+    (hkm : ∀ i' j', kmaxAt M (expP M mfuel) i' j' (expRes M).length mfuel
+      ≤ j' + (expP M mfuel).len * i' + 1)
+    (hkpos : ∀ i j, 0 < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel)
+    (hlenpos : 0 < (expP M mfuel).len)
+    (hseam : (expP M mfuel).badRootSeam ≤ (expP M mfuel).afterCutLength)
+    (hmono : RowsMono (expRes M))
+    (hb : ColLt (expRes M) (expP M mfuel).afterCutLength)
+    (hd0 : ∀ c, c < (expP M mfuel).afterCutLength → HasCol (expRes M) 0 c) :
+    expandOut (expandJS nrep mfuel (efuel + 1) M)
+      = (List.range ((expP M mfuel).afterCutLength + (expP M mfuel).len * nrep)).map
+          (fun c => valAtIdx (rowAt (expandJS nrep mfuel (efuel + 1) M) 0) c) := by
+  rw [expandJS_some nrep mfuel efuel M h]
+  refine expandOut_eq_range _ _ ?_
+  rw [row0_size_final]
+  exact (row0_dense_fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length
+    mfuel hkm hkpos hlenpos (badRootSeam_add_len _ hseam) nrep (expRes M) hmono hb hd0).1
+
 end Yukito
