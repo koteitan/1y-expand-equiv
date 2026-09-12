@@ -1635,4 +1635,40 @@ theorem expandJS_out_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel
   exact expandOut_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
     (expNd nrep mfuel efuel M) hnd hndpos nrep
 
+/-! ## 原文の `badAtLowerContext` との同定 -/
+
+/-- **bad root の層より下では、`hroot` と `hhigher` が原文から出る。** -/
+theorem lower_root_higher (s : List Nat) (hs : ZeroY.Legal s) (K d x y k : Nat)
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hk : k < K) :
+    (mountainOf' (iterSet (linearSetting s hs.1) k)).rootAt
+        (height (iterSet (linearSetting s hs.1) k).tower.base y) x = y ∧
+      height (iterSet (linearSetting s hs.1) k).tower.base y
+        < height (iterSet (linearSetting s hs.1) k).tower.base x := by
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  obtain ⟨h1, h2⟩ := active_parent_lower_root (rootedSequence s hs) hbad.1 hk
+  refine ⟨?_, ?_⟩
+  · show (rows (iterSet (linearSetting s hs.1) k).tower.base
+      (height (iterSet (linearSetting s hs.1) k).tower.base y)).forest.root x = y
+    rw [hb]
+    exact h2
+  · rw [hb]
+    exact h1
+
+/-- **こちらで組んだ `LowerCopy.Context` は原文の `badAtLowerContext`。** -/
+theorem lowerContext_eq (s : List Nat) (hs : ZeroY.Legal s) (K d x y k : Nat)
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hk : k < K) (hyx : y < x)
+    (hroot : (mountainOf' (iterSet (linearSetting s hs.1) k)).rootAt
+      (height (iterSet (linearSetting s hs.1) k).tower.base y) x = y)
+    (hhigher : height (iterSet (linearSetting s hs.1) k).tower.base y
+      < height (iterSet (linearSetting s hs.1) k).tower.base x) :
+    lowerContext (iterSet (linearSetting s hs.1) k) y x hyx hroot hhigher
+      = badAtLowerContext (rootedSequence s hs) hbad hk := by
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  unfold lowerContext badAtLowerContext activeLowerContext
+  congr 1
+  unfold mountainOf'
+  congr 1
+
 end Yukito
