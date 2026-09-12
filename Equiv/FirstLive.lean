@@ -144,4 +144,35 @@ theorem succ_sibling_descent (base : Row) (r : Nat) {t q1 q2 : Nat}
       (rows base r).value q2 ≤ (rows base r).value q1 :=
   sibling_descent (rows base r) h1 h2
 
+/-! ## `j` は `root` の右隣である
+
+実測で次が分かった。**`root` が `Φ` の子を持つなら `root + 1` は生きている。**
+値 10 まで全数 111,110 列、215,290 件で反例なし。
+
+子を持つという条件は外せない。列 `(1,1,1,1,1,2)` の行 0 では `root = 0` が
+`Φ` 根で右に生きた列があるが `root + 1 = 1` は死んでいる。ただしこの `0` は
+どの列の鎖の根にもならない。実際の根は `4` で、そこでは `4 + 1 = 5` が生きている。
+
+実際の配置では `root` は必ず `Φ` の子 `p` を持つ。したがって `j`、すなわち
+`root` より右で最初に生きている列は、`root + 1` そのものになる。
+
+これは大きな簡約である。`root` と `j` の間に列が無いので、これまで使ってきた
+「間の列はすべて死んでいる」という仮定が自明になる。 -/
+
+/-- `root` が `Φ` の子を持つなら、その右隣は生きている。 -/
+def RootChildAdjacent (F : ParentForest) (U : Nat → Nat) : Prop :=
+  ∀ root p, restrictedParent F U p = some root →
+    restrictedParent F U (root + 1) ≠ none
+
+/-- 上が成り立てば、`root` より右で最初に生きている列は `root + 1` である。 -/
+theorem firstLive_eq_succ (hadj : RootChildAdjacent F U) {root p j : Nat}
+    (hp : restrictedParent F U p = some root)
+    (_hjlive : restrictedParent F U j ≠ none)
+    (hjr : root < j)
+    (hfirst : ∀ q, root < q → q < j → restrictedParent F U q = none) :
+    j = root + 1 := by
+  rcases Nat.eq_or_lt_of_le hjr with heq | hlt
+  · omega
+  · exact absurd (hfirst (root + 1) (by omega) (by omega)) (hadj root p hp)
+
 end Yukito
