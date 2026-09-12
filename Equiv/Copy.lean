@@ -2149,4 +2149,50 @@ theorem cutChild_cell_val (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH :
     exact mem_of_getElem _ t htM
   exact ⟨hrep.val d hmem, hrep.live d hmem⟩
 
+/-! ## 積んだセルの正体
+
+`cell_fujiIters` は列しか返さない。積んだセルが `fujiCellAt` そのものであること、
+およびその時点の状態が何かも返す強い版を作る。 -/
+
+theorem cell_fujiSeams' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat) :
+    ∀ (t : Nat) (res : List Rowj) (m u : Nat) (d : Cell),
+      (rowAt (fujiSeams M P nd i ach af t res) m)[u]? = some d →
+        (rowAt res m)[u]? = some d ∨
+          ∃ t', t' < t ∧ m < kmaxAt M P i (P.badRootSeam + t') ach af ∧
+            d = fujiCellAt M P nd i (P.badRootSeam + t') (isRepAt P (P.badRootSeam + t'))
+              (fujiSeams M P nd i ach af t' res) m := by
+  intro t
+  induction t with
+  | zero => intro res m u d h; exact Or.inl h
+  | succ t ih =>
+      intro res m u d h
+      rw [fujiSeams_succ] at h
+      rcases cell_fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+        (kmaxAt M P i (P.badRootSeam + t) ach af) _ m u d h with h1 | ⟨hm, hd⟩
+      · rcases ih res m u d h1 with h2 | ⟨t', ht', hk', hd'⟩
+        · exact Or.inl h2
+        · exact Or.inr ⟨t', by omega, hk', hd'⟩
+      · exact Or.inr ⟨t, by omega, hm, hd⟩
+
+theorem cell_fujiIters' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat) :
+    ∀ (n : Nat) (res : List Rowj) (m u : Nat) (d : Cell),
+      (rowAt (fujiIters M P nd ach af n res) m)[u]? = some d →
+        (rowAt res m)[u]? = some d ∨
+          ∃ i' t', i' < n ∧ t' < P.len ∧
+            m < kmaxAt M P (i' + 1) (P.badRootSeam + t') ach af ∧
+            d = fujiCellAt M P nd (i' + 1) (P.badRootSeam + t')
+              (isRepAt P (P.badRootSeam + t'))
+              (fujiSeams M P nd (i' + 1) ach af t' (fujiIters M P nd ach af i' res)) m := by
+  intro n
+  induction n with
+  | zero => intro res m u d h; exact Or.inl h
+  | succ n ih =>
+      intro res m u d h
+      rw [fujiIters_succ] at h
+      rcases cell_fujiSeams' M P nd (n + 1) ach af P.len _ m u d h with h1 | ⟨t', ht', hk', hd'⟩
+      · rcases ih res m u d h1 with h2 | ⟨i2, t2, hi2, ht2, hk2, hd2⟩
+        · exact Or.inl h2
+        · exact Or.inr ⟨i2, t2, by omega, ht2, hk2, hd2⟩
+      · exact Or.inr ⟨n, t', by omega, ht', hk', hd'⟩
+
 end Yukito
