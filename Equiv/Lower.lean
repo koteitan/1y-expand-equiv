@@ -1,4 +1,5 @@
 import Equiv.Yama
+import OneY.ExpansionRebuildPrefix
 
 /-!
 # `k < K` の枝のコピー先の山
@@ -1968,5 +1969,198 @@ theorem not_expYama_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
   have hp' : BadAt (rootedSequence s hs) k r x p := hp
   have := badAt_unique hbad hp'
   omega
+
+/-- **層 `k ≤ K` の JS の bad root は `y`。** -/
+theorem expSeam_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (hK : K < sequenceBound s)
+    (k : Nat) (hk : k ≤ K) (M : List Rowj) (m : Nat)
+    (hM : MtRep (iterSet (linearSetting s hs.1) k) M) (hm : sequenceBound s ≤ m)
+    (hn : 1 < (iterSet (linearSetting s hs.1) k).n) :
+    expSeam M (m + 1) = y := by
+  have hnn : (iterSet (linearSetting s hs.1) k).n = s.length := iterSet_n s hs.1 k
+  have hbnd : (iterSet (linearSetting s hs.1) k).bnd = (linearSetting s hs.1).bnd :=
+    iterSet_bnd _ k
+  have hgt := value_gt_one_layer s hs hbad hxs k hk
+  have hx : (iterSet (linearSetting s hs.1) k).n - 1 = x := by omega
+  show (getBadRoot M (m + 1) (m + 1)).getD 0 = y
+  rw [getBadRoot_eq m (m + 1) (iterSet (linearSetting s hs.1) k) M hM
+      (by rw [hbnd]; exact hm) hn (by rw [hx]; exact hgt),
+    hx, badRootOf_of_badAt s hs x hbad (m + 1) k (by omega) hk]
+  rfl
+
+/-- 層 `k ≤ K` では山の段は 2 つ以上ある。 -/
+theorem two_rows_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (k : Nat)
+    (hk : k ≤ K) (M : List Rowj)
+    (hM : MtRep (iterSet (linearSetting s hs.1) k) M)
+    (hn : 1 < (iterSet (linearSetting s hs.1) k).n) : 2 ≤ M.length := by
+  have hnn : (iterSet (linearSetting s hs.1) k).n = s.length := iterSet_n s hs.1 k
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  have hgt := value_gt_one_layer s hs hbad hxs k hk
+  have hpar : (iterSet (linearSetting s hs.1) k).tower.base.forest.parent x ≠ none := by
+    intro hc
+    have h1 : (layers (rootedSequence s hs) k).row.forest.parent x = none := by
+      rw [← hb]; exact hc
+    have := (layers (rootedSequence s hs) k).rootsOne x h1
+    rw [hb] at hgt
+    omega
+  have hh : 0 < height (iterSet (linearSetting s hs.1) k).tower.base x := by
+    refine (parent_exists_iff_lt_height (iterSet (linearSetting s hs.1) k).tower.base
+      ((iterSet (linearSetting s hs.1) k).tower.hpos x) 0).mp ?_
+    cases hq : (iterSet (linearSetting s hs.1) k).tower.base.forest.parent x with
+    | none => exact absurd hq hpar
+    | some p => exact ⟨p, hq⟩
+  have := hM.tall x (by omega)
+  omega
+
+/-- 層 `k ≤ K` では行 0 の最後のセルは親を持つ。 -/
+theorem hhas_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (k : Nat)
+    (hk : k ≤ K) (M : List Rowj)
+    (hM : MtRep (iterSet (linearSetting s hs.1) k) M)
+    (hn : 1 < (iterSet (linearSetting s hs.1) k).n) (hM0 : 0 < M.length) :
+    (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+      then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true := by
+  have hnn : (iterSet (linearSetting s hs.1) k).n = s.length := iterSet_n s hs.1 k
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  have hgt := value_gt_one_layer s hs hbad hxs k hk
+  refine hhas_of_parent (iterSet (linearSetting s hs.1) k) M hM hn hM0 ?_
+  intro hc
+  have h1 : (layers (rootedSequence s hs) k).row.forest.parent x = none := by
+    rw [← hb, show x = (iterSet (linearSetting s hs.1) k).n - 1 from by omega]
+    exact hc
+  have := (layers (rootedSequence s hs) k).rootsOne x h1
+  rw [hb] at hgt
+  omega
+
+/-! ## **層の再帰** -/
+
+/-- **層 `K − j` から下は、`K − j` 段目以上の畳み込みに一致する。** -/
+theorem expandOut_layers (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hK : K < sequenceBound s)
+    (hxs : s.length - 1 = x) (hyx : y < x) (nrep m : Nat) (hm : sequenceBound s ≤ m)
+    (hml : s.length ≤ m) :
+    ∀ j, j ≤ K → ∀ (M : List Rowj) (efuel : Nat), j < efuel →
+      MtRep (iterSet (linearSetting s hs.1) (K - j)) M →
+      expandOut (expandJS nrep (m + 1) efuel M)
+        = (List.range (x + (x - y) * nrep)).map
+            (TowerReconstruction.assemble
+              ((List.range' (K - j) (sequenceBound s - (K - j))).map
+                (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1)) := by
+  intro j
+  induction j with
+  | zero =>
+      intro _ M efuel hef hM
+      obtain ⟨e, rfl⟩ : ∃ e, efuel = e + 1 := ⟨efuel - 1, by omega⟩
+      have hKK : K - 0 = K := by omega
+      rw [hKK] at hM ⊢
+      have hnn : (iterSet (linearSetting s hs.1) K).n = s.length := iterSet_n s hs.1 K
+      have hn : 1 < (iterSet (linearSetting s hs.1) K).n := by omega
+      have hb : (iterSet (linearSetting s hs.1) K).tower.base
+          = (layers (rootedSequence s hs) K).row := iterSet_base s hs K
+      obtain ⟨hh1, ht1⟩ := badAt_height_and_top hbad
+      have hx : (iterSet (linearSetting s hs.1) K).n - 1 = x := by omega
+      have hhgt : height (iterSet (linearSetting s hs.1) K).tower.base
+          ((iterSet (linearSetting s hs.1) K).n - 1) = d + 1 := by rw [hb, hx]; exact hh1
+      have hyama : expYama M (m + 1) := by
+        show lastVal (rowAt (expDg M (m + 1)) 0) = 1
+        rw [lastVal_expDg (iterSet (linearSetting s hs.1) K) M hM m hn, hb, hx]
+        exact ht1
+      have hpar : ((mountainOf' (iterSet (linearSetting s hs.1) K)).row
+          (height (iterSet (linearSetting s hs.1) K).tower.base
+            ((iterSet (linearSetting s hs.1) K).n - 1) - 1)).parent
+          ((iterSet (linearSetting s hs.1) K).n - 1) = some y := by
+        show (rows (iterSet (linearSetting s hs.1) K).tower.base _).forest.parent _ = some y
+        rw [hb, hx, hh1, show d + 1 - 1 = d from by omega]
+        exact hbad.1
+      have hM2 := two_rows_layer s hs hbad hxs K (Nat.le_refl _) M hM hn
+      refine expandOut_base_yama s hs hbad hK hxs hyx M m e nrep hM hM2 hyama
+        (expSeam_layer s hs hbad hxs hK K (Nat.le_refl _) M m hM hm hn)
+        (by omega) hpar (by omega) ?_
+        (hhas_layer s hs hbad hxs K (Nat.le_refl _) M hM hn (by omega))
+      have := rowAt_size_le (iterSet (linearSetting s hs.1) K) M hM
+        (height (iterSet (linearSetting s hs.1) K).tower.base
+          ((iterSet (linearSetting s hs.1) K).n - 1) - 1)
+      omega
+  | succ j ih =>
+      intro hj M efuel hef hM
+      obtain ⟨e, rfl⟩ : ∃ e, efuel = e + 1 := ⟨efuel - 1, by omega⟩
+      have hk : K - (j + 1) < K := by omega
+      have hnext : K - (j + 1) + 1 = K - j := by omega
+      have hnn : (iterSet (linearSetting s hs.1) (K - (j + 1))).n = s.length :=
+        iterSet_n s hs.1 (K - (j + 1))
+      have hn : 1 < (iterSet (linearSetting s hs.1) (K - (j + 1))).n := by omega
+      have hbnd : (iterSet (linearSetting s hs.1) (K - (j + 1))).bnd
+          = (linearSetting s hs.1).bnd := iterSet_bnd _ _
+      have hM2 := two_rows_layer s hs hbad hxs (K - (j + 1)) (by omega) M hM hn
+      have hsm : expSeam M (m + 1) = y :=
+        expSeam_layer s hs hbad hxs hK (K - (j + 1)) (by omega) M m hM hm hn
+      have hseamP : (expP M (m + 1)).badRootSeam = y := hsm
+      have hyk : ¬ expYama M (m + 1) :=
+        not_expYama_layer s hs hbad hxs (K - (j + 1)) hk M m hM hn
+      have hbh : (expP M (m + 1)).badRootHeight
+          = height (iterSet (linearSetting s hs.1) (K - (j + 1))).tower.base y := by
+        rw [expP_badRootHeight_lower (iterSet (linearSetting s hs.1) (K - (j + 1))) M hM
+          (m + 1) hyk (by rw [hsm]; omega), hsm]
+      have hcut : (expP M (m + 1)).cutHeight
+          = height (iterSet (linearSetting s hs.1) (K - (j + 1))).tower.base x := by
+        rw [expP_cutHeight_lower (iterSet (linearSetting s hs.1) (K - (j + 1))) M hM hn
+          (m + 1) hyk, show x = (iterSet (linearSetting s hs.1) (K - (j + 1))).n - 1
+            from by omega]
+      have hfuel : (rowAt M (height (iterSet (linearSetting s hs.1) (K - (j + 1))).tower.base y)).size
+          ≤ m + 1 := by
+        have := rowAt_size_le (iterSet (linearSetting s hs.1) (K - (j + 1))) M hM
+          (height (iterSet (linearSetting s hs.1) (K - (j + 1))).tower.base y)
+        omega
+      have hdg : MtRep (iterSet (linearSetting s hs.1) (K - j)) (expDg M (m + 1)) := by
+        rw [← hnext]
+        exact mtRep_extract (iterSet (linearSetting s hs.1) (K - (j + 1))) M hM m
+          (by rw [hbnd]; exact hm)
+      have hIH := ih (by omega) (expDg M (m + 1)) e (by omega) hdg
+      rw [← hnext] at hIH
+      exact expandOut_step_lower s hs hbad hK hxs hyx (K - (j + 1)) hk M (m + 1) e nrep
+        hM hM2 hbh hseamP hcut hfuel hyk
+        (hhas_layer s hs hbad hxs (K - (j + 1)) (by omega) M hM hn (by omega)) hIH
+
+/-! ## **全体の一致** -/
+
+/-- **bad root があるときの一致。** -/
+theorem expand_eq_bad_root (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)
+    (hm : sequenceBound s ≤ m) (hml : s.length ≤ m) (hef : sequenceBound s ≤ efuel)
+    {z : RootAddress} (hz : findBadRoot s hs (s.length - 1) = some z) :
+    expandOut (expandJS N (m + 1) efuel (calcMountain s (m + 1))) = expandValues s hs N := by
+  obtain ⟨hK, hbad⟩ := findBadRoot_sound s hs (s.length - 1) hz
+  have hyx : z.column < s.length - 1 :=
+    (rows (layers (rootedSequence s hs) z.layer).row z.row).forest.parent_left hbad.1
+  have hM : MtRep (iterSet (linearSetting s hs.1) 0) (calcMountain s (m + 1)) :=
+    mtRep_calcMountain s hs.1 m hm
+  have hzz : z.layer - z.layer = 0 := by omega
+  have h := expandOut_layers s hs hbad hK rfl hyx N m hm hml z.layer (Nat.le_refl _)
+    (calcMountain s (m + 1)) efuel (by omega) (by rw [hzz]; exact hM)
+  rw [hzz] at h
+  rw [h, expandValues_of_badRoot s hs N hz]
+  show _ = (List.range (s.length - 1 + N * (s.length - 1 - z.column))).map
+    (TowerReconstruction.assemble
+      ((List.range (sequenceBound s)).map (expandedMountain (rootedSequence s hs) hbad))
+      (fun _ => 1))
+  rw [show sequenceBound s - 0 = sequenceBound s from by omega, ← List.range_eq_range',
+    Nat.mul_comm (s.length - 1 - z.column) N]
+
+/-- **JS の `expand` と原文の `expandValues` は同じ関数である。** -/
+theorem expand_eq (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)
+    (hm : sequenceBound s ≤ m) (hml : s.length ≤ m) (hef : sequenceBound s ≤ efuel)
+    (hn : 0 < s.length) :
+    expandOut (expandJS N (m + 1) efuel (calcMountain s (m + 1))) = expandValues s hs N := by
+  have hb : 0 < sequenceBound s := by
+    unfold sequenceBound
+    omega
+  obtain ⟨e, rfl⟩ : ∃ e, efuel = e + 1 := ⟨efuel - 1, by omega⟩
+  cases hz : findBadRoot s hs (s.length - 1) with
+  | none =>
+      exact expand_eq_no_bad s hs m hm hn ((findBadRoot_none_iff s hs (s.length - 1)).mp hz)
+        N (m + 1) e N
+  | some z => exact expand_eq_bad_root s hs N m (e + 1) hm hml hef hz
 
 end Yukito

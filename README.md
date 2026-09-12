@@ -21,6 +21,22 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 同じであれば、Phyrion 版の整礎性・整列性の結果はそのまま Yukito 版の 1-Y についての
 結果になる。
 
+## 答え：同じ関数である
+
+```
+theorem expand_eq (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)
+    (hm : sequenceBound s ≤ m) (hml : s.length ≤ m) (hef : sequenceBound s ≤ efuel)
+    (hn : 0 < s.length) :
+    expandOut (expandJS N (m + 1) efuel (calcMountain s (m + 1))) = expandValues s hs N
+```
+
+`ZeroY.Legal s` は「すべての要素が正」かつ「先頭が 1」で、Phyrion 版が
+`expandValues` に課している条件そのものである。`m` と `efuel` は燃料で、
+`sequenceBound s`（値の最大）と列の長さ以上であれば足りる。
+
+`sorry` は無く、公理は `propext` / `Classical.choice` / `Quot.sound` のみ
+（`Equiv/Lower.lean` の `expand_eq`）。
+
 ## いま示せていること
 
 `sorry` は無く、公理は `propext` / `Classical.choice` / `Quot.sound` のみ。
@@ -59,7 +75,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Copy.lean` | Mt.Fuji シェルの三重ループの構造・座標・出力の幅 |
 | `Equiv/Shape.lean` | **`ShapeRep` と値の層の結論**（`expandOut_eq_value`） |
 | `Equiv/Yama.lean` | 山崎噴火の枝（原文の層 `k = K`）の組み立て |
-| `Equiv/Lower.lean` | **`k < K` の枝（原文の `badAtLowerContext`）の組み立て**（`shapeRep_lower`） |
+| `Equiv/Lower.lean` | **`k < K` の枝の組み立て・層の再帰・全体の一致**（`expand_eq`） |
 
 ## 座標の対応
 
@@ -1762,32 +1778,33 @@ dropEmptyTop_row0 末尾の空段を落としても行 0 は変わらない
 row0Vals          行 0 の値の列は s そのもの
 ```
 
-## 残っている課題
+## 積み上げ
 
 ```
 山の段      済（密表現・疎配列とも）
 抽出段      済（密表現・疎配列とも）
-bad root    済
+bad root    済（getBadRoot = findBadRoot）
 値の埋め    済（差分の関係 → Reconstruction.value）
 分岐 none   済（expand_eq_no_bad）
 三重ループ  済（構造・座標・出力の幅）
 値の層      済（ShapeRep → expandOut_eq_value）
-森のコピー  山崎噴火の枝（原文の層 k = K）は済
-            （shapeRep_yama / yamaContext_eq / expNd_eq_assemble）
-            k < K の枝（badAtLowerContext）も ShapeRep まで済
-            （shapeRep_lower / expandJS_out_lower）。
-            原文の badAtLowerContext との同定は未
-層の再帰    未
+森のコピー  済
+            k = K（山崎噴火）: shapeRep_yama / yamaContext_eq / expNd_eq_assemble
+            k < K（badAtLowerContext）: shapeRep_lower / lowerContext_eq
+層の再帰    済（expandOut_step_lower / expandOut_base_yama / expandOut_layers）
+全体        済（expand_eq）
 ```
 
-どちらの枝についても、JS の出力が原文の `Reconstruction.value (…) nd 0` の並びに
-一致するところまで来た。残るのは
+層の再帰は、bad root の層 `K` を底にして下向きに 1 段ずつ降りる。層 `k < K` では
+JS の新しい対角が「`k+1` 段目以上の畳み込み」に一致し（`expandOut_step_lower`）、
+層 `K` では山崎噴火の枝がその底になる（`expandOut_base_yama`）。
 
-* こちらの `lowerContext` が原文の `badAtLowerContext` そのものであることの同定
-  （`k = K` の枝の `yamaContext_eq` にあたる）
-* JS の再帰（`expandJS … dg`）が原文の層の `assemble` に対応すること
+### 書き起こしの忠実さについて
 
-の 2 つである。
+`script.js` は Lean の対象ではないので、`Equiv/Yukito.lean` が原本の忠実な写しで
+あることは証明の対象にできない。代わりに、原本を実行した出力と突き合わせて
+`#guard` に固定してある（`Equiv/YukitoCheck.lean`）。`calcMountain` /
+`calcDiagonal` / `getBadRoot` / `expand` の各段階と、分岐を一通り通す例を含む。
 
 ## ビルド
 
