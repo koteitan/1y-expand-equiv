@@ -1311,4 +1311,62 @@ theorem fujiCell_par_parentCopy (S : Setting) (M : List Rowj) (hM : MtRep S M)
   rw [← js_shift_eq_parentCopy C shifts _, hy, hL]
   exact hcol
 
+/-! ## 山崎噴火の枝で積むセル -/
+
+theorem fujiCellAt_yama (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (res : List Rowj) (k : Nat) (hy : P.yamakazi = true)
+    (hd : P.cutHeight = P.badRootHeight) :
+    fujiCellAt M P nd i j isRep res k
+      = fujiCell M P (rowAt res k) k
+          (sourceIdx M k j (isRep && decide (k < P.badRootHeight))) k i j
+          (i - (if isRep then 1 else 0)) (nd (j + P.len * i)) := by
+  unfold fujiCellAt
+  dsimp only
+  rw [fujiSource_yama P hy hd i k isRep]
+
+/-- 山崎噴火の枝での元の列。置き換えの継ぎ目で `badRootHeight` より下なら最後の列、
+そうでなければ継ぎ目の列そのもの。 -/
+def srcColYama (S : Setting) (P : FujiParams) (j k : Nat) (isRep : Bool) : Nat :=
+  if isRep && decide (k < P.badRootHeight) then S.n - 1 else j
+
+theorem sourceIdx_yama_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (P : FujiParams) (j k : Nat) (isRep : Bool) (hk : k < M.length) (hn : 1 < S.n)
+    (hkj : k ≤ j) (hj : j < S.n)
+    (hlive : 0 < (rows S.tower.base k).value j)
+    (hlast : 0 < (rows S.tower.base k).value (S.n - 1)) :
+    ∃ h : sourceIdx M k j (isRep && decide (k < P.badRootHeight)) < (rowAt M k).size,
+      ((rowAt M k)[sourceIdx M k j (isRep && decide (k < P.badRootHeight))]'h).pos + k
+        = srcColYama S P j k isRep := by
+  unfold srcColYama
+  cases hb : isRep && decide (k < P.badRootHeight) with
+  | true =>
+      rw [if_pos rfl]
+      exact sourceIdx_last_col S M hM k j hk hn hlast
+  | false =>
+      rw [if_neg (by simp)]
+      exact sourceIdx_col S M hM k j hk hkj hj hlive
+
+/-- **山崎噴火の枝で積むセルの親の列。** -/
+theorem fujiCellAt_par_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool) (res : List Rowj) (k : Nat)
+    (hy : P.yamakazi = true) (hd : P.cutHeight = P.badRootHeight)
+    (hk : k < M.length) (hn : 1 < S.n) (hkj : k ≤ j) (hj : j < S.n)
+    (hlive : 0 < (rows S.tower.base k).value j)
+    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
+    (C : CopyCoordinates.Context) (hcy : C.y = P.badRootSeam) (hcL : C.length = P.len)
+    (p : Nat) (hp : (fujiCellAt M P nd i j isRep res k).par = some p) :
+    ∃ (hp' : p < (rowAt res k).size) (q : Nat),
+      (rows S.tower.base k).forest.parent (srcColYama S P j k isRep) = some q ∧
+        ((rowAt res k)[p]'hp').pos + k
+          = C.parentCopy (i - (if isRep then 1 else 0)) q := by
+  rw [fujiCellAt_yama M P nd i j isRep res k hy hd] at hp
+  obtain ⟨hp', hsx, q, hq, hcol⟩ :=
+    fujiCell_par_parentCopy S M hM P (rowAt res k) k
+      (sourceIdx M k j (isRep && decide (k < P.badRootHeight))) k i j
+      (i - (if isRep then 1 else 0)) (nd (j + P.len * i)) (Nat.le_refl _) hk C hcy hcL p hp
+  obtain ⟨hsx', hcolsrc⟩ :=
+    sourceIdx_yama_col S M hM P j k isRep hk hn hkj hj hlive hlast
+  rw [hcolsrc] at hq
+  exact ⟨hp', q, hq, hcol⟩
+
 end Yukito
