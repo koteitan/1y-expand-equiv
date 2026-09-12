@@ -984,4 +984,138 @@ theorem expandOut_some (nrep mfuel efuel : Nat) (M : List Rowj)
   exact (row0_dense_fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length
     mfuel hkm hkpos hlenpos (badRootSeam_add_len _ hseam) nrep (expRes M) hmono hb hd0).1
 
+/-! ## 位置で読むことと列で読むこと
+
+`fillRow` は 1 つ上の段を「position で」引く（`readValAt`）。列で引く `readVal` と
+段のずれのぶんだけ違う。 -/
+
+theorem readValAt_eq_readVal (row : Rowj) (r c : Nat) (h : r ≤ c) :
+    readValAt row (c - r) = readVal row r c := by
+  rcases Nat.lt_or_ge (firstAtLeast row (c - r)) row.size with hm | hm
+  · obtain ⟨m, hmv⟩ : ∃ m, firstAtLeast row (c - r) = m := ⟨_, rfl⟩
+    rw [hmv] at hm
+    rcases Decidable.em ((row[m]'hm).pos = c - r) with hp | hp
+    · have hlk : lookupPos row (c - r) = some m := by
+        simp only [lookupPos, hmv, dif_pos hm, if_pos hp]
+      have hrv : readVal row r c = (row[m]'hm).val := by
+        simp only [readVal, hmv, dif_pos hm,
+          if_pos (show (row[m]'hm).pos + r = c by omega)]
+      rw [hrv]
+      simp only [readValAt, hlk, dif_pos hm]
+    · have hlk : lookupPos row (c - r) = none := by
+        simp only [lookupPos, hmv, dif_pos hm, if_neg hp]
+      have hrv : readVal row r c = 0 := by
+        simp only [readVal, hmv, dif_pos hm,
+          if_neg (show ¬ (row[m]'hm).pos + r = c by omega)]
+      rw [hrv]
+      simp only [readValAt, hlk]
+  · have hlk : lookupPos row (c - r) = none := by
+      simp only [lookupPos, dif_neg (Nat.not_lt.mpr hm)]
+    have hrv : readVal row r c = 0 := by
+      simp only [readVal, dif_neg (Nat.not_lt.mpr hm)]
+    rw [hrv]
+    simp only [readValAt, hlk]
+
+/-- 添字で読んだ値は、その添字のセルの列で読んだ値。 -/
+theorem readVal_of_index (row : Rowj) (hmono : PosMono row) (r c i : Nat) (hi : i < row.size)
+    (hc : (row[i]'hi).pos + r = c) : readVal row r c = valAtIdx row i := by
+  have hfa : firstAtLeast row (c - r) = i :=
+    firstAtLeast_eq_of_mem row hmono (c - r) i hi (by omega)
+  simp only [readVal, hfa, dif_pos hi, if_pos hc, valAtIdx]
+
+/-! ## 値の埋めを列で書く -/
+
+theorem fillValues_pos_get (Rs : List Rowj) (r t : Nat)
+    (ht : t < (rowAt (fillValues Rs) r).size) (ht' : t < (rowAt Rs r).size) :
+    ((rowAt (fillValues Rs) r)[t]'ht).pos = ((rowAt Rs r)[t]'ht').pos := by
+  have h := fillValues_pos? Rs r t
+  rw [Array.getElem?_eq_getElem ht, Array.getElem?_eq_getElem ht'] at h
+  simpa using h
+
+theorem fillValues_par_get (Rs : List Rowj) (r t : Nat)
+    (ht : t < (rowAt (fillValues Rs) r).size) (ht' : t < (rowAt Rs r).size) :
+    ((rowAt (fillValues Rs) r)[t]'ht).par = ((rowAt Rs r)[t]'ht').par := by
+  have h := fillValues_par? Rs r t
+  rw [Array.getElem?_eq_getElem ht, Array.getElem?_eq_getElem ht'] at h
+  simpa using h
+
+theorem posMono_fillValues (Rs : List Rowj) (r : Nat) (h : PosMono (rowAt Rs r)) :
+    PosMono (rowAt (fillValues Rs) r) := by
+  intro p q hp hq hpq
+  have hsz := fillValues_size Rs r
+  rw [fillValues_pos_get Rs r p hp (by omega), fillValues_pos_get Rs r q hq (by omega)]
+  exact h p q (by omega) (by omega) hpq
+
+/-- **値の埋めを列で書いたもの。** 値 0 のセルの列 `c` について
+`V r c = V r（同じ段の親の列）+ V (r+1) c` である。 -/
+theorem colVal_step (Rs : List Rowj)
+    (hpar : ∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
+      ((rowAt Rs r)[i]'h).par = some p → p < i)
+    (r : Nat) (hr : r + 1 < Rs.length) (i : Nat) (hi : i < (rowAt Rs r).size)
+    (hmono : PosMono (rowAt Rs r)) (c : Nat) (hc : ((rowAt Rs r)[i]'hi).pos + r = c)
+    (hrc : r + 1 ≤ c) (hval : ((rowAt Rs r)[i]'hi).val = 0) :
+    readVal (rowAt (fillValues Rs) r) r c
+      = (match ((rowAt Rs r)[i]'hi).par with
+         | none => 0
+         | some p => valAtIdx (rowAt (fillValues Rs) r) p)
+        + readVal (rowAt (fillValues Rs) (r + 1)) (r + 1) c := by
+  have hsz := fillValues_size Rs r
+  have hiF : i < (rowAt (fillValues Rs) r).size := by omega
+  have hposF : ((rowAt (fillValues Rs) r)[i]'hiF).pos + r = c := by
+    rw [fillValues_pos_get Rs r i hiF hi]
+    exact hc
+  rw [readVal_of_index _ (posMono_fillValues Rs r hmono) r c i hiF hposF]
+  rw [fillValues_val Rs hpar r hr i hi, if_neg (by omega)]
+  have hpm : ((rowAt Rs r)[i]'hi).pos - 1 = c - (r + 1) := by omega
+  rw [hpm, readValAt_eq_readVal _ (r + 1) c hrc]
+  rfl
+
+/-- **差分の関係を列だけで書いたもの。** `value_of_diff` の `hstep` の形。 -/
+theorem colVal_step_col (Rs : List Rowj)
+    (hpar : ∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
+      ((rowAt Rs r)[i]'h).par = some p → p < i)
+    (r : Nat) (hr : r + 1 < Rs.length) (i : Nat) (hi : i < (rowAt Rs r).size)
+    (hmono : PosMono (rowAt Rs r)) (c : Nat) (hc : ((rowAt Rs r)[i]'hi).pos + r = c)
+    (hrc : r + 1 ≤ c) (hval : ((rowAt Rs r)[i]'hi).val = 0)
+    (p : Nat) (hpi : ((rowAt Rs r)[i]'hi).par = some p) (hp : p < (rowAt Rs r).size)
+    (cp : Nat) (hcp : ((rowAt Rs r)[p]'hp).pos + r = cp) :
+    readVal (rowAt (fillValues Rs) r) r c
+      = readVal (rowAt (fillValues Rs) r) r cp
+        + readVal (rowAt (fillValues Rs) (r + 1)) (r + 1) c := by
+  rw [colVal_step Rs hpar r hr i hi hmono c hc hrc hval, hpi]
+  dsimp only
+  have hszF := fillValues_size Rs r
+  have hpF : p < (rowAt (fillValues Rs) r).size := by omega
+  have hposF : ((rowAt (fillValues Rs) r)[p]'hpF).pos + r = cp := by
+    rw [fillValues_pos_get Rs r p hpF hp]
+    exact hcp
+  rw [readVal_of_index _ (posMono_fillValues Rs r hmono) r cp p hpF hposF]
+
+/-- **値が入っているセルは埋めで変わらない。** `value_of_diff` の `htop` に使う。 -/
+theorem colVal_top (Rs : List Rowj)
+    (hpar : ∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
+      ((rowAt Rs r)[i]'h).par = some p → p < i)
+    (r : Nat) (hr : r + 1 < Rs.length) (i : Nat) (hi : i < (rowAt Rs r).size)
+    (hmono : PosMono (rowAt Rs r)) (c : Nat) (hc : ((rowAt Rs r)[i]'hi).pos + r = c)
+    (hval : ((rowAt Rs r)[i]'hi).val ≠ 0) :
+    readVal (rowAt (fillValues Rs) r) r c = ((rowAt Rs r)[i]'hi).val := by
+  have hsz := fillValues_size Rs r
+  have hiF : i < (rowAt (fillValues Rs) r).size := by omega
+  have hposF : ((rowAt (fillValues Rs) r)[i]'hiF).pos + r = c := by
+    rw [fillValues_pos_get Rs r i hiF hi]
+    exact hc
+  rw [readVal_of_index _ (posMono_fillValues Rs r hmono) r c i hiF hposF]
+  rw [fillValues_val Rs hpar r hr i hi, if_pos hval]
+
+/-- 段に列が無ければ読んだ値は 0。`value_of_diff` の `hzero` に使う。 -/
+theorem readVal_of_no_col (row : Rowj) (r c : Nat)
+    (h : ∀ (t : Nat) (d : Cell), row[t]? = some d → d.pos + r ≠ c) : readVal row r c = 0 := by
+  rcases Nat.lt_or_ge (firstAtLeast row (c - r)) row.size with hm | hm
+  · obtain ⟨m, hmv⟩ : ∃ m, firstAtLeast row (c - r) = m := ⟨_, rfl⟩
+    rw [hmv] at hm
+    have hne : ¬ ((row[m]'hm).pos + r = c) :=
+      h m (row[m]'hm) (Array.getElem?_eq_getElem hm)
+    simp only [readVal, hmv, dif_pos hm, if_neg hne]
+  · simp only [readVal, dif_neg (Nat.not_lt.mpr hm)]
+
 end Yukito
