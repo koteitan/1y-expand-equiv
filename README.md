@@ -1531,8 +1531,20 @@ parent r c = if c ≤ x then (M.row r).parent c
 で、真ん中の 2 つが JS の「Br replace」「Br extend」にあたる。山崎噴火の枝で
 `rise = 0` だったため潰れていた分岐がここで効いてくる。
 
-形式化の第一歩として、この枝では「行の最後から取るか」がつねに `isRep` に
-等しいことを示した（`fujiSrcRow` / `fujiSource_notyama`）。
+形式化はここまで進んだ。
+
+```
+fujiSrcRow / fujiSource_notyama  この枝では「行の最後から取るか」はつねに isRep
+ancestor_conv        ZeroY 側の Ancestor（TransGen）と OneY 側（帰納型）の言い換え
+root_eq_iff          r が根なら root c = r ↔ (r は c の祖先 か r = c)
+parent_none_at_top   頂には親が無い
+isAscending_iff_root isAscending M bh seam j fuel = true
+                       ↔ bh ≤ height j ∧ (rows base bh).forest.root j = seam
+```
+
+最後のものが原文の `InCone`（`floor ≤ height c ∧ rootAt floor c = y`）と
+同じ条件である。継ぎ目 `y` は段 `floor = height y` で頂なので親を持たず、
+「祖先に届く」と「根が一致する」が同値になる。
 
 ### 元からあるセルについての条件（済）
 
