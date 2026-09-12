@@ -905,7 +905,20 @@ result[i][j].value = result[i][result[i][j].parentIndex].value + result[i+1][k].
 3. 森のコピー    Mt.Fuji の枝 ↔ badAtLowerContext / badAtTerminalMountain / OrdinaryCopy
 ```
 
-1 は森の形に依らないので先に片付けられる。3 が全体の大半である。
+1 は森の形に依らないので先に片付けた（`Recon.lean`）。
+
+```
+recon_step     行を 1 つ剥がす：value r c = 親の値 + value (r+1) c
+recon_top      頂では value = top
+recon_above    頂より上では 0
+value_of_diff  差分の関係を満たす値は Reconstruction.value に一致する
+```
+
+`value_of_diff` は列についての強帰納（親は左にある）と、行についての上からの帰納の
+2 重帰納である。JS の埋め方がこの 3 条件（差分・頂・頂より上）を満たすことを言えば、
+値の部分は済む。
+
+残るのは 2 と 3 で、3 が全体の大半である。
 
 ## 残っている課題
 
