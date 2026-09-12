@@ -828,4 +828,65 @@ theorem kmaxAt_pos (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
   · omega
   · omega
 
+/-! ## 行 0 の列は隙間なく並ぶ
+
+行 0 は元の `0 … afterCutLength−1` に加えて、繰り返しごとに `len` 列ずつ増える。
+`badRootSeam + len = afterCutLength` なので、全体で `0 … afterCutLength + len*n − 1`
+をちょうど覆う。 -/
+
+theorem hasCol0_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1)
+    (hkpos : ∀ i j, 0 < kmaxAt M P i j ach af)
+    (hlenpos : 0 < P.len) (hlen : P.badRootSeam + P.len = P.afterCutLength)
+    (n : Nat) (res : List Rowj)
+    (hd0 : ∀ c, c < P.afterCutLength → HasCol res 0 c) :
+    ∀ c, c < P.afterCutLength + P.len * n → HasCol (fujiIters M P nd ach af n res) 0 c := by
+  intro c hc
+  rcases Nat.lt_or_ge c P.afterCutLength with h | h
+  · exact hasCol_fujiIters_old M P nd ach af n res 0 c (hd0 c h)
+  · obtain ⟨e, hev⟩ : ∃ e, c - P.afterCutLength = e := ⟨_, rfl⟩
+    have helt : e < P.len * n := by omega
+    obtain ⟨q, hqv⟩ : ∃ q, e / P.len = q := ⟨_, rfl⟩
+    obtain ⟨r, hrv⟩ : ∃ r, e % P.len = r := ⟨_, rfl⟩
+    have hdm : P.len * q + r = e := by
+      rw [← hqv, ← hrv]
+      exact Nat.div_add_mod e P.len
+    have hmod : r < P.len := by
+      rw [← hrv]
+      exact Nat.mod_lt e hlenpos
+    have hq : q < n := by
+      rcases Nat.lt_or_ge q n with hx | hx
+      · exact hx
+      · exfalso
+        have h2 : P.len * n ≤ P.len * q := Nat.mul_le_mul_left P.len hx
+        omega
+    have hmul : P.len * (q + 1) = P.len * q + P.len := Nat.mul_succ _ _
+    have hcol : (P.badRootSeam + r) + P.len * (q + 1) = c := by omega
+    have hh := hasCol_fujiIters M P nd ach af hkm n res 0 (q + 1) (P.badRootSeam + r)
+      (by omega) (by omega) (by omega) (by omega) (hkpos (q + 1) (P.badRootSeam + r))
+    rw [hcol] at hh
+    exact hh
+
+/-- **行 0 は密。** 大きさは `afterCutLength + len * n`、位置は添字そのもの。 -/
+theorem row0_dense_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1)
+    (hkpos : ∀ i j, 0 < kmaxAt M P i j ach af)
+    (hlenpos : 0 < P.len) (hlen : P.badRootSeam + P.len = P.afterCutLength)
+    (n : Nat) (res : List Rowj) (hmono : RowsMono res)
+    (hb : ColLt res P.afterCutLength)
+    (hd0 : ∀ c, c < P.afterCutLength → HasCol res 0 c) :
+    (rowAt (fujiIters M P nd ach af n res) 0).size = P.afterCutLength + P.len * n ∧
+      ∀ (t : Nat) (ht : t < (rowAt (fujiIters M P nd ach af n res) 0).size),
+        ((rowAt (fujiIters M P nd ach af n res) 0)[t]'ht).pos = t := by
+  obtain ⟨hm', hb'⟩ := fujiIters_invariant M P nd ach af hkm n res P.afterCutLength hb
+    (by omega) hmono
+  refine dense_of_cover _ _ (hm' 0) ?_ ?_
+  · intro t d hd
+    have h1 := hb' 0 t d hd
+    omega
+  · intro c hc
+    obtain ⟨t, d, hd, hdc⟩ :=
+      hasCol0_fujiIters M P nd ach af hkm hkpos hlenpos hlen n res hd0 c hc
+    exact ⟨t, d, hd, by omega⟩
+
 end Yukito
