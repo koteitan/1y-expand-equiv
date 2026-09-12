@@ -1536,4 +1536,85 @@ theorem parLt_cutChild (M : List Rowj) (cutH : Nat) (h : ParLt M) :
     rw [rowAt_of_ge _ r hr] at hts
     simp at hts
 
+/-! ## 子を切ったあとの段の性質 -/
+
+theorem posMono_pop (row : Rowj) (h : PosMono row) : PosMono row.pop := by
+  intro p q hp hq hpq
+  have hp' : p < row.size := by
+    rw [Array.size_pop] at hp
+    omega
+  have hq' : q < row.size := by
+    rw [Array.size_pop] at hq
+    omega
+  rw [Array.getElem_pop, Array.getElem_pop]
+  exact h p q hp' hq' hpq
+
+theorem rowsMono_cutChild (M : List Rowj) (cutH : Nat) (h : RowsMono M) :
+    RowsMono (cutChild M cutH) := by
+  intro m
+  rcases Nat.lt_or_ge m (cutChild M cutH).length with hm | hm
+  · rw [rowAt_cutChild M cutH m hm]
+    split
+    · exact posMono_pop _ (h m)
+    · exact h m
+  · rw [rowAt_of_ge _ m hm]
+    intro p q hp _ _
+    simp at hp
+
+theorem rowsMono_of_mtRep (S : Setting) (M : List Rowj) (hM : MtRep S M) : RowsMono M := by
+  intro m
+  rcases Nat.lt_or_ge m M.length with hm | hm
+  · exact (rep_top S M hM m hm).posMono
+  · rw [rowAt_of_ge M m hm]
+    intro p q hp _ _
+    simp at hp
+
+theorem size_rowAt_cutChild_zero (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH : Nat)
+    (h0 : 0 < (cutChild M cutH).length) :
+    (rowAt (cutChild M cutH) 0).size = S.n - 1 := by
+  rw [size_rowAt_cutChild M cutH 0 h0, if_pos (by omega), hM.size0]
+
+/-- **子を切ると列 `n−1` が消える。** 残るセルの列はすべて `n−1` より小さい。 -/
+theorem colLt_cutChild (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH : Nat)
+    (hn : 1 < S.n) (hcut : height S.tower.base (S.n - 1) ≤ cutH) :
+    ColLt (cutChild M cutH) (S.n - 1) := by
+  intro m t d hd
+  have hts : t < (rowAt (cutChild M cutH) m).size := lt_size_of_getElem? hd
+  rcases Nat.lt_or_ge m (cutChild M cutH).length with hm | hm
+  · rw [rowAt_cutChild_getElem? M cutH m t hm hts] at hd
+    have htM : t < (rowAt M m).size := lt_size_of_getElem? hd
+    have hdt : (rowAt M m)[t]'htM = d := by
+      rw [Array.getElem?_eq_getElem htM] at hd
+      exact Option.some.inj hd
+    have hmM : m < M.length := by
+      rcases Nat.lt_or_ge m M.length with h1 | h1
+      · exact h1
+      · exfalso
+        rw [rowAt_of_ge M m h1] at htM
+        simp at htM
+    have hrep := rep_top S M hM m hmM
+    have hb := hrep.bound d (by rw [← hdt]; exact mem_of_getElem _ t htM)
+    rcases Decidable.em (d.pos + m = S.n - 1) with heq | hne
+    · exfalso
+      have hlive : 0 < (rows S.tower.base m).value (S.n - 1) := by
+        have h1 := hrep.val d (by rw [← hdt]; exact mem_of_getElem _ t htM)
+        have h2 := hrep.live d (by rw [← hdt]; exact mem_of_getElem _ t htM)
+        rw [heq] at h1
+        omega
+      have hmh : m ≤ height S.tower.base (S.n - 1) :=
+        (live_iff_le_height S.tower.base (S.tower.hpos (S.n - 1)) m).mp hlive
+      have hsz := size_rowAt_cutChild M cutH m hm
+      rw [if_pos (by omega)] at hsz
+      have hlast : lastCol (rowAt M m) m = S.n - 1 := (lastCol_eq_iff S M hM m hmM hn).mpr hlive
+      have hne0 : 0 < (rowAt M m).size := by omega
+      simp only [lastCol, dif_pos hne0] at hlast
+      have hlt : t < (rowAt M m).size - 1 := by omega
+      have := hrep.posMono t ((rowAt M m).size - 1) htM (by omega) (by omega)
+      rw [hdt] at this
+      omega
+    · omega
+  · exfalso
+    rw [rowAt_of_ge _ m hm] at hts
+    simp at hts
+
 end Yukito
