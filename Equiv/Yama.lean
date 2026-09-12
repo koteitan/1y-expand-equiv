@@ -1061,4 +1061,55 @@ theorem rowsMono_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
       (expP M mfuel).afterCutLength hcolLt (by omega)
       (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM))).1
 
+/-! ## 山崎噴火の枝で作る疎な山 -/
+
+/-- 値の埋めの前の疎な山。 -/
+def yamaRaw (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List Rowj :=
+  fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)
+
+/-- 値の埋めに渡す疎な山。 -/
+def yamaRs (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List Rowj :=
+  dropEmptyTop (yamaRaw M mfuel nd nrep)
+
+/-- **元からある列の値は元の山の値のまま。** JS の `fillRow` は値が 0 でない
+セルを触らないからである。 -/
+theorem colVal_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep r c : Nat) (hc : c < S.n - 1)
+    (hlive : r ≤ height S.tower.base c) :
+    colVal (yamaRs M mfuel nd nrep) r c = (rows S.tower.base r).value c := by
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hG : (yamaContext S y hy hpar hh).height c = height S.tower.base c :=
+    yamaContext_height_orig S y hy hpar hh c hc
+  have hcovL : HasCol (yamaRaw M mfuel nd nrep) r c :=
+    cover_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c (by omega) (by omega)
+  have hcov : HasCol (yamaRs M mfuel nd nrep) r c := hasCol_dropEmptyTop _ r c hcovL
+  obtain ⟨t, ht, hpos⟩ := hasCol_pos _ r c hcov
+  have hdRs : (rowAt (yamaRs M mfuel nd nrep) r)[t]?
+      = some ((rowAt (yamaRs M mfuel nd nrep) r)[t]'ht) := Array.getElem?_eq_getElem ht
+  have hrow : rowAt (yamaRs M mfuel nd nrep) r = rowAt (yamaRaw M mfuel nd nrep) r :=
+    rowAt_dropEmptyTop_of_cell _ r t _ hdRs
+  have hdRaw : (rowAt (yamaRaw M mfuel nd nrep) r)[t]?
+      = some ((rowAt (yamaRs M mfuel nd nrep) r)[t]'ht) := by
+    rw [← hrow]
+    exact hdRs
+  have hdOrig : (rowAt (expRes M) r)[t]? = some ((rowAt (yamaRs M mfuel nd nrep) r)[t]'ht) :=
+    cell_orig_of_col_lt S M hM mfuel hn hM2 hyama y hy hseam nd nrep r t _ hdRaw (by omega)
+  obtain ⟨hval, hvpos⟩ := cutChild_cell_val S M hM (expCutH M) r t _ hdOrig
+  -- 段が足りているか
+  have htall : (yamaContext S y hy hpar hh).height c < (yamaRs M mfuel nd nrep).length :=
+    tall_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c (by omega)
+  have hrlen : r < (yamaRs M mfuel nd nrep).length := by omega
+  rw [hpos] at hval
+  rcases Nat.lt_or_ge (r + 1) (yamaRs M mfuel nd nrep).length with hlt | hge
+  · rw [colVal, colVal_top (yamaRs M mfuel nd nrep)
+      (parLt_yama S M hM mfuel nd nrep).dep r hlt t ht
+      (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hpos (by omega), hval]
+  · rw [colVal, colVal_top_last (yamaRs M mfuel nd nrep) r (by omega) t ht
+      (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hpos, hval]
+
 end Yukito

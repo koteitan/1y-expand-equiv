@@ -2124,4 +2124,29 @@ theorem rowAt_dropEmptyTop_of_cell (L : List Rowj) (m t : Nat) (d : Cell)
       simp at hts
   exact rowAt_dropEmptyTop L.length L m (Nat.le_refl _) hm
 
+/-- 子を切ったあとに残るセルの値は、元の山の値。 -/
+theorem cutChild_cell_val (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH : Nat)
+    (m t : Nat) (d : Cell) (hd : (rowAt (cutChild M cutH) m)[t]? = some d) :
+    d.val = (rows S.tower.base m).value (d.pos + m) ∧ 0 < d.val := by
+  have hts : t < (rowAt (cutChild M cutH) m).size := lt_size_of_getElem? hd
+  have hm : m < (cutChild M cutH).length := by
+    rcases Nat.lt_or_ge m (cutChild M cutH).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  rw [rowAt_cutChild_getElem? M cutH m t hm hts] at hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hd
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hd
+    exact Option.some.inj hd
+  have hmM : m < M.length := by
+    have h2 : (cutChild M cutH).length ≤ M.length := cutChild_length_le M cutH
+    omega
+  have hrep := rep_top S M hM m hmM
+  have hmem : d ∈ (rowAt M m).toList := by
+    rw [← hdt]
+    exact mem_of_getElem _ t htM
+  exact ⟨hrep.val d hmem, hrep.live d hmem⟩
+
 end Yukito
