@@ -1194,22 +1194,25 @@ theorem rowExt_state_to_fujiRs (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat)
     hi ht
 
 /-- 積むセルの列（山崎噴火の枝、`kmax` の範囲から）。 -/
-theorem fujiCellAt_col_yama (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
-    (isRep isAsc : Bool) (st : List Rowj) (hyama : expYama M mfuel)
+theorem fujiCellAt_col_exp (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
+    (isRep isAsc : Bool) (st : List Rowj)
+    (hk : kmaxAt M (expP M mfuel) i j (expRes M).length mfuel
+      ≤ j + (expP M mfuel).len * i + 1)
     (hm : m < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel) :
-    (fujiCellAt M (expP M mfuel) nd i j isRep isAsc st m).pos + m = j + (expP M mfuel).len * i := by
-  have hk := kmaxAt_le_yama' M (expP M mfuel) i j (expRes M).length mfuel
-    (expP_yama_cut M mfuel hyama)
-  exact fujiCellAt_col M (expP M mfuel) nd i j isRep isAsc st m (by omega)
+    (fujiCellAt M (expP M mfuel) nd i j isRep isAsc st m).pos + m
+      = j + (expP M mfuel).len * i :=
+  fujiCellAt_col M (expP M mfuel) nd i j isRep isAsc st m (by omega)
 
 /-- **積んだセルが親を持たないなら、その値は新しい対角のその列の値。** -/
-theorem valTop_push_yama (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
-    (isRep isAsc : Bool) (st : List Rowj) (hyama : expYama M mfuel)
+theorem valTop_push_exp (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m : Nat)
+    (isRep isAsc : Bool) (st : List Rowj)
+    (hk : kmaxAt M (expP M mfuel) i j (expRes M).length mfuel
+      ≤ j + (expP M mfuel).len * i + 1)
     (hm : m < kmaxAt M (expP M mfuel) i j (expRes M).length mfuel)
     (hp : (fujiCellAt M (expP M mfuel) nd i j isRep isAsc st m).par = none) :
     (fujiCellAt M (expP M mfuel) nd i j isRep isAsc st m).val
       = nd ((fujiCellAt M (expP M mfuel) nd i j isRep isAsc st m).pos + m) := by
-  rw [fujiCellAt_col_yama M mfuel nd i j m isRep isAsc st hyama hm]
+  rw [fujiCellAt_col_exp M mfuel nd i j m isRep isAsc st hk hm]
   exact fujiCellAt_val_of_par_none M (expP M mfuel) nd i j isRep isAsc st m hp
 
 /-! ## `ShapeRep` の `valTop`（`fujiRs` の形） -/
@@ -1227,8 +1230,9 @@ theorem valTop_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     rw [hnd (d.pos + m) hbound]
     exact valTop_orig_yama S M hM hn hcut m u d hold hp
   · rw [hde]
-    refine valTop_push_yama M mfuel nd (i' + 1) (y + t') m
-      (isRepAt (expP M mfuel) (y + t')) _ _ hyama hk' ?_
+    refine valTop_push_exp M mfuel nd (i' + 1) (y + t') m
+      (isRepAt (expP M mfuel) (y + t')) _ _
+      (kmaxAt_le_yama' M (expP M mfuel) _ _ _ _ (expP_yama_cut M mfuel hyama)) hk' ?_
     rw [← hde]
     exact hp
 
@@ -1303,7 +1307,8 @@ theorem parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
       push_side S M hM mfuel hn hM2 hyama y hy hseam i' t' m ht' hk'
     have hcol : d.pos + m = (y + t') + (expP M mfuel).len * (i' + 1) := by
       rw [hde]
-      exact fujiCellAt_col_yama M mfuel nd (i' + 1) (y + t') m _ _ _ hyama hk'
+      exact fujiCellAt_col_exp M mfuel nd (i' + 1) (y + t') m _ _ _
+        (kmaxAt_le_yama' M (expP M mfuel) _ _ _ _ (expP_yama_cut M mfuel hyama)) hk'
     rw [hcol]
     refine fujiCellAt_parNone_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam nd _
       (i' + 1) t' m _ (hra_of_seamAsc M (expP M mfuel) mfuel (y + t') hasc) (by omega) ht' hmM hmj hlivej
@@ -1354,7 +1359,8 @@ theorem parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
     have hcol : d.pos + m = (y + t') + (expP M mfuel).len * (i' + 1) := by
       rw [hde]
-      exact fujiCellAt_col_yama M mfuel nd (i' + 1) (y + t') m _ _ _ hyama hk'
+      exact fujiCellAt_col_exp M mfuel nd (i' + 1) (y + t') m _ _ _
+        (kmaxAt_le_yama' M (expP M mfuel) _ _ _ _ (expP_yama_cut M mfuel hyama)) hk'
     have hpst : (fujiCellAt M (expP M mfuel) nd (i' + 1) (y + t')
         (isRepAt (expP M mfuel) (y + t')) (isAscAt M (expP M mfuel) (y + t') mfuel)
         (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
@@ -1469,7 +1475,9 @@ theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
 /-! ## 行 0 は密（`fujiRs` の形） -/
 
 theorem row0_fujiRs (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
-    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length)
+    (hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1)
     (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
     (nd : Nat → Nat) (nrep : Nat) :
     (rowAt (fillValues (fujiRs M mfuel nd nrep)) 0).size
@@ -1484,9 +1492,6 @@ theorem row0_fujiRs (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     omega
   have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
       = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
-  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
-      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
-    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
   have hkpos : ∀ i r, r < (expP M mfuel).len →
       0 < kmaxAt M (expP M mfuel) i ((expP M mfuel).badRootSeam + r)
         (expRes M).length mfuel := by
@@ -1533,7 +1538,9 @@ theorem expandOut_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
     expandOut (fillValues (fujiRs M mfuel nd nrep))
       = (List.range ((S.n - 1) + (expP M mfuel).len * nrep)).map
           (Reconstruction.value ((yamaContext S y hy hpar hh).toRowMountain) nd 0) := by
-  obtain ⟨hsz, hpos⟩ := row0_fujiRs S M hM mfuel hn hM2 hyama y hy hseam nd nrep
+  obtain ⟨hsz, hpos⟩ := row0_fujiRs S M hM mfuel hn hM2
+    (fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama))
+    y hy hseam nd nrep
   exact expandOut_eq_value (fujiRs M mfuel nd nrep)
     ((yamaContext S y hy hpar hh).toRowMountain) nd _
     (shapeRep_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam hasc nd hnd hndpos nrep) hsz hpos

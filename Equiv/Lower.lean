@@ -1254,4 +1254,34 @@ theorem hasCol_state_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel
         (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M)) k j2
         (by omega) (by omega) (by rw [← hie]; exact hkmax)
 
+/-! ## `ShapeRep` の `tall` -/
+
+/-- **原文の高さの段は空段落としのあとにも残る。** -/
+theorem tall_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (nd : Nat → Nat) (nrep c : Nat)
+    (hc : c < x + (expP M mfuel).len * nrep) :
+    (lowerContext S y x hyx hroot hhigher).height c < (fujiRs M mfuel nd nrep).length := by
+  obtain ⟨t, d, hd, _⟩ := cover_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher
+    hfuel nd nrep ((lowerContext S y x hyx hroot hhigher).height c) c hc (Nat.le_refl _)
+  have hts : t < (rowAt (fujiRaw M mfuel nd nrep)
+      ((lowerContext S y x hyx hroot hhigher).height c)).size := lt_size_of_getElem? hd
+  have hlen : (lowerContext S y x hyx hroot hhigher).height c
+      < (fujiRaw M mfuel nd nrep).length := by
+    rcases Nat.lt_or_ge ((lowerContext S y x hyx hroot hhigher).height c)
+      (fujiRaw M mfuel nd nrep).length with h | h
+    · exact h
+    · exfalso
+      rw [rowAt_of_ge _ _ h] at hts
+      simp at hts
+  exact lt_dropEmptyTop_length (fujiRaw M mfuel nd nrep).length (fujiRaw M mfuel nd nrep)
+    ((lowerContext S y x hyx hroot hhigher).height c) (Nat.le_refl _) hlen (by omega)
+
 end Yukito
