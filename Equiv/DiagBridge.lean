@@ -741,4 +741,59 @@ theorem extract_parent_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
       = (extractRow s hs).forest.parent c :=
   extract_parent (linearSetting s hs) _ (mtRep_calcMountain s hs fuel hf) c hc
 
+/-! ## 抽出した設定
+
+設定を 1 回抽出した設定を作る。これで抽出を任意回繰り返せる。 -/
+
+/-- 上限より右の列は抽出後も値 1。 -/
+theorem extractOf_tail_one (S : Setting) (c : Nat) (hc : S.n ≤ c) :
+    (extractOf S).value c = 1 := by
+  show topValue S.tower.base c = 1
+  have hz : height S.tower.base c = 0 := by
+    rcases Nat.eq_zero_or_pos (height S.tower.base c) with h | h
+    · exact h
+    · exfalso
+      have hlive := height_live S.tower.base (S.tower.hpos c)
+      rw [setting_value_zero_of_ge S (height S.tower.base c) c h hc] at hlive
+      omega
+  show (rows S.tower.base (height S.tower.base c)).value c = 1
+  rw [hz]
+  exact S.htail c hc
+
+/-- 設定を 1 回抽出した設定。 -/
+def extractSet (S : Setting) : Setting where
+  tower := extractTowerOf S.tower
+  n := S.n
+  htail := fun c h => extractOf_tail_one S c h
+  bnd := S.bnd
+  hbnd := fun c => Nat.le_trans (topValue_le S.tower.base c) (S.hbnd c)
+
+/-- **抽出後の行から作った山も設定に対応している。** これで抽出を繰り返せる。 -/
+theorem mtRep_extract (S : Setting) (M : List Rowj) (hM : MtRep S M) (fuel : Nat)
+    (hf : S.bnd ≤ fuel) :
+    MtRep (extractSet S)
+      (calcMountainFrom (parseDiag (calcDiagonal M)) (fuel + 1)) where
+  rowRep := fun r hr =>
+    calcMountainFrom_rep (extractSet S) _ fuel r
+      (rep_extract S M hM) (parRep_extract S M hM) hr
+  size0 := by
+    rw [rowAt_calcMountainFrom_zero, assignParents_size, parseDiag_size,
+      calcDiagonal_eq' S M hM]
+    simp
+    rfl
+  tall := by
+    intro i hi
+    have hb : height (extractOf S) i < S.bnd := by
+      have h1 : height (extractOf S) i < (extractOf S).value i :=
+        height_lt (extractOf S) ((extractSet S).tower.hpos i)
+      have h2 : (extractOf S).value i ≤ S.bnd := (extractSet S).hbnd i
+      omega
+    have hlive : 0 < (rows (extractOf S) (0 + height (extractOf S) i)).value i := by
+      rw [Nat.zero_add]
+      exact height_live _ ((extractSet S).tower.hpos i)
+    exact mountainGo_length (extractSet S) fuel
+      (assignParents none (parseDiag (calcDiagonal M))) 0
+      (rep_extract S M hM) (parRep_extract S M hM) (height (extractOf S) i)
+      (by omega) ⟨i, hi, hlive⟩
+
 end Yukito

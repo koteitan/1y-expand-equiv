@@ -51,6 +51,10 @@ structure Setting where
   n : Nat
   /-- 上限より右の列の値は 1。 -/
   htail : ∀ c, n ≤ c → tower.base.value c = 1
+  /-- 値の上限。段の数を押さえるのに使う。 -/
+  bnd : Nat
+  /-- 値は `bnd` 以下。 -/
+  hbnd : ∀ c, tower.base.value c ≤ bnd
 
 /-- 上限より右の列は行 1 以降で死んでいる。 -/
 theorem setting_value_zero_of_ge (S : Setting) (r c : Nat) (hr : 0 < r) (h : S.n ≤ c) :

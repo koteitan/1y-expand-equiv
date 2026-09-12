@@ -122,6 +122,8 @@ def linearSetting (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Setting where
   tower := linearTower s hs
   n := s.length
   htail := fun c h => ofSequence_value_ge s c h
+  bnd := sequenceBound s
+  hbnd := sequence_value_le_bound s
 
 /-- **山の全行が対応している。** -/
 theorem calcMountain_rep (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel r : Nat)

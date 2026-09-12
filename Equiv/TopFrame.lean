@@ -25,27 +25,36 @@ namespace Yukito
 
 open OneY OneY.Numeric OneY.RootGeometry
 
+/-- 塔の底から作る Phyrion 側の山。 -/
+def mountainOfT (T : Tower) : RowMountain := mountain T.base T.hpos
+
+theorem mountainOfT_height_eq (T : Tower) (c : Nat) :
+    (mountainOfT T).height c = height T.base c := rfl
+
+theorem mountainOfT_rootAt_eq (T : Tower) (r c : Nat) :
+    (mountainOfT T).rootAt r c = (rows T.base r).forest.root c := rfl
+
 /-- 頂の 1 つ上の段では、頂の根はもう親を持たない。 -/
-theorem height_succ_of_leftmost (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root : Nat)
-    (hn : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent root = none)
-    (hf : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent (root + 1)
+theorem height_succ_of_leftmost (T : Tower) (root : Nat)
+    (hn : (rows T.base (height T.base root)).forest.parent root = none)
+    (hf : (rows T.base (height T.base root)).forest.parent (root + 1)
       = some root) :
-    height (ofSequence s) (root + 1) = height (ofSequence s) root + 1 := by
-  have hlive : 0 < (rows (ofSequence s)
-      (height (ofSequence s) root + 1)).value (root + 1) :=
-    (rows_parent_iff_next_live (ofSequence s) _ (root + 1)).mp ⟨root, hf⟩
-  have hge : height (ofSequence s) root + 1 ≤ height (ofSequence s) (root + 1) :=
-    (live_iff_le_height (ofSequence s) (ofSequence_positive s hs (root + 1)) _).mp hlive
-  have hle : height (ofSequence s) (root + 1) ≤ height (ofSequence s) root + 1 := by
-    rcases Nat.lt_or_ge (height (ofSequence s) root + 1)
-      (height (ofSequence s) (root + 1)) with hlt | hle
+    height T.base (root + 1) = height T.base root + 1 := by
+  have hlive : 0 < (rows T.base
+      (height T.base root + 1)).value (root + 1) :=
+    (rows_parent_iff_next_live T.base _ (root + 1)).mp ⟨root, hf⟩
+  have hge : height T.base root + 1 ≤ height T.base (root + 1) :=
+    (live_iff_le_height T.base (T.hpos (root + 1)) _).mp hlive
+  have hle : height T.base (root + 1) ≤ height T.base root + 1 := by
+    rcases Nat.lt_or_ge (height T.base root + 1)
+      (height T.base (root + 1)) with hlt | hle
     · exfalso
       -- 行 `H root + 1` で `root+1` が親を持つことになるが、その親は
       -- 行 `H root` での祖先、すなわち `root` しかなく、`root` はそこで死んでいる
-      obtain ⟨q, hq⟩ := (parent_exists_iff_lt_height (ofSequence s)
-        (ofSequence_positive s hs (root + 1)) (height (ofSequence s) root + 1)).mpr hlt
-      have hq' : restrictedParent (rows (ofSequence s) (height (ofSequence s) root)).forest
-          (rows (ofSequence s) (height (ofSequence s) root + 1)).value (root + 1)
+      obtain ⟨q, hq⟩ := (parent_exists_iff_lt_height T.base
+        (T.hpos (root + 1)) (height T.base root + 1)).mpr hlt
+      have hq' : restrictedParent (rows T.base (height T.base root)).forest
+          (rows T.base (height T.base root + 1)).value (root + 1)
           = some q := hq
       obtain ⟨hanc, hpos, _, _⟩ :=
         (restrictedParent_some_iff _ _ (root + 1) q).mp hq'
@@ -55,92 +64,92 @@ theorem height_succ_of_leftmost (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root :
         · exact he
         · exact absurd (ancestor_parent_exists' ha) (by rw [hn]; rintro ⟨t, ht⟩; cases ht)
       rw [hqr] at hpos
-      have hdead : (rows (ofSequence s) (height (ofSequence s) root + 1)).value root = 0 := by
+      have hdead : (rows T.base (height T.base root + 1)).value root = 0 := by
         rcases Nat.eq_zero_or_pos
-          ((rows (ofSequence s) (height (ofSequence s) root + 1)).value root) with h | h
+          ((rows T.base (height T.base root + 1)).value root) with h | h
         · exact h
-        · exact absurd ((live_iff_le_height (ofSequence s)
-            (ofSequence_positive s hs root) _).mp h) (by omega)
+        · exact absurd ((live_iff_le_height T.base
+            (T.hpos root) _).mp h) (by omega)
       omega
     · exact hle
   omega
 
 /-- **底の義務 1。** `topForest` でも最左の子は右隣である。 -/
-theorem topForest_leftmost_child (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat)
-    (h : (mountainOf s hs).topForest.parent e = some root) :
-    (mountainOf s hs).topForest.parent (root + 1) = some root := by
+theorem topForest_leftmost_child (T : Tower) (root e : Nat)
+    (h : (mountainOfT T).topForest.parent e = some root) :
+    (mountainOfT T).topForest.parent (root + 1) = some root := by
   obtain ⟨hHe, hroot⟩ :=
-    (RowMountain.topForest_parent_some_iff (mountainOf s hs) e root).mp h
-  rw [mountainOf_height_eq] at hHe
-  rw [mountainOf_height_eq, mountainOf_rootAt_eq] at hroot
+    (RowMountain.topForest_parent_some_iff (mountainOfT T) e root).mp h
+  rw [mountainOfT_height_eq] at hHe
+  rw [mountainOfT_height_eq, mountainOfT_rootAt_eq] at hroot
   -- `H root = H e − 1`
-  have hHr : height (ofSequence s) root = height (ofSequence s) e - 1 := by
-    have hrh := (mountainOf s hs).root_height
-      (show height (ofSequence s) e - 1 ≤ (mountainOf s hs).height e by
-        rw [mountainOf_height_eq]; omega) (c := e)
-    rw [mountainOf_height_eq, mountainOf_rootAt_eq, hroot] at hrh
+  have hHr : height T.base root = height T.base e - 1 := by
+    have hrh := (mountainOfT T).root_height
+      (show height T.base e - 1 ≤ (mountainOfT T).height e by
+        rw [mountainOfT_height_eq]; omega) (c := e)
+    rw [mountainOfT_height_eq, mountainOfT_rootAt_eq, hroot] at hrh
     exact hrh
   have hlt : root < e := by
-    have hrl := (mountainOf s hs).rootAt_lt
-      (show height (ofSequence s) e - 1 < (mountainOf s hs).height e by
-        rw [mountainOf_height_eq]; omega) (c := e)
-    rw [mountainOf_rootAt_eq, hroot] at hrl
+    have hrl := (mountainOfT T).rootAt_lt
+      (show height T.base e - 1 < (mountainOfT T).height e by
+        rw [mountainOfT_height_eq]; omega) (c := e)
+    rw [mountainOfT_rootAt_eq, hroot] at hrl
     exact hrl
   -- `root` は行 `H root` で `e` の祖先
-  have hanc : (rows (ofSequence s) (height (ofSequence s) root)).forest.Ancestor root e := by
-    have hpath := ((mountainOf s hs).rootAt_eq_iff_path
-      (r := height (ofSequence s) e - 1) (q := root) (c := e)
-      (by rw [mountainOf_height_eq]; omega)).mp
-      (by rw [mountainOf_rootAt_eq]; exact hroot)
+  have hanc : (rows T.base (height T.base root)).forest.Ancestor root e := by
+    have hpath := ((mountainOfT T).rootAt_eq_iff_path
+      (r := height T.base e - 1) (q := root) (c := e)
+      (by rw [mountainOfT_height_eq]; omega)).mp
+      (by rw [mountainOfT_rootAt_eq]; exact hroot)
     rcases hpath with ha | he
     · rw [hHr]
       exact ha
     · omega
   obtain ⟨a, hFa, _⟩ := child_toward hanc
-  have hf := leftmost_child_seq s hs (height (ofSequence s) root) root a hFa
-  have hn : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent root = none := by
-    cases hp : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent root with
+  have hf := leftmost_child_rows T (height T.base root) root a hFa
+  have hn : (rows T.base (height T.base root)).forest.parent root = none := by
+    cases hp : (rows T.base (height T.base root)).forest.parent root with
     | none => rfl
     | some q =>
         exfalso
-        have := (parent_exists_iff_lt_height (ofSequence s)
-          (ofSequence_positive s hs root) (height (ofSequence s) root)).mp ⟨q, hp⟩
+        have := (parent_exists_iff_lt_height T.base
+          (T.hpos root) (height T.base root)).mp ⟨q, hp⟩
         omega
-  have hH1 := height_succ_of_leftmost s hs root hn hf
-  refine (RowMountain.topForest_parent_some_iff (mountainOf s hs) (root + 1) root).mpr
-    ⟨by rw [mountainOf_height_eq]; omega, ?_⟩
-  rw [mountainOf_height_eq, mountainOf_rootAt_eq, hH1,
-    show height (ofSequence s) root + 1 - 1 = height (ofSequence s) root from by omega,
-    (rows (ofSequence s) (height (ofSequence s) root)).forest.root_of_parent_some hf]
-  exact (rows (ofSequence s) (height (ofSequence s) root)).forest.root_of_parent_none hn
+  have hH1 := height_succ_of_leftmost T root hn hf
+  refine (RowMountain.topForest_parent_some_iff (mountainOfT T) (root + 1) root).mpr
+    ⟨by rw [mountainOfT_height_eq]; omega, ?_⟩
+  rw [mountainOfT_height_eq, mountainOfT_rootAt_eq, hH1,
+    show height T.base root + 1 - 1 = height T.base root from by omega,
+    (rows T.base (height T.base root)).forest.root_of_parent_some hf]
+  exact (rows T.base (height T.base root)).forest.root_of_parent_none hn
 
 /-- `topForest` の親から、段の関係を読む。 -/
-theorem topForest_heights (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat)
-    (h : (mountainOf s hs).topForest.parent e = some root) :
-    height (ofSequence s) e = height (ofSequence s) root + 1 ∧
+theorem topForest_heights (T : Tower) (root e : Nat)
+    (h : (mountainOfT T).topForest.parent e = some root) :
+    height T.base e = height T.base root + 1 ∧
       root < e ∧
-      (rows (ofSequence s) (height (ofSequence s) root)).forest.Ancestor root e := by
+      (rows T.base (height T.base root)).forest.Ancestor root e := by
   obtain ⟨hHe, hroot⟩ :=
-    (RowMountain.topForest_parent_some_iff (mountainOf s hs) e root).mp h
-  rw [mountainOf_height_eq] at hHe
-  rw [mountainOf_height_eq, mountainOf_rootAt_eq] at hroot
-  have hHr : height (ofSequence s) root = height (ofSequence s) e - 1 := by
-    have hrh := (mountainOf s hs).root_height
-      (show height (ofSequence s) e - 1 ≤ (mountainOf s hs).height e by
-        rw [mountainOf_height_eq]; omega) (c := e)
-    rw [mountainOf_height_eq, mountainOf_rootAt_eq, hroot] at hrh
+    (RowMountain.topForest_parent_some_iff (mountainOfT T) e root).mp h
+  rw [mountainOfT_height_eq] at hHe
+  rw [mountainOfT_height_eq, mountainOfT_rootAt_eq] at hroot
+  have hHr : height T.base root = height T.base e - 1 := by
+    have hrh := (mountainOfT T).root_height
+      (show height T.base e - 1 ≤ (mountainOfT T).height e by
+        rw [mountainOfT_height_eq]; omega) (c := e)
+    rw [mountainOfT_height_eq, mountainOfT_rootAt_eq, hroot] at hrh
     exact hrh
   have hlt : root < e := by
-    have hrl := (mountainOf s hs).rootAt_lt
-      (show height (ofSequence s) e - 1 < (mountainOf s hs).height e by
-        rw [mountainOf_height_eq]; omega) (c := e)
-    rw [mountainOf_rootAt_eq, hroot] at hrl
+    have hrl := (mountainOfT T).rootAt_lt
+      (show height T.base e - 1 < (mountainOfT T).height e by
+        rw [mountainOfT_height_eq]; omega) (c := e)
+    rw [mountainOfT_rootAt_eq, hroot] at hrl
     exact hrl
   refine ⟨by omega, hlt, ?_⟩
-  have hpath := ((mountainOf s hs).rootAt_eq_iff_path
-    (r := height (ofSequence s) e - 1) (q := root) (c := e)
-    (by rw [mountainOf_height_eq]; omega)).mp
-    (by rw [mountainOf_rootAt_eq]; exact hroot)
+  have hpath := ((mountainOfT T).rootAt_eq_iff_path
+    (r := height T.base e - 1) (q := root) (c := e)
+    (by rw [mountainOfT_height_eq]; omega)).mp
+    (by rw [mountainOfT_rootAt_eq]; exact hroot)
   rcases hpath with ha | he
   · rw [hHr]
     exact ha
@@ -153,50 +162,50 @@ theorem topForest_heights (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat
 その段の値である。`e` はその段が頂なので次の段では親を持たず、`restrictedParent` の
 最大性から `root` の子 `a`（`e` へ至る道の上）について `V e ≤ V a`。あとは
 `sibSucc_rows` で `V a ≤ V (root+1)` を繋ぐ。 -/
-theorem topForest_sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat)
-    (hj : (mountainOf s hs).topForest.parent (root + 1) = some root)
-    (he : (mountainOf s hs).topForest.parent e = some root)
+theorem topForest_sibSucc (T : Tower) (root e : Nat)
+    (hj : (mountainOfT T).topForest.parent (root + 1) = some root)
+    (he : (mountainOfT T).topForest.parent e = some root)
     (hlt : root + 1 < e) :
-    topValue (ofSequence s) e ≤ topValue (ofSequence s) (root + 1) := by
-  obtain ⟨hHe, _, hanc⟩ := topForest_heights s hs root e he
-  obtain ⟨hHj, _, _⟩ := topForest_heights s hs root (root + 1) hj
+    topValue T.base e ≤ topValue T.base (root + 1) := by
+  obtain ⟨hHe, _, hanc⟩ := topForest_heights T root e he
+  obtain ⟨hHj, _, _⟩ := topForest_heights T root (root + 1) hj
   -- 両方の頂は段 `H root + 1`
-  have hve : topValue (ofSequence s) e
-      = (rows (ofSequence s) (height (ofSequence s) root + 1)).value e := by
-    show (rows (ofSequence s) (height (ofSequence s) e)).value e = _
+  have hve : topValue T.base e
+      = (rows T.base (height T.base root + 1)).value e := by
+    show (rows T.base (height T.base e)).value e = _
     rw [hHe]
-  have hvj : topValue (ofSequence s) (root + 1)
-      = (rows (ofSequence s) (height (ofSequence s) root + 1)).value (root + 1) := by
-    show (rows (ofSequence s) (height (ofSequence s) (root + 1))).value (root + 1) = _
+  have hvj : topValue T.base (root + 1)
+      = (rows T.base (height T.base root + 1)).value (root + 1) := by
+    show (rows T.base (height T.base (root + 1))).value (root + 1) = _
     rw [hHj]
   rw [hve, hvj]
   -- `root` の子 `a` で `e` に至る道の上にあるもの
   obtain ⟨a, hFa, hae⟩ := child_toward hanc
-  have hja := leftmost_child_seq s hs (height (ofSequence s) root) root a hFa
-  have hapos : 0 < (rows (ofSequence s) (height (ofSequence s) root + 1)).value a :=
-    (rows_parent_iff_next_live (ofSequence s) _ a).mp ⟨root, hFa⟩
+  have hja := leftmost_child_rows T (height T.base root) root a hFa
+  have hapos : 0 < (rows T.base (height T.base root + 1)).value a :=
+    (rows_parent_iff_next_live T.base _ a).mp ⟨root, hFa⟩
   -- `e` はこの段が頂なので次の段で親を持たない
-  have hnone : (rows (ofSequence s) (height (ofSequence s) root + 1)).forest.parent e
+  have hnone : (rows T.base (height T.base root + 1)).forest.parent e
       = none := by
-    cases hp : (rows (ofSequence s) (height (ofSequence s) root + 1)).forest.parent e with
+    cases hp : (rows T.base (height T.base root + 1)).forest.parent e with
     | none => rfl
     | some q =>
         exfalso
-        have := (parent_exists_iff_lt_height (ofSequence s)
-          (ofSequence_positive s hs e) (height (ofSequence s) root + 1)).mp ⟨q, hp⟩
+        have := (parent_exists_iff_lt_height T.base
+          (T.hpos e) (height T.base root + 1)).mp ⟨q, hp⟩
         omega
-  have hea : (rows (ofSequence s) (height (ofSequence s) root + 1)).value e
-      ≤ (rows (ofSequence s) (height (ofSequence s) root + 1)).value a := by
+  have hea : (rows T.base (height T.base root + 1)).value e
+      ≤ (rows T.base (height T.base root + 1)).value a := by
     rcases hae with ha' | heq
-    · exact (restrictedParent_none_iff (rows (ofSequence s) (height (ofSequence s) root)).forest
-        (rows (ofSequence s) (height (ofSequence s) root + 1)).value e).mp hnone a ha' hapos
+    · exact (restrictedParent_none_iff (rows T.base (height T.base root)).forest
+        (rows T.base (height T.base root + 1)).value e).mp hnone a ha' hapos
     · rw [heq]
       exact Nat.le_refl _
-  have haj : (rows (ofSequence s) (height (ofSequence s) root + 1)).value a
-      ≤ (rows (ofSequence s) (height (ofSequence s) root + 1)).value (root + 1) := by
+  have haj : (rows T.base (height T.base root + 1)).value a
+      ≤ (rows T.base (height T.base root + 1)).value (root + 1) := by
     rcases Nat.lt_or_ge (root + 1) a with hx | hx
-    · exact sibSucc_seq s hs (height (ofSequence s) root) root a hja hFa hx
-    · have hra := (rows (ofSequence s) (height (ofSequence s) root)).forest.parent_left hFa
+    · exact sibSucc_rows T (height T.base root) root a hja hFa hx
+    · have hra := (rows T.base (height T.base root)).forest.parent_left hFa
       have heqa : a = root + 1 := by omega
       rw [heqa]
       exact Nat.le_refl _
@@ -207,19 +216,22 @@ theorem topForest_sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat
 底の 2 つの義務が揃ったので、抽出後の行を底とする塔を組み立てられる。これで
 山の段の定理がそのまま抽出後の行にも効く。 -/
 
+/-- 塔を 1 回抽出した塔。底の frame は `topForest`。 -/
+def extractTowerOf (T : Tower) : Tower where
+  frame0 := (mountainOfT T).topForest
+  base := rawExtract T.base T.hpos
+  hbase := fun c => rawExtract_parent_eq_topForest T.base T.hpos c
+  hpos := fun c => topValue_pos T.base (T.hpos c)
+  A0 := topForest_leftmost_child T
+  B0 := topForest_sibSucc T
+
 /-- 抽出後の行（Phyrion 側）。 -/
 def extractRow (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Row :=
   rawExtract (ofSequence s) (ofSequence_positive s hs)
 
-/-- 抽出後の行を底とする塔。底の frame は `topForest`。 -/
-def extractTower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Tower where
-  frame0 := (mountainOf s hs).topForest
-  base := extractRow s hs
-  hbase := fun c => rawExtract_parent_eq_topForest (ofSequence s)
-    (ofSequence_positive s hs) c
-  hpos := fun c => topValue_pos (ofSequence s) (ofSequence_positive s hs c)
-  A0 := topForest_leftmost_child s hs
-  B0 := topForest_sibSucc s hs
+/-- 抽出後の行を底とする塔。 -/
+def extractTower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Tower :=
+  extractTowerOf (linearTower s hs)
 
 /-- **抽出後の行についても山の段が閉じる。** -/
 theorem firstLiveNotSmaller_extract (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
@@ -252,5 +264,8 @@ def extractSetting (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Setting where
   tower := extractTower s hs
   n := s.length
   htail := fun c h => extractRow_tail_one s hs c h
+  bnd := sequenceBound s
+  hbnd := fun c => Nat.le_trans (topValue_le (ofSequence s) c)
+    (sequence_value_le_bound s c)
 
 end Yukito

@@ -786,9 +786,20 @@ structure MtRep (S : Setting) (M : List Rowj) : Prop where
 `extract_value` / `extract_parent`）が、入力列の山でも抽出後の行から作った山でも
 そのまま使える。入力列の場合は `mtRep_calcMountain` が `MtRep` を与える。
 
-残るのは、抽出後の行から作った山についても `MtRep` を組み立てることである
-（`rowRep` は `calcMountainFrom_rep`、`size0` は `calcDiagonal_eq'` の長さ、
-`tall` は `mountainGo_length` の一般版）。それができると抽出を任意回繰り返せる。
+抽出後の行から作った山についても `MtRep` を組み立てた（`mtRep_extract`）。
+
+```
+extractTowerOf T   塔を 1 回抽出した塔（底の frame は topForest）
+extractSet S       設定を 1 回抽出した設定
+mtRep_extract      抽出後の行から作った山も設定に対応している
+```
+
+`Setting` には値の上限 `bnd` を持たせた。段の数を押さえるのに使う。抽出しても
+上限は増えない（`topValue ≤ value`）ので、同じ `bnd` を引き継げる。
+
+**これで抽出を任意回繰り返せる。** 入力列から `mtRep_calcMountain` で始め、
+`mtRep_extract` を繰り返し適用すればよい。`getBadRoot` と `expand` の再帰が
+この上に乗る。
 
 ## 残っている課題
 
