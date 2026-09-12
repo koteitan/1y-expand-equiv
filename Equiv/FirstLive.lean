@@ -101,4 +101,47 @@ theorem fparent_eq_root (hc : Compat F U) {root j : Nat}
     · exact heq.symm
     · exact absurd (no_dead_ancestor hc hj hwanc hlt (hdead w hlt hwj)) (fun h => h)
 
+/-! ## 残る 1 本と、その再帰構造
+
+`fparent_eq_root` により `j` の `F` 親は `root` である。`e` を `root` の `F` 子で
+`p` の鎖にあるものとすると、`j` と `e` は `F` 兄弟になる。`U e ≥ U p` は最大性から
+出るので、残るのは
+
+```
+F 兄弟 q1 < q2 で q1 が生きているなら U q1 ≥ U q2
+```
+
+だけである。左の兄弟が生きているという条件は外せない（外した形は偽。
+列 `(1,2,4,8,11,8)` の行 2 が反例）。
+
+これは層を降りる再帰で片付く見込みである。各層で次の 3 つのいずれかになる。
+
+1. `q1` が `q2` の祖先 → その層の最大性で `U q1 ≥ U q2`。完了
+2. `q1` と `q2` が兄弟 → 下の `sibling_descent` で一段下の同じ問題に移る
+3. どちらでもない → 合流点 `m` を取る。`m` の直上の両側の要素 `u`, `z` のうち
+   `u = q1` となり、`q2` を `z` に置き換えて続ける
+
+値 12 までの探索では 69,364 件すべてがこの再帰で尽き、未処理は 0 件だった。
+降りる段数は 1 段が 68,560 件、2 段が 804 件。3 の合流点は 5 件で、
+いずれも `u = q1` である。以前つまずいた `u < q1` は 1 度も起きなかった。
+
+基底は行 0 で、frame が線形なので `q1 < q2` なら必ず 1 の場合になる。 -/
+
+/-- 降下段。兄弟なら、差分の大小は元の値の大小と一致する。 -/
+theorem sibling_descent (a : Row) {t q1 q2 : Nat}
+    (h1 : a.forest.parent q1 = some t) (h2 : a.forest.parent q2 = some t) :
+    a.difference q2 ≤ a.difference q1 ↔ a.value q2 ≤ a.value q1 := by
+  have hv1 := a.parent_values h1
+  have hv2 := a.parent_values h2
+  simp only [Row.difference, h1, h2]
+  omega
+
+/-- 行 `r` に当てはめた形。 -/
+theorem succ_sibling_descent (base : Row) (r : Nat) {t q1 q2 : Nat}
+    (h1 : (rows base r).forest.parent q1 = some t)
+    (h2 : (rows base r).forest.parent q2 = some t) :
+    (rows base (r+1)).value q2 ≤ (rows base (r+1)).value q1 ↔
+      (rows base r).value q2 ≤ (rows base r).value q1 :=
+  sibling_descent (rows base r) h1 h2
+
 end Yukito
