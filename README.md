@@ -1400,6 +1400,15 @@ cell_fujiSeams' / cell_fujiIters'
 値の埋めから出る。後者には積んだセルの正体が要るので `cell_fujiIters'` を作った。
 返る状態はちょうど `hasCol_state` が被覆を主張している状態である。
 
+`valTop_yama` は `yamaRs` の形で証明済み（`nd` が「`c < n−1` では
+`topValue base c`」を満たすという仮定つき）。
+
+途中で仮定を 1 つ落とした。`sourceIdx_yama_col` が要求していた
+「最後の列が段 `k` で生きている」は、「行の最後から取る」枝でしか使わない。
+その枝では `k < badRootHeight` なので、`badRootHeight ≤ height (n−1)` さえ
+あれば導ける。積んだセルについては `k ≤ height（元の列）` しか分からないので、
+この弱化が要る。
+
 セルの正体を `yamaRs` の言葉に持ち上げる道具も揃えた。
 
 ```
