@@ -83,4 +83,218 @@ theorem stop_iff_candidate (M : RowMountain) {c p : Nat} (hc : 0 < M.height c)
   have hge := chain_height_ge M h
   omega
 
+/-! ## 森の鎖についての小補題 -/
+
+/-- 祖先を持つ列は親を持つ。 -/
+theorem ancestor_parent_exists' {F : ParentForest} {a c : Nat}
+    (ha : F.Ancestor a c) : ∃ q, F.parent c = some q := by
+  cases ha with
+  | direct hp => exact ⟨_, hp⟩
+  | step _ hp => exact ⟨_, hp⟩
+
+/-- 鎖の分解。`c` の祖先は、親 `q` そのものか、`q` の祖先である。 -/
+theorem ancestor_cases {F : ParentForest} {a c q : Nat}
+    (hq : F.parent c = some q) (ha : F.Ancestor a c) : a = q ∨ F.Ancestor a q := by
+  cases ha with
+  | direct hp =>
+      rw [hq] at hp
+      injection hp with h
+      exact Or.inl h.symm
+  | step h hp =>
+      rw [hq] at hp
+      injection hp with he
+      subst he
+      exact Or.inr h
+
+/-- 親は最も右の祖先。 -/
+theorem ancestor_le_of_parent {F : ParentForest} {a c q : Nat}
+    (hq : F.parent c = some q) (ha : F.Ancestor a c) : a ≤ q := by
+  rcases ancestor_cases hq ha with he | h
+  · omega
+  · exact Nat.le_of_lt h.lt
+
+/-! ## 脚歩行
+
+JS `calcDiagonal` の内側のループを、疎配列を外した列座標で書き写す。
+
+```js
+var l=0; while (mountain[height-1][l].position!=mountain[height][lastIndex].position+1) l++;
+l=mountain[height-1][l].parentIndex;
+var m=0; while (mountain[height][m].position<mountain[height-1][l].position-1) m++;
+if (mountain[height][m].position==mountain[height-1][l].position-1){ lastIndex=m; }
+else { height--; lastIndex=l; }
+```
+
+行 `r` の `position` は `列 − r` である。したがって
+
+* 「`position` が 1 大きい 1 段下のセル」＝ **同じ列の 1 段下**
+* 「`position` が 1 小さい同じ段のセル」＝ **同じ列の 1 段上**
+
+なので、1 歩は次になる。
+
+```
+q := 行 h−1 での c の親
+h ≤ M.height q（q が行 h で生きている）なら  (h,   q)
+そうでなければ                               (h−1, q)
+```
+
+`height==0` の枝 `lastIndex=mountain[0][lastIndex].parentIndex` は、上の式で
+`h−1` を自然数の切り捨て引き算にしたものと一致する。`h=0` では行 `0` の親を取り、
+`0 ≤ M.height q` が常に成り立つので行は下がらない。JS の 2 つの枝は 1 つの式で足りる。 -/
+
+/-- JS の脚 1 歩。状態は `(行, 列)`。 -/
+def legStep (M : RowMountain) (h c : Nat) : Option (Nat × Nat) :=
+  match (M.row (h - 1)).parent c with
+  | none => none
+  | some q => if h ≤ M.height q then some (h, q) else some (h - 1, q)
+
+/-- JS の脚歩行。「その行で親を持たない」で止まり、その列を返す。 -/
+def jsWalk (M : RowMountain) : Nat → Nat → Nat → Option Nat
+  | 0, _, _ => none
+  | fuel + 1, h, c =>
+    match legStep M h c with
+    | none => none
+    | some (h', c') =>
+      if (M.row h').parent c' = none then some c' else jsWalk M fuel h' c'
+
+/-- 列だけを見た歩行。行 `r` の親を辿り、高さが `bound` 以下の列で止まる。 -/
+def legWalk (M : RowMountain) (r bound : Nat) : Nat → Nat → Option Nat
+  | 0, _ => none
+  | fuel + 1, c =>
+    match (M.row r).parent c with
+    | none => none
+    | some q => if M.height q ≤ bound then some q else legWalk M r bound fuel q
+
+/-- JS が `parentIndex = -1` を引かないための不変量。行 `h ≥ 1` で生きている列は
+行 `h−1` に親を持つので、`l` は必ず実在のセルを指す。 -/
+theorem legStep_defined (M : RowMountain) {h c : Nat} (hh : 0 < h)
+    (hlive : h ≤ M.height c) : ∃ q, (M.row (h - 1)).parent c = some q :=
+  M.parent_exists (h - 1) c (by omega)
+
+/-- 行の記録は要らない。`h = bound` から始めた歩行は、列だけの歩行と一致する。
+
+理由は、行が下がるのは `M.height q < bound` のときだけで、そのとき
+`M.parent_endpoint` から `M.height q = bound − 1` となり、下がった先で
+必ず停止条件が成り立つからである。すなわち歩行は高々 1 回しか降りず、
+降りたその場で止まる。 -/
+theorem jsWalk_eq_legWalk (M : RowMountain) (bound : Nat) :
+    ∀ fuel c, jsWalk M fuel bound c = legWalk M (bound - 1) bound fuel c := by
+  intro fuel
+  induction fuel with
+  | zero => intro c; rfl
+  | succ fuel ih =>
+    intro c
+    rw [jsWalk, legWalk, legStep]
+    cases hp : (M.row (bound - 1)).parent c with
+    | none => rfl
+    | some q =>
+      dsimp only
+      by_cases hq : bound ≤ M.height q
+      · rw [if_pos hq]
+        dsimp only
+        by_cases hs : M.height q ≤ bound
+        · rw [if_pos ((M.parent_none_iff bound q).mpr hs), if_pos hs]
+        · have hne : ¬ ((M.row bound).parent q = none) := fun h0 =>
+            hs ((M.parent_none_iff bound q).mp h0)
+          rw [if_neg hne, if_neg hs]
+          exact ih q
+      · rw [if_neg hq]
+        dsimp only
+        have hend := M.parent_endpoint hp
+        rw [if_pos ((M.parent_none_iff (bound - 1) q).mpr (by omega)),
+          if_pos (show M.height q ≤ bound by omega)]
+
+/-! ## 列歩行が Phyrion の擬親と一致すること -/
+
+/-- 行 `r` の祖先鎖の要素は、その行で生きている。 -/
+theorem chain_height_ge' (M : RowMountain) {r c p : Nat}
+    (h : (M.row r).Ancestor p c) : r ≤ M.height p := by
+  induction h with
+  | direct hp => exact M.parent_endpoint hp
+  | step _ _ ih => exact ih
+
+/-- 歩行が止まったら、その列は鎖の上にあり、高さ条件を満たし、
+それより右の鎖の要素はすべて高さ条件を破る。 -/
+theorem legWalk_sound (M : RowMountain) (r bound : Nat) :
+    ∀ fuel c p, legWalk M r bound fuel c = some p →
+      (M.row r).Ancestor p c ∧ M.height p ≤ bound ∧
+        ∀ q, (M.row r).Ancestor q c → p < q → bound < M.height q := by
+  intro fuel
+  induction fuel with
+  | zero => intro c p h; cases h
+  | succ fuel ih =>
+    intro c p h
+    rw [legWalk] at h
+    cases hp : (M.row r).parent c with
+    | none => rw [hp] at h; cases h
+    | some q =>
+      rw [hp] at h
+      dsimp only at h
+      by_cases hq : M.height q ≤ bound
+      · rw [if_pos hq] at h
+        injection h with he
+        subst he
+        refine ⟨ParentForest.Ancestor.direct hp, hq, ?_⟩
+        intro q' ha hlt
+        have := ancestor_le_of_parent hp ha
+        omega
+      · rw [if_neg hq] at h
+        obtain ⟨ha, hle, hmax⟩ := ih q p h
+        refine ⟨ha.trans (ParentForest.Ancestor.direct hp), hle, ?_⟩
+        intro q' ha' hlt
+        rcases ancestor_cases hp ha' with he | ha''
+        · subst he; omega
+        · exact hmax q' ha'' hlt
+
+/-- 高さ条件を満たす鎖の要素が 1 つでもあれば、燃料が足りている限り歩行は止まる。 -/
+theorem legWalk_isSome (M : RowMountain) (r bound : Nat) :
+    ∀ fuel c p, c ≤ fuel → (M.row r).Ancestor p c → M.height p ≤ bound →
+      ∃ p', legWalk M r bound fuel c = some p' := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    intro c p hf ha _
+    have := ha.lt
+    omega
+  | succ fuel ih =>
+    intro c p hf ha hle
+    obtain ⟨q, hq⟩ := ancestor_parent_exists' ha
+    rw [legWalk, hq]
+    dsimp only
+    by_cases hb : M.height q ≤ bound
+    · exact ⟨q, by rw [if_pos hb]⟩
+    · rw [if_neg hb]
+      rcases ancestor_cases hq ha with he | ha'
+      · subst he; exact absurd hle hb
+      · have := (M.row r).parent_left hq
+        exact ih q p (by omega) ha' hle
+
+/-- 親を持たない列では歩行は何も返さない。 -/
+theorem legWalk_none (M : RowMountain) (r bound : Nat) {c : Nat}
+    (hp : (M.row r).parent c = none) : ∀ fuel, legWalk M r bound fuel c = none := by
+  intro fuel
+  cases fuel with
+  | zero => rfl
+  | succ fuel => rw [legWalk, hp]
+
+/-- **抽出段の主定理。** JS の脚歩行の結果は Phyrion の `Pseudo.parent` に一致する。 -/
+theorem jsWalk_eq_pseudo (M : RowMountain) (c fuel : Nat) (hf : c ≤ fuel) :
+    jsWalk M fuel (M.height c) c = Pseudo.parent M c := by
+  rw [jsWalk_eq_legWalk]
+  by_cases hz : M.height c = 0
+  · rw [legWalk_none M _ _ ((M.parent_none_iff _ c).mpr (by omega)) fuel,
+      (Pseudo.parent_none_iff M c).mpr hz]
+  · have hc : 0 < M.height c := by omega
+    obtain ⟨p0, hanc0, hh0⟩ := Pseudo.candidate_exists M hc
+    obtain ⟨p, hw⟩ := legWalk_isSome M (M.height c - 1) (M.height c) fuel c p0 hf
+      hanc0 (by omega)
+    obtain ⟨hanc, hle, hmax⟩ := legWalk_sound M (M.height c - 1) (M.height c) fuel c p hw
+    have hge := chain_height_ge' M hanc
+    rw [hw, (Pseudo.parent_some_iff M c p).mpr ⟨hc, ⟨hanc, by omega⟩, ?_⟩]
+    rintro q ⟨hancq, hhq⟩
+    rcases Nat.lt_or_ge p q with hlt | hge'
+    · have := hmax q hancq hlt
+      omega
+    · exact hge'
+
 end Yukito
