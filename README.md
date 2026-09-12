@@ -1155,7 +1155,23 @@ badRootHeight = cutH − 1`）。そこで枝の選び方が単純になる。
 fujiSource_yama   d = 0 かつ yamakazi のとき
                     fujiSource P i k isRep = (k, isRep && k < badRootHeight)
 kmaxAt_yama       積む段の数は継ぎ目の高さそのもの（上りの判定によらない）
-kmaxAt_le_yama    d ≤ len が自明なので kmax ≤ j + len*i + 1 が出る
+kmaxAt_le_yama'   d ≤ len が自明なので kmax ≤ j + len*i + 1 が仮定なしで出る
+```
+
+`kmax ≤ j + len*i + 1` の仮定だった「継ぎ目の高さ ≤ `j+1`」は仮定なしで出せた。
+`hasCol M r j` が真なら段 `r` に列 `j` のセルがあり position は非負なので `r ≤ j`
+である（`hasCol_le`）。したがって `seamHeightOf M j hi ≤ j + 1`
+（`seamHeightOf_le_col`）。積む段の数が正であることも、行 0 にすべての列がある
+ことから出る（`hasCol_zero` / `kmaxAt_pos'`）。
+
+親の添字が自分より前であることもループ全体へ広げた。積むセルの親は
+`lookupPos` で「今の段」を引いた添字なので、積む場所の添字より必ず小さい。
+
+```
+ParLt / ParLt.dep                   どの段でも親の添字は自分より前
+fujiCell_par_lt / fujiCellAt_par_lt 積むセルについて
+parLt_fujiRows / parLt_fujiSeams / parLt_fujiIters  ループで保たれる
+parLt_of_mtRep / parLt_cutChild     元の山と子を切ったあとでも成り立つ
 ```
 
 原文の `TerminalCopy.Context` は
@@ -1196,6 +1212,11 @@ JS が掛ける、という見かけの違いを埋める。
 ```
 size_rowAt_cutChild      cutH 以下の段は最後のセルが 1 つ減る
 rowAt_cutChild_getElem?  残ったセルは元のセルそのもの
+posMono_pop / rowsMono_cutChild  位置の単調性は保たれる
+size_rowAt_cutChild_zero 行 0 の大きさは n−1（= afterCutLength）
+colLt_cutChild           残るセルの列はすべて n−1 より小さい（列 n−1 が消える）
+hasCol_cutChild_zero     行 0 は列 0 … n−2 を覆う
+cutChild_length_ge       段の数は 1 つしか減らない
 ```
 
 JS は列 `x` を切ってから `i = 1` の継ぎ目 `j = y` で列 `y + L = x` を積み直す。
