@@ -1810,4 +1810,163 @@ theorem expandOut_step_lower (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
   exact Reconstruction.value_prefix_congr _ _ _ _ (x + (x - y) * nrep)
     (fun _ _ => rfl) (fun _ _ _ => rfl) hup c hc' 0
 
+/-- **層 `K`（山崎噴火の枝）が再帰の底。** -/
+theorem expandOut_base_yama (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hK : K < sequenceBound s)
+    (hxs : s.length - 1 = x) (hyx : y < x)
+    (M : List Rowj) (f efuel nrep : Nat)
+    (hM : MtRep (iterSet (linearSetting s hs.1) K) M) (hM2 : 2 ≤ M.length)
+    (hyama : expYama M (f + 1)) (hsm : expSeam M (f + 1) = y)
+    (hy : y < (iterSet (linearSetting s hs.1) K).n - 1)
+    (hpar : ((mountainOf' (iterSet (linearSetting s hs.1) K)).row
+        (height (iterSet (linearSetting s hs.1) K).tower.base
+          ((iterSet (linearSetting s hs.1) K).n - 1) - 1)).parent
+        ((iterSet (linearSetting s hs.1) K).n - 1) = some y)
+    (hh : 0 < height (iterSet (linearSetting s hs.1) K).tower.base
+      ((iterSet (linearSetting s hs.1) K).n - 1))
+    (hfuel : (rowAt M (height (iterSet (linearSetting s hs.1) K).tower.base
+      ((iterSet (linearSetting s hs.1) K).n - 1) - 1)).size ≤ f + 1)
+    (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
+    expandOut (expandJS nrep (f + 1) (efuel + 1) M)
+      = (List.range (x + (x - y) * nrep)).map
+          (TowerReconstruction.assemble
+            ((List.range' K (sequenceBound s - K)).map
+              (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1)) := by
+  have hnn : (iterSet (linearSetting s hs.1) K).n = s.length := iterSet_n s hs.1 K
+  have hn : 1 < (iterSet (linearSetting s hs.1) K).n := by omega
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hseamP : (expP M (f + 1)).badRootSeam = y := hsm
+  have hlenP : (expP M (f + 1)).len = (iterSet (linearSetting s hs.1) K).n - 1 - y :=
+    expP_len_yama (iterSet (linearSetting s hs.1) K) M hM (f + 1) h0 y hseamP
+  have hlen' : (expP M (f + 1)).len = x - y := by rw [hlenP]; omega
+  -- 新しい対角は上の層の畳み込み
+  have hnda : ∀ c, expNd nrep (f + 1) efuel M c
+      = TowerReconstruction.assemble
+          ((List.range' (K + 1) (sequenceBound s - (K + 1))).map
+            (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c :=
+    fun c => expNd_eq_assemble s hs hbad hK M hM f hn hyama hsm hxs nrep efuel c
+  have hnd : ∀ c, c < (iterSet (linearSetting s hs.1) K).n - 1 →
+      expNd nrep (f + 1) efuel M c
+        = topValue (iterSet (linearSetting s hs.1) K).tower.base c := by
+    intro c hc
+    have hb : (iterSet (linearSetting s hs.1) K).tower.base
+        = (layers (rootedSequence s hs) K).row := iterSet_base s hs K
+    rw [hnda c, assemble_above_layer s hs hbad K (by omega) (by omega), hb]
+    rfl
+  have hndpos : ∀ c, 0 < expNd nrep (f + 1) efuel M c := by
+    intro c
+    rw [hnda c]
+    exact TowerReconstruction.assemble_positive _ _ (fun _ => by decide) c
+  have hjs := expandJS_out_yama (iterSet (linearSetting s hs.1) K) M hM (f + 1) hn hM2 hyama
+    y hy hpar hh hseamP hfuel nrep efuel hnd hndpos hhas
+  have hwid : (iterSet (linearSetting s hs.1) K).n - 1 + (expP M (f + 1)).len * nrep
+      = x + (x - y) * nrep := by rw [hlen']; omega
+  rw [hwid] at hjs
+  rw [hjs]
+  have hsplit : sequenceBound s - K = (sequenceBound s - (K + 1)) + 1 := by omega
+  have hG : expandedMountain (rootedSequence s hs) hbad K
+      = ((yamaContext (iterSet (linearSetting s hs.1) K) y hy hpar hh)).toRowMountain := by
+    rw [yamaContext_eq s hs K d x y hbad hxs hy hpar hh]
+    show _ = (badAtTerminalContext (rootedSequence s hs) hbad).toRowMountain
+    simp only [expandedMountain, Nat.lt_irrefl, ↓reduceDIte, ↓reduceIte]
+    rfl
+  refine List.map_congr_left ?_
+  intro c hc
+  rw [hsplit]
+  show _ = TowerReconstruction.assemble
+    ((List.range' K ((sequenceBound s - (K + 1)) + 1)).map
+      (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c
+  rw [List.range'_succ]
+  show _ = Reconstruction.value (expandedMountain (rootedSequence s hs) hbad K)
+    (TowerReconstruction.assemble
+      ((List.range' (K + 1) (sequenceBound s - (K + 1))).map
+        (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1)) 0 c
+  rw [hG]
+  congr 1
+  funext c'
+  exact hnda c'
+
+/-! ## 再帰に必要な補助 -/
+
+/-- 各段のセルの数は列の上限以下。 -/
+theorem rowAt_size_le (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat) :
+    (rowAt M r).size ≤ S.n := by
+  rcases Nat.lt_or_ge r M.length with hr | hr
+  · have hrep := rep_top S M hM r hr
+    rcases Nat.eq_zero_or_pos (rowAt M r).size with hz | hpos
+    · omega
+    · have hlast : (rowAt M r).size - 1 < (rowAt M r).size := by omega
+      have hge := posMono_add (rowAt M r) hrep.posMono ((rowAt M r).size - 1) 0
+        ((rowAt M r).size - 1) (by omega) hlast (by omega)
+      have hb := hrep.bound _ (mem_of_getElem _ ((rowAt M r).size - 1) hlast)
+      omega
+  · rw [rowAt_of_ge M r hr]
+    simp
+
+/-- 抽出しても値の上限は変わらない。 -/
+theorem iterSet_bnd (S : Setting) (k : Nat) : (iterSet S k).bnd = S.bnd := by
+  induction k with
+  | zero => rfl
+  | succ k ih => exact ih
+
+/-- **行 0 の最後のセルが親を持つこと。** -/
+theorem hhas_of_parent (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (hM0 : 0 < M.length)
+    (hp : S.tower.base.forest.parent (S.n - 1) ≠ none) :
+    (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+      then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true := by
+  have hsz := hM.size0
+  have hlt : (rowAt M 0).size - 1 < (rowAt M 0).size := by omega
+  rw [dif_pos hlt]
+  have hpos : ((rowAt M 0)[(rowAt M 0).size - 1]'hlt).pos = (rowAt M 0).size - 1 :=
+    pos_eq_index (rowAt M 0) S.n _ (rep_top S M hM 0 hM0) hsz _ hlt
+  cases hq : ((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par with
+  | some _ => rfl
+  | none =>
+      exfalso
+      have hF := parRep_none S M hM 0 hM0 _ hlt hq
+      rw [hpos, hsz] at hF
+      refine hp ?_
+      have hF' : (rows S.tower.base 0).forest.parent (S.n - 1) = none := by simpa using hF
+      exact hF'
+
+/-- **層 `k ≤ K` では最後の列の値は 1 より大きい。** -/
+theorem value_gt_one_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (k : Nat)
+    (hk : k ≤ K) :
+    1 < (iterSet (linearSetting s hs.1) k).tower.base.value x := by
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  have h1 := badAt_value_gt_one hbad
+  have h2 := layers_value_antitone (rootedSequence s hs) hk x
+  rw [hb]
+  omega
+
+/-- **層 `k < K` は山崎噴火の枝ではない。** -/
+theorem not_expYama_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (k : Nat)
+    (hk : k < K) (M : List Rowj) (f : Nat)
+    (hM : MtRep (iterSet (linearSetting s hs.1) k) M)
+    (hn : 1 < (iterSet (linearSetting s hs.1) k).n) :
+    ¬ expYama M (f + 1) := by
+  have hnn : (iterSet (linearSetting s hs.1) k).n = s.length := iterSet_n s hs.1 k
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  intro hy
+  have hlv : lastVal (rowAt (expDg M (f + 1)) 0)
+      = topValue (iterSet (linearSetting s hs.1) k).tower.base
+        ((iterSet (linearSetting s hs.1) k).n - 1) :=
+    lastVal_expDg (iterSet (linearSetting s hs.1) k) M hM f hn
+  have hone : topValue (layers (rootedSequence s hs) k).row x = 1 := by
+    have : lastVal (rowAt (expDg M (f + 1)) 0) = 1 := hy
+    rw [hlv, hb] at this
+    rw [show x = (iterSet (linearSetting s hs.1) k).n - 1 from by omega]
+    exact this
+  obtain ⟨r, p, hp⟩ := badAt_of_top_one (layers (rootedSequence s hs) k)
+    (by have := value_gt_one_layer s hs hbad hxs k (by omega); rw [hb] at this; exact this) hone
+  have hp' : BadAt (rootedSequence s hs) k r x p := hp
+  have := badAt_unique hbad hp'
+  omega
+
 end Yukito
