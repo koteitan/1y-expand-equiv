@@ -918,7 +918,35 @@ value_of_diff  差分の関係を満たす値は Reconstruction.value に一致�
 2 重帰納である。JS の埋め方がこの 3 条件（差分・頂・頂より上）を満たすことを言えば、
 値の部分は済む。
 
-残るのは 2 と 3 で、3 が全体の大半である。
+3 の下ごしらえとして、`expand` の本体で使う走査を写して密表現に翻訳した。
+
+```
+hasCol         行 r に列 j があるか        ⟺ 0 < (rows base r).value j
+seamHeightOf   列 j を含む最上段の 1 つ上  = height j + 1
+isAscending    行 bh で列 j の親鎖が列 seam に届くか（翻訳は未）
+```
+
+Phyrion 側の `OrdinaryCopy`（層 `k > K`）は次の形である。
+
+```
+source0 c    = if c < y then c else y + (c − y) % length      元の列
+block0 c     = if c < y then 0 else (c − y) / length          何番目のコピーか
+parentCopy b p = if p < y then p else p + b*length            親の写り先
+parent r c   = ((mountain.row r).parent (source0 c)).map (parentCopy (block0 c))
+height c     = height (source0 c)
+```
+
+`y` が bad root の列、`x` が最後の列、`length = x − y` である。JS 側の
+
+```js
+parentPosition = 元の親の position
+  + parentShifts*(afterCutLength−badRootSeam)*(元の親の列 >= badRootSeam) − (k−sy)
+```
+
+がこれにあたる。`(元の親の列 >= badRootSeam)` の掛け算が `parentCopy` の場合分けで
+ある。
+
+残るのは 2（層の再帰）と 3（森のコピー）で、3 が全体の大半である。
 
 ## 残っている課題
 

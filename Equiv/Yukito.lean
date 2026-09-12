@@ -299,4 +299,58 @@ def getBadRoot (M : List Rowj) (mfuel : Nat) : Nat → Option Nat
         else none
     else getBadRoot d mfuel fuel
 
+/-! ## Mt.Fuji シェルの補助スキャン
+
+`expand` の本体で使う 3 つの走査を写す。
+
+```js
+// 列 j が段 r にあるか
+var l=0; while (mountain[r][l] && mountain[r][l].position+r<j) l++;
+mountain[r][l] && mountain[r][l].position+r==j
+
+// seamHeight：列 j を含む最上段の 1 つ上
+var seamHeight=afterCutHeight-1;
+while (true){ …列 j があれば break…; seamHeight--; }
+seamHeight++;
+
+// isAscending：行 badRootHeight で列 j の親鎖が列 badRootSeam に届くか
+```
+-/
+
+/-- 行 `r` に列 `j` があるか。 -/
+def hasCol (M : List Rowj) (r j : Nat) : Bool :=
+  match lookupPos (rowAt M r) (j - r) with
+  | none => false
+  | some m =>
+    if h : m < (rowAt M r).size then ((rowAt M r)[m]'h).pos + r == j else false
+
+/-- JS の `seamHeight`。列 `j` を含む最上段（`hi` 未満）の 1 つ上。 -/
+def seamHeightOf (M : List Rowj) (j : Nat) : Nat → Nat
+  | 0 => 0
+  | h + 1 => if hasCol M h j then h + 1 else seamHeightOf M j h
+
+/-- JS の `isAscending` の内側のループ。行 `bh` で親鎖を辿り、列 `seam` に届くか。 -/
+def ascendTo (M : List Rowj) (bh seam : Nat) : Nat → Nat → Bool
+  | 0, _ => false
+  | fuel + 1, p =>
+    let row := rowAt M bh
+    if hp : p < row.size then
+      let col := (row[p]'hp).pos + bh
+      if col < seam then false
+      else if col = seam then true
+      else
+        match (row[p]'hp).par with
+        | none => false
+        | some q => ascendTo M bh seam fuel q
+    else false
+
+/-- JS の `isAscending`。 -/
+def isAscending (M : List Rowj) (bh seam j fuel : Nat) : Bool :=
+  match lookupPos (rowAt M bh) (j - bh) with
+  | none => false
+  | some m =>
+    if h : m < (rowAt M bh).size then
+      if ((rowAt M bh)[m]'h).pos + bh = j then ascendTo M bh seam fuel m else false
+    else false
+
 end Yukito

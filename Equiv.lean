@@ -26,3 +26,4 @@ import Equiv.Extract
 import Equiv.Diagonal
 import Equiv.BadRoot
 import Equiv.Recon
+import Equiv.Fuji
