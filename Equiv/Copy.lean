@@ -1988,4 +1988,49 @@ theorem fujiCellAt_val_of_par_some (M : List Rowj) (P : FujiParams) (nd : Nat �
     (fujiCellAt M P nd i j isRep res k).val = 0 :=
   fujiCell_val_of_par_some M P (rowAt res k) _ _ k i j _ _ p h
 
+/-! ## 密表現に親があれば疎配列にも親がある -/
+
+theorem parRep_some_of_forest (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat)
+    (hr : r < M.length) (sx : Nat) (hsx : sx < (rowAt M r).size) (q : Nat)
+    (hF : (rows S.tower.base r).forest.parent (((rowAt M r)[sx]'hsx).pos + r) = some q) :
+    ∃ sp, ((rowAt M r)[sx]'hsx).par = some sp := by
+  cases hp : ((rowAt M r)[sx]'hsx).par with
+  | none =>
+      exfalso
+      have h := parRep_none S M hM r hr sx hsx hp
+      rw [h] at hF
+      exact absurd hF (by simp)
+  | some sp => exact ⟨sp, rfl⟩
+
+/-- **親の位置は負にならない。** 密表現に親があり、その新しい列が段より右なら、
+JS の `parentPos` はその位置を返す。 -/
+theorem parentPos_some (S : Setting) (M : List Rowj) (hM : MtRep S M) (P : FujiParams)
+    (sy sx k shifts q : Nat) (hr : sy < M.length) (hsx : sx < (rowAt M sy).size)
+    (hsy : sy ≤ k)
+    (hF : (rows S.tower.base sy).forest.parent (((rowAt M sy)[sx]'hsx).pos + sy) = some q)
+    (hge : k ≤ q + (if P.badRootSeam ≤ q then shifts * P.len else 0)) :
+    parentPos M P sy sx k shifts
+      = some (q + (if P.badRootSeam ≤ q then shifts * P.len else 0) - k) := by
+  obtain ⟨sp, hsp⟩ := parRep_some_of_forest S M hM sy hr sx hsx q hF
+  obtain ⟨hsp', hFsp⟩ := parRep_some S M hM sy hr sx hsx sp hsp
+  rw [hF] at hFsp
+  have hq : ((rowAt M sy)[sp]'hsp').pos + sy = q := (Option.some.inj hFsp).symm
+  obtain ⟨pp, hpp⟩ : ∃ pp, ((rowAt M sy)[sp]'hsp').pos = pp := ⟨_, rfl⟩
+  rw [hpp] at hq
+  unfold parentPos
+  try dsimp only
+  rw [dif_pos hsx, hsp]
+  try dsimp only
+  rw [dif_pos hsp', hpp]
+  try dsimp only
+  rcases Decidable.em (P.badRootSeam ≤ q) with hc | hc
+  · rw [if_pos (show P.badRootSeam ≤ pp + sy by omega), if_pos hc] at *
+    rw [if_pos (show k - sy ≤ pp + shifts * P.len by omega)]
+    congr 1
+    omega
+  · rw [if_neg (show ¬ P.badRootSeam ≤ pp + sy by omega), if_neg hc] at *
+    rw [if_pos (show k - sy ≤ pp + 0 by omega)]
+    congr 1
+    omega
+
 end Yukito
