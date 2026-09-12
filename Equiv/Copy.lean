@@ -437,4 +437,116 @@ theorem lookupPos_of_rowExt {a b : Rowj} (h : RowExt a b) (hmono : PosMono b) (q
   obtain ⟨hb, heq⟩ := h.getElem i hi
   exact lookupPos_of_pos b hmono q i hb (by rw [heq]; exact hpos)
 
+/-! ## 位置の単調性と列の上限
+
+積むセルの列は `(i, j)` の辞書式順で真に増える。段への積み足しは末尾なので、
+各段の位置はつねに真に増加のままである。 -/
+
+/-- どの段も位置が真に増加している。 -/
+def RowsMono (res : List Rowj) : Prop := ∀ m, PosMono (rowAt res m)
+
+/-- どのセルの列も `b` より小さい。 -/
+def ColLt (res : List Rowj) (b : Nat) : Prop :=
+  ∀ (m t : Nat) (c : Cell), (rowAt res m)[t]? = some c → c.pos + m < b
+
+theorem ColLt.mono {res : List Rowj} {b b' : Nat} (h : ColLt res b) (hb : b ≤ b') :
+    ColLt res b' := fun m t c hc => Nat.lt_of_lt_of_le (h m t c hc) hb
+
+theorem posMono_push (row : Rowj) (hmono : PosMono row) (c : Cell)
+    (h : ∀ (t : Nat) (d : Cell), row[t]? = some d → d.pos < c.pos) : PosMono (row.push c) := by
+  intro p q hp hq hpq
+  rw [Array.size_push] at hp hq
+  rcases Nat.lt_or_ge q row.size with hqs | hqs
+  · have hps : p < row.size := by omega
+    rw [Array.getElem_push_lt hps, Array.getElem_push_lt hqs]
+    exact hmono p q hps hqs hpq
+  · have hqe : q = row.size := by omega
+    have hps : p < row.size := by omega
+    subst hqe
+    rw [Array.getElem_push_lt hps, Array.getElem_push_eq]
+    exact h p (row[p]'hps) (Array.getElem?_eq_getElem hps)
+
+theorem fujiCellAt_col (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (res : List Rowj) (k : Nat) (h : k ≤ j + P.len * i) :
+    (fujiCellAt M P nd i j isRep res k).pos + k = j + P.len * i := by
+  show (j + P.len * i - k) + k = j + P.len * i
+  omega
+
+theorem fujiRows_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (kmax : Nat) (res : List Rowj) (b : Nat)
+    (hk : kmax ≤ j + P.len * i + 1) (hb : ColLt res b) (hbc : b ≤ j + P.len * i)
+    (hmono : RowsMono res) :
+    RowsMono (fujiRows M P nd i j isRep kmax res) ∧
+      ColLt (fujiRows M P nd i j isRep kmax res) (j + P.len * i + 1) := by
+  constructor
+  · intro m
+    rw [rowAt_fujiRows]
+    split
+    · next hm =>
+        refine posMono_push _ (hmono m) _ ?_
+        intro t d hd
+        have h1 := hb m t d hd
+        have h2 := fujiCellAt_col M P nd i j isRep res m (by omega)
+        omega
+    · exact hmono m
+  · intro m t c hc
+    rw [rowAt_fujiRows] at hc
+    split at hc
+    · next hm =>
+        rw [Array.getElem?_push] at hc
+        split at hc
+        · have he := Option.some.inj hc
+          have h2 := fujiCellAt_col M P nd i j isRep res m (by omega)
+          rw [he] at h2
+          omega
+        · have := hb m t c hc
+          omega
+    · have := hb m t c hc
+      omega
+
+theorem fujiSeams_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (t : Nat) (res : List Rowj) (b : Nat),
+      ColLt res b → b ≤ P.badRootSeam + P.len * i → RowsMono res →
+      RowsMono (fujiSeams M P nd i ach af t res) ∧
+        ColLt (fujiSeams M P nd i ach af t res) (P.badRootSeam + t + P.len * i) := by
+  intro t
+  induction t with
+  | zero =>
+      intro res b hb hbc hmono
+      exact ⟨hmono, hb.mono (by omega)⟩
+  | succ t ih =>
+      intro res b hb hbc hmono
+      obtain ⟨hm1, hb1⟩ := ih res b hb hbc hmono
+      rw [fujiSeams_succ]
+      have h := fujiRows_invariant M P nd i (P.badRootSeam + t)
+        (isRepAt P (P.badRootSeam + t)) (kmaxAt M P i (P.badRootSeam + t) ach af)
+        (fujiSeams M P nd i ach af t res) (P.badRootSeam + t + P.len * i)
+        (hkm i (P.badRootSeam + t)) hb1 (by omega) hm1
+      exact ⟨h.1, h.2.mono (by omega)⟩
+
+theorem fujiIters_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (n : Nat) (res : List Rowj) (b : Nat),
+      ColLt res b → b ≤ P.badRootSeam + P.len → RowsMono res →
+      RowsMono (fujiIters M P nd ach af n res) ∧
+        ColLt (fujiIters M P nd ach af n res) (P.badRootSeam + P.len + P.len * n) := by
+  intro n
+  induction n with
+  | zero =>
+      intro res b hb hbc hmono
+      exact ⟨hmono, hb.mono (by omega)⟩
+  | succ n ih =>
+      intro res b hb hbc hmono
+      obtain ⟨hm1, hb1⟩ := ih res b hb hbc hmono
+      rw [fujiIters_succ]
+      have hle : P.badRootSeam + P.len + P.len * n ≤ P.badRootSeam + P.len * (n + 1) := by
+        rw [Nat.mul_succ]
+        omega
+      have h := fujiSeams_invariant M P nd (n + 1) ach af hkm P.len
+        (fujiIters M P nd ach af n res) (P.badRootSeam + P.len + P.len * n) hb1 hle hm1
+      refine ⟨h.1, h.2.mono ?_⟩
+      rw [Nat.mul_succ]
+      omega
+
 end Yukito
