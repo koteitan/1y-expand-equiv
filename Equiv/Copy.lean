@@ -715,4 +715,28 @@ theorem fujiCell_par_col (M : List Rowj) (P : FujiParams) (cur : Rowj)
       obtain ⟨hx, sp, hpar, hsp, hcol⟩ := parentPos_eq M P sy sx k shifts q hsy hq
       exact ⟨hp', hx, sp, hpar, hsp, by rw [hpos]; exact hcol⟩
 
+/-! ## 枝の選び方についての初等的な事実 -/
+
+/-- **元の段はつねに行き先の段以下。** 4 つの枝のどれでも成り立つ。 -/
+theorem fujiSource_le (P : FujiParams) (i k : Nat) (isRep : Bool) :
+    (fujiSource P i k isRep).1 ≤ k := by
+  unfold fujiSource
+  dsimp only
+  repeat' split
+  all_goals try dsimp only
+  all_goals omega
+
+/-- **積む段の数の上限。** 継ぎ目の高さが `j + 1` 以下で、切りの落差 `d` が
+コピー 1 つぶんの長さ以下なら、`kmax ≤ j + len*i + 1` である。 -/
+theorem kmaxAt_le (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hs : seamHeightOf M j ach ≤ j + 1)
+    (hd : P.cutHeight - P.badRootHeight ≤ P.len) :
+    kmaxAt M P i j ach af ≤ j + P.len * i + 1 := by
+  have hmul : (P.cutHeight - P.badRootHeight) * i ≤ P.len * i := Nat.mul_le_mul_right i hd
+  unfold kmaxAt
+  dsimp only
+  split
+  · omega
+  · omega
+
 end Yukito

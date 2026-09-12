@@ -1040,9 +1040,26 @@ popFold / rowAt_cutChild       子を切る。残る段は cutH 以下なら pop
 ```
 fujiCell_col          積むセルの列は段によらず j + len*i（= encode j i）
 parentPos_eq          親の新しい列 = 元の親の列 + （継ぎ目以上なら shifts*len）
+fujiCell_par_col      積むセルの par が指す先の列も同じ式になる
 js_shift_eq_parentCopy  その桁上げは Phyrion の parentCopy そのもの
 yamaVal_eq_source0    山崎噴火の枝の周期的コピーは OrdinaryCopy の source0
 ```
+
+段に載る列も確定した。
+
+```
+RowsMono / ColLt          どの段も位置が真に増加、どのセルの列も上限未満
+fujiIters_invariant       繰り返しのあと上限は badRootSeam + len + len*n
+HasCol / hasCol_fujiIters  m < kmax(i,j) なら段 m に列 j + len*i が載る
+cell_fujiIters            逆に、載っているのは元のセルかそれらだけ
+lookupPos_of_rowExt       積む時点で引いた親の添字は最終形でも同じ
+```
+
+積む列は `(i,j)` の辞書式順で真に増えるので、末尾への積み足しで各段の位置の単調性が
+保たれる。これらは 2 つの仮定
+「継ぎ目の高さ ≤ `j+1`」と「切りの落差 `d` ≤ コピー 1 つぶんの長さ」
+のもとで成り立つ（`kmaxAt_le`）。前者は `seamHeightOf_eq` と `height_le_self` から出る。
+「元の段 ≤ 行き先の段」は枝の形から直ちに出る（`fujiSource_le`）。
 
 ### 値の埋め
 
