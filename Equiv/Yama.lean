@@ -80,4 +80,83 @@ theorem expandOut_some_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
   rw [hacl] at h
   exact h
 
+/-! ## 切ったあとも段は足りている
+
+切ると最上段が空になって段が 1 つ減ることがあるが、そのとき最上段には
+列 `n−1` しか無かったのだから、それより左の列の高さは減った段数より小さい。 -/
+
+/-- 生きている列が 2 つあれば、その段のセルは 2 つ以上。 -/
+theorem two_cells (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat) (hr : r < M.length)
+    (c1 c2 : Nat) (h1 : c1 < S.n) (h2 : c2 < S.n) (hne : c1 ≠ c2)
+    (hl1 : 0 < (rows S.tower.base r).value c1) (hl2 : 0 < (rows S.tower.base r).value c2) :
+    2 ≤ (rowAt M r).size := by
+  have hrep := rep_top S M hM r hr
+  have hr1 : r ≤ c1 := by
+    rcases Nat.lt_or_ge c1 r with hx | hx
+    · rw [rows_value_zero_of_lt S.tower.base r c1 hx] at hl1; omega
+    · exact hx
+  have hr2 : r ≤ c2 := by
+    rcases Nat.lt_or_ge c2 r with hx | hx
+    · rw [rows_value_zero_of_lt S.tower.base r c2 hx] at hl2; omega
+    · exact hx
+  obtain ⟨x1, hx1, hc1⟩ := hrep.cover c1 hr1 h1 hl1
+  obtain ⟨x2, hx2, hc2⟩ := hrep.cover c2 hr2 h2 hl2
+  obtain ⟨t1, ht1, he1⟩ := getElem_of_mem _ hx1
+  obtain ⟨t2, ht2, he2⟩ := getElem_of_mem _ hx2
+  have htne : t1 ≠ t2 := by
+    intro h
+    subst h
+    have hxx : x1 = x2 := by rw [← he1, ← he2]
+    rw [hxx] at hc1
+    omega
+  omega
+
+/-- 生きている列があれば、その段のセルは 1 つ以上。 -/
+theorem one_cell (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat) (hr : r < M.length)
+    (c : Nat) (h : c < S.n) (hl : 0 < (rows S.tower.base r).value c) :
+    1 ≤ (rowAt M r).size := by
+  have hrep := rep_top S M hM r hr
+  have hrc : r ≤ c := by
+    rcases Nat.lt_or_ge c r with hx | hx
+    · rw [rows_value_zero_of_lt S.tower.base r c hx] at hl; omega
+    · exact hx
+  obtain ⟨x1, hx1, _⟩ := hrep.cover c hrc h hl
+  obtain ⟨t1, ht1, _⟩ := getElem_of_mem _ hx1
+  omega
+
+/-- **切ったあとも、列 `n−1` より左の列の高さは段の数より小さい。** -/
+theorem height_lt_expRes_length (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (j : Nat) (hj : j < S.n - 1) :
+    height S.tower.base j < (expRes M).length := by
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have htall := hM.tall j (by omega)
+  have hge := cutChild_length_ge M (expCutH M)
+  have hpf := popFold_length (expCutH M + 1) M
+  show height S.tower.base j < (cutChild M (expCutH M)).length
+  rcases Nat.lt_or_ge (height S.tower.base j) (M.length - 1) with h | h
+  · omega
+  · have heq : height S.tower.base j = M.length - 1 := by omega
+    have hlive : 0 < (rows S.tower.base (M.length - 1)).value j := by
+      refine (live_iff_le_height S.tower.base (S.tower.hpos j) (M.length - 1)).mpr ?_
+      omega
+    have hlen : (cutChild M (expCutH M)).length = M.length := by
+      rw [cutChild_eq, if_neg ?_]
+      · exact hpf
+      · intro hc
+        obtain ⟨_, hempty⟩ := hc
+        rw [hpf, rowAt_popFold (expCutH M + 1) M (M.length - 1)] at hempty
+        rcases Nat.lt_or_ge (M.length - 1) (expCutH M + 1) with hlt | hgeq
+        · rw [if_pos hlt, Array.size_pop] at hempty
+          have hlast : 0 < (rows S.tower.base (M.length - 1)).value (S.n - 1) := by
+            refine (live_iff_le_height S.tower.base
+              (S.tower.hpos (S.n - 1)) (M.length - 1)).mpr ?_
+            omega
+          have := two_cells S M hM (M.length - 1) (by omega) j (S.n - 1)
+            (by omega) (by omega) (by omega) hlive hlast
+          omega
+        · rw [if_neg (by omega)] at hempty
+          have := one_cell S M hM (M.length - 1) (by omega) j (by omega) hlive
+          omega
+    omega
+
 end Yukito
