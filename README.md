@@ -709,8 +709,37 @@ topForest_sibSucc         root+1 と e について topValue e ≤ topValue (roo
 持たず、`restrictedParent` の最大性から `root` の子 `a`（`e` へ至る道の上）について
 `V e ≤ V a`。あとは `sibSucc_rows` で `V a ≤ V (root+1)` を繋ぐ。
 
-残るのは、塔をこの底に対して立て直し（`frameAt 0` を `topForest` にする形へ
-一般化し）、山の段の各定理をその形で通すことである。
+### 塔を一般の底へ
+
+塔を `Tower` として立て直した（`Tower.lean`）。
+
+```
+structure Tower where
+  frame0 : ParentForest                      底の frame
+  base   : Row                               その上に載る行
+  hbase  : base.forest.parent = restrictedParent frame0 base.value
+  hpos   : ∀ c, 0 < base.value c
+  A0     : 底での「最左の子は右隣」
+  B0     : 底での「右隣の兄弟の単調性」
+```
+
+`frameAt T 0 = T.frame0`、`frameAt T (k+1) = (rows T.base k).forest` である。山の段の
+定理はすべてこの形に書き直した。底の 2 つの義務だけが塔ごとに変わる。
+
+```
+linearTower s hs   入力列から作る塔。底は線形森で、A0 と B0 は自明
+（抽出後の行の塔）  底は topForest。A0 と B0 は TopFrame.lean で証明済み
+```
+
+底の 1 歩は `base_step` にまとめた。`Φ0` の子 `e` について、`frame0` 親が `root` で
+あることと `V e ≤ V (root+1)` が同時に出る。ここだけが底の義務を使う。
+
+以前の `ofSequence` 版の定理は `linearTower` での特殊化として言い直してある
+（`leftmost_child_seq`、`sibSucc_seq`、`root_step_le_seq`、
+`firstLiveNotSmaller_ofSequence`）。
+
+残るのは、抽出後の行の塔を実際に組み立てて（`Tower` の 6 つの成分を埋めて）、
+橋渡しの側（`Rep` / `Lift` / `Search` / `DiagBridge`）も一般の底へ広げることである。
 
 ## 残っている課題
 

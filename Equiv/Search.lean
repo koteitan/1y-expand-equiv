@@ -157,7 +157,7 @@ theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
                     (ParentForest.ancestor_of_zeroY (anc_of_common c y q hy hqc he))
                   rw [hnp] at ht
                   cases ht
-            have hle := (root_step_le s hs k c q hqc hreach).2
+            have hle := (root_step_le_seq s hs k c q hqc hreach).2
             have hvj : (row[j]'hj).val = (rows (ofSequence s) (k + 1)).value (q + 1) := by
               rw [hrow.val _ (mem_of_getElem row j hj), hcj]
             have hvi : (row[i]'hi).val = (rows (ofSequence s) (k + 1)).value c := by

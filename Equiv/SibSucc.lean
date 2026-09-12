@@ -37,12 +37,12 @@ root の restricted 親を共有する root+1 と e があり root+1 < e なら
 
 ## 段の対応
 
-`frameAt s (m+1) = restrictedParent (frameAt s m) (towerVal s m)` なので、
-`(frameAt s (m+1)).parent x = some root` は「層 `m` の restricted 親が `root`」
-を意味する。結論の値は `towerVal s (m+1)` である。層を 1 つ取り違えると
+`frameAt T (m+1) = restrictedParent (frameAt T m) (towerVal T m)` なので、
+`(frameAt T (m+1)).parent x = some root` は「層 `m` の restricted 親が `root`」
+を意味する。結論の値は `towerVal T (m+1)` である。層を 1 つ取り違えると
 成り立たなくなるので、両方を `SibSucc` の定義に明示する。
 
-基底は層 0 である。`frameAt s 0` は線形森なので `root < q < e` なる列はすべて
+基底は層 0 である。`frameAt T 0` は線形森なので `root < q < e` なる列はすべて
 `e` の祖先であり、最大性がそのまま効く。
 -/
 
@@ -65,41 +65,68 @@ theorem fparent_of_succ {F : ParentForest} {U : Nat → Nat} {root : Nat}
   rw [hwe] at hw
   exact hw
 
+/-- 底での 1 歩。`Φ0` の子 `e` について、`frame0` 親が `root` であることと
+`V e ≤ V (root+1)` が同時に出る。塔の底の 2 つの義務をここで使う。 -/
+theorem base_step (T : Tower) {root e : Nat}
+    (h : restrictedParent T.frame0 (towerVal T 0) e = some root) :
+    T.frame0.parent (root + 1) = some root ∧
+      towerVal T 0 e ≤ towerVal T 0 (root + 1) := by
+  obtain ⟨hanc, hposr, hltv, hmax⟩ :=
+    (restrictedParent_some_iff T.frame0 (towerVal T 0) e root).mp h
+  obtain ⟨a, hFa, hae⟩ := child_toward (ParentForest.ancestor_of_zeroY hanc)
+  have hFj : T.frame0.parent (root + 1) = some root := T.A0 root a hFa
+  have hra : root < a := T.frame0.parent_left hFa
+  have hea : towerVal T 0 e ≤ towerVal T 0 a := by
+    rcases hae with ha | heq
+    · rcases Nat.lt_or_ge (towerVal T 0 a) (towerVal T 0 e) with hx | hx
+      · have := hmax a (ParentForest.ancestor_to_zeroY ha) (T.hpos a) hx
+        omega
+      · exact hx
+    · rw [heq]
+      exact Nat.le_refl _
+  have haj : towerVal T 0 a ≤ towerVal T 0 (root + 1) := by
+    rcases Nat.lt_or_ge (root + 1) a with hx | hx
+    · exact T.B0 root a hFj hFa hx
+    · have heqa : a = root + 1 := by omega
+      rw [heqa]
+      exact Nat.le_refl _
+  exact ⟨hFj, by omega⟩
+
 /-- liveness の正確な段。層 `m+1` の frame で親を持つことと、
 層 `m+1` の値が正であることは同値である。 -/
-theorem frame_parent_iff_pos (s : List Nat) (m q : Nat) :
-    (∃ z, (frameAt s (m + 1)).parent q = some z) ↔ 0 < towerVal s (m + 1) q :=
-  rows_parent_iff_next_live (ofSequence s) m q
+theorem frame_parent_iff_pos (T : Tower) (m q : Nat) :
+    (∃ z, (frameAt T (m + 1)).parent q = some z) ↔ 0 < towerVal T (m + 1) q :=
+  rows_parent_iff_next_live T.base m q
 
 /-- 層 `m` の主張。`root` の restricted 子である `root+1` と `e` について、
 一段上の値で単調性が成り立つ。 -/
-def SibSucc (s : List Nat) (m : Nat) : Prop :=
-  ∀ root e, (frameAt s (m + 1)).parent (root + 1) = some root →
-    (frameAt s (m + 1)).parent e = some root → root + 1 < e →
-      towerVal s (m + 1) e ≤ towerVal s (m + 1) (root + 1)
+def SibSucc (T : Tower) (m : Nat) : Prop :=
+  ∀ root e, (frameAt T (m + 1)).parent (root + 1) = some root →
+    (frameAt T (m + 1)).parent e = some root → root + 1 < e →
+      towerVal T (m + 1) e ≤ towerVal T (m + 1) (root + 1)
 
 /-- **山の段の残り 1 本。** 数列の要素がすべて正なら、すべての層で成り立つ。 -/
-theorem sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : ∀ m, SibSucc s m := by
+theorem sibSucc (T : Tower) : ∀ m, SibSucc T m := by
   intro m
   induction m with
   | zero =>
     intro root e h1 h2 hlt
-    refine tower_case_descent s h1 h2 ?_
+    refine tower_case_descent T h1 h2 ?_
     rw [frameAt_step] at h2
-    exact sibling_mono_zero (fun p => ofSequence_positive s hs p) h2 (by omega) hlt
+    exact (base_step T h2).2
   | succ m ih =>
     intro root e h1 h2 hlt
-    refine tower_case_descent s h1 h2 ?_
+    refine tower_case_descent T h1 h2 ?_
     rw [frameAt_step] at h1 h2
-    -- `F = frameAt s (m+1)`、`U = towerVal s (m+1)`
-    have hFj : (frameAt s (m + 1)).parent (root + 1) = some root := fparent_of_succ h1
-    have hposj : 0 < towerVal s (m + 1) (root + 1) :=
-      (frame_parent_iff_pos s m (root + 1)).mp ⟨root, hFj⟩
-    have hanc : (frameAt s (m + 1)).Ancestor root e :=
+    -- `F = frameAt T (m+1)`、`U = towerVal T (m+1)`
+    have hFj : (frameAt T (m + 1)).parent (root + 1) = some root := fparent_of_succ h1
+    have hposj : 0 < towerVal T (m + 1) (root + 1) :=
+      (frame_parent_iff_pos T m (root + 1)).mp ⟨root, hFj⟩
+    have hanc : (frameAt T (m + 1)).Ancestor root e :=
       ParentForest.ancestor_of_zeroY
         ((restrictedParent_some_iff _ _ e root).mp h2).1
     obtain ⟨a, hFa, hae⟩ := child_toward hanc
-    have hra : root < a := (frameAt s (m + 1)).parent_left hFa
+    have hra : root < a := (frameAt T (m + 1)).parent_left hFa
     by_cases haj : a = root + 1
     · subst haj
       rcases hae with hanc' | heq
@@ -107,46 +134,46 @@ theorem sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : ∀ m, SibSucc s m :=
           (ParentForest.ancestor_to_zeroY hanc') hra hposj
       · exact absurd heq (by omega)
     · have hlta : root + 1 < a := by omega
-      have hposa : 0 < towerVal s (m + 1) a :=
-        (frame_parent_iff_pos s m a).mp ⟨root, hFa⟩
-      have hea : towerVal s (m + 1) e ≤ towerVal s (m + 1) a := by
+      have hposa : 0 < towerVal T (m + 1) a :=
+        (frame_parent_iff_pos T m a).mp ⟨root, hFa⟩
+      have hea : towerVal T (m + 1) e ≤ towerVal T (m + 1) a := by
         rcases hae with hanc' | heq
         · exact one_of_ancestor root e a h2
             (ParentForest.ancestor_to_zeroY hanc') hra hposa
         · rw [heq]
           exact Nat.le_refl _
-      have haj' : towerVal s (m + 1) a ≤ towerVal s (m + 1) (root + 1) :=
+      have haj' : towerVal T (m + 1) a ≤ towerVal T (m + 1) (root + 1) :=
         ih root a hFj hFa hlta
       omega
 
 /-! ## 山の段への接続
 
-`SibSucc` は行の形で書き直せる。`frameAt s (m+1) = (rows (ofSequence s) m).forest`、
-`towerVal s (m+1) = (rows (ofSequence s) (m+1)).value` がどちらも定義そのままだから
+`SibSucc` は行の形で書き直せる。`frameAt T (m+1) = (rows T.base m).forest`、
+`towerVal T (m+1) = (rows T.base (m+1)).value` がどちらも定義そのままだから
 である。これを `one_of_nonancestor` に入れると、残っていた仮定 `hsib` が消える。 -/
 
 /-- 行の形で書いた `SibSucc`。 -/
-theorem sibSucc_rows (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m root e : Nat)
-    (hj : (rows (ofSequence s) m).forest.parent (root + 1) = some root)
-    (he : (rows (ofSequence s) m).forest.parent e = some root)
+theorem sibSucc_rows (T : Tower) (m root e : Nat)
+    (hj : (rows T.base m).forest.parent (root + 1) = some root)
+    (he : (rows T.base m).forest.parent e = some root)
     (hlt : root + 1 < e) :
-    (rows (ofSequence s) (m + 1)).value e ≤
-      (rows (ofSequence s) (m + 1)).value (root + 1) :=
-  sibSucc s hs m root e hj he hlt
+    (rows T.base (m + 1)).value e ≤
+      (rows T.base (m + 1)).value (root + 1) :=
+  sibSucc T m root e hj he hlt
 
 /-- **非祖先の場合の (1)。** 仮定 `hsib` が `sibSucc` で埋まり、消える。 -/
-theorem one_of_nonancestor_closed (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m : Nat)
+theorem one_of_nonancestor_closed (T : Tower) (m : Nat)
     {root p e : Nat}
-    (hp : (rows (ofSequence s) (m + 1)).forest.parent p = some root)
-    (hj : (rows (ofSequence s) (m + 1)).forest.parent (root + 1) = some root)
-    (he : (rows (ofSequence s) m).forest.parent e = some root)
-    (hanc : ZeroY.Forest.Ancestor (rows (ofSequence s) m).forest.parent p e ∨ e = p) :
-    (rows (ofSequence s) (m + 1)).value p ≤
-      (rows (ofSequence s) (m + 1)).value (root + 1) := by
-  refine one_of_nonancestor (compat_rows (ofSequence s) m) hp he hanc ?_
+    (hp : (rows T.base (m + 1)).forest.parent p = some root)
+    (hj : (rows T.base (m + 1)).forest.parent (root + 1) = some root)
+    (he : (rows T.base m).forest.parent e = some root)
+    (hanc : ZeroY.Forest.Ancestor (rows T.base m).forest.parent p e ∨ e = p) :
+    (rows T.base (m + 1)).value p ≤
+      (rows T.base (m + 1)).value (root + 1) := by
+  refine one_of_nonancestor (compat_rows T.base m) hp he hanc ?_
   rcases Nat.lt_or_ge (root + 1) e with hlt | hge
-  · exact sibSucc_rows s hs m root e (fparent_succ_step (ofSequence s) m root hj) he hlt
-  · have hre := (rows (ofSequence s) m).forest.parent_left he
+  · exact sibSucc_rows T m root e (fparent_succ_step T.base m root hj) he hlt
+  · have hre := (rows T.base m).forest.parent_left he
     have heq : e = root + 1 := by omega
     rw [heq]
     exact Nat.le_refl _
@@ -177,49 +204,41 @@ W root < W e     e の親が root であること
 
 /-- **最左の子は右隣。** `root` が層 `k+1` の frame で子を持つなら、
 `root + 1` もその子である。 -/
-theorem leftmost_child (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
-    ∀ k root e, (frameAt s (k + 1)).parent e = some root →
-      (frameAt s (k + 1)).parent (root + 1) = some root := by
+theorem leftmost_child (T : Tower) :
+    ∀ k root e, (frameAt T (k + 1)).parent e = some root →
+      (frameAt T (k + 1)).parent (root + 1) = some root := by
   intro k
   induction k with
   | zero =>
     intro root e h
     rw [frameAt_step] at h ⊢
     obtain ⟨hanc, hpr, hlt, _⟩ := (restrictedParent_some_iff _ _ e root).mp h
-    have hre : root < e := ZeroY.Forest.ancestor_lt (frameAt s 0).parent_left hanc
-    have hpos : ∀ p, 0 < towerVal s 0 p := fun p => ofSequence_positive s hs p
-    have hstep : towerVal s 0 root < towerVal s 0 (root + 1) := by
-      rcases Nat.lt_or_ge (root + 1) e with hgt | hle
-      · have hq := sibling_mono_zero hpos h (show root < root + 1 by omega) hgt
-        omega
-      · have heq : e = root + 1 := by omega
-        rw [← heq]
-        exact hlt
+    obtain ⟨hFj, hej⟩ := base_step T h
     refine (restrictedParent_some_iff _ _ (root + 1) root).mpr
-      ⟨(linear_anc_zeroY (root + 1) root).mpr (by omega), hpr, hstep, ?_⟩
+      ⟨ParentForest.ancestor_to_zeroY (ParentForest.Ancestor.direct hFj), hpr,
+        by omega, ?_⟩
     intro q hq _ _
-    have := (linear_anc_zeroY (root + 1) q).mp hq
-    omega
+    exact ancestor_le_of_parent hFj (ParentForest.ancestor_of_zeroY hq)
   | succ k ih =>
     intro root e h
     rw [frameAt_step] at h ⊢
     obtain ⟨hanc, hpr, hlt, hmax⟩ := (restrictedParent_some_iff _ _ e root).mp h
     obtain ⟨a, hFa, hae⟩ := child_toward (ParentForest.ancestor_of_zeroY hanc)
-    have hra : root < a := (frameAt s (k + 1)).parent_left hFa
-    have hFj : (frameAt s (k + 1)).parent (root + 1) = some root := ih root a hFa
-    have hposa : 0 < towerVal s (k + 1) a :=
-      (frame_parent_iff_pos s k a).mp ⟨root, hFa⟩
-    have hea : towerVal s (k + 1) e ≤ towerVal s (k + 1) a := by
+    have hra : root < a := (frameAt T (k + 1)).parent_left hFa
+    have hFj : (frameAt T (k + 1)).parent (root + 1) = some root := ih root a hFa
+    have hposa : 0 < towerVal T (k + 1) a :=
+      (frame_parent_iff_pos T k a).mp ⟨root, hFa⟩
+    have hea : towerVal T (k + 1) e ≤ towerVal T (k + 1) a := by
       rcases hae with ha' | heq
-      · rcases Nat.lt_or_ge (towerVal s (k + 1) a) (towerVal s (k + 1) e) with hx | hx
+      · rcases Nat.lt_or_ge (towerVal T (k + 1) a) (towerVal T (k + 1) e) with hx | hx
         · have := hmax a (ParentForest.ancestor_to_zeroY ha') hposa hx
           omega
         · exact hx
       · rw [heq]
         exact Nat.le_refl _
-    have haj : towerVal s (k + 1) a ≤ towerVal s (k + 1) (root + 1) := by
+    have haj : towerVal T (k + 1) a ≤ towerVal T (k + 1) (root + 1) := by
       rcases Nat.lt_or_ge (root + 1) a with hx | hx
-      · exact sibSucc s hs k root a hFj hFa hx
+      · exact sibSucc T k root a hFj hFa hx
       · have heq : a = root + 1 := by omega
         rw [heq]
         exact Nat.le_refl _
@@ -230,26 +249,74 @@ theorem leftmost_child (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
     exact ancestor_le_of_parent hFj (ParentForest.ancestor_of_zeroY hq)
 
 /-- **`RootChildAdjacent` は山のすべての層で成り立つ。** -/
-theorem rootChildAdjacent_tower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat) :
-    RootChildAdjacent (frameAt s k) (towerVal s k) := by
+theorem rootChildAdjacent_tower (T : Tower) (k : Nat) :
+    RootChildAdjacent (frameAt T k) (towerVal T k) := by
   intro root p hp
   rw [← frameAt_step] at hp ⊢
-  rw [leftmost_child s hs k root p hp]
+  rw [leftmost_child T k root p hp]
   intro hn
   cases hn
 
 /-- 行の形。`root` が行 `k` の森で子を持つなら、`root + 1` もその子である。 -/
-theorem leftmost_child_rows (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k root e : Nat)
-    (h : (rows (ofSequence s) k).forest.parent e = some root) :
-    (rows (ofSequence s) k).forest.parent (root + 1) = some root :=
-  leftmost_child s hs k root e h
+theorem leftmost_child_rows (T : Tower) (k root e : Nat)
+    (h : (rows T.base k).forest.parent e = some root) :
+    (rows T.base k).forest.parent (root + 1) = some root :=
+  leftmost_child T k root e h
 
 /-! ## 層 0 まで込めた形
 
-`frameAt s 0` は線形森なので、`root` の子は `root + 1` しかない。したがって
+`frameAt T 0` は線形森なので、`root` の子は `root + 1` しかない。したがって
 `SibSucc` の仮定（`root+1 < e` かつ両方が `root` の子）は層 0 では満たせず、
 主張は空虚に成り立つ。`leftmost_child` も層 0 では自明である。これで層の場合分けを
 1 か所に閉じ込められる。 -/
+
+/-- 層 0 まで込めた `leftmost_child`。 -/
+theorem leftmost_child_all (T : Tower) (r root e : Nat)
+    (h : (frameAt T r).parent e = some root) :
+    (frameAt T r).parent (root + 1) = some root := by
+  cases r with
+  | zero => exact T.A0 root e h
+  | succ k => exact leftmost_child T k root e h
+
+/-- 層 0 まで込めた `sibSucc`。 -/
+theorem sibSucc_all (T : Tower) (r root e : Nat)
+    (hj : (frameAt T r).parent (root + 1) = some root)
+    (he : (frameAt T r).parent e = some root) (hlt : root + 1 < e) :
+    towerVal T r e ≤ towerVal T r (root + 1) := by
+  cases r with
+  | zero => exact T.B0 root e hj he hlt
+  | succ k => exact sibSucc T k root e hj he hlt
+
+/-- 層 0 まで込めた liveness。親を持つ列はその層で値が正である。 -/
+theorem towerVal_pos_of_parent (T : Tower) (r q : Nat)
+    (h : ∃ z, (frameAt T r).parent q = some z) : 0 < towerVal T r q := by
+  cases r with
+  | zero => exact T.hpos q
+  | succ k => exact (frame_parent_iff_pos T k q).mp h
+
+/-- **非祖先の場合の (1)。全層で成り立つ形。** -/
+theorem one_of_nonancestor_tower (T : Tower) (r : Nat)
+    {root p e : Nat}
+    (hp : (frameAt T (r + 1)).parent p = some root)
+    (he : (frameAt T r).parent e = some root)
+    (hanc : ZeroY.Forest.Ancestor (frameAt T r).parent p e ∨ e = p) :
+    towerVal T r p ≤ towerVal T r (root + 1) := by
+  rw [frameAt_step] at hp
+  have hj := leftmost_child_all T r root e he
+  have hposE := towerVal_pos_of_parent T r e ⟨root, he⟩
+  have hsib : towerVal T r e ≤ towerVal T r (root + 1) := by
+    rcases Nat.lt_or_ge (root + 1) e with hlt | hge
+    · exact sibSucc_all T r root e hj he hlt
+    · have hre := (frameAt T r).parent_left he
+      have heq : e = root + 1 := by omega
+      rw [heq]
+      exact Nat.le_refl _
+  exact one_of_nonancestor' hp he hanc hposE hsib
+
+/-! ## 線形森を底とする塔
+
+入力列から作る塔。底の frame は線形森で、2 つの義務は自明に成り立つ。
+以前の `ofSequence` 版の定理はこの塔での特殊化として言い直す。 -/
 
 /-- 線形森で親が `root` なら、その列は `root + 1` である。 -/
 theorem linear_child_eq {root e : Nat}
@@ -258,53 +325,27 @@ theorem linear_child_eq {root e : Nat}
   | zero => cases h
   | succ n => exact congrArg Nat.succ (Option.some.inj h)
 
-/-- 層 0 まで込めた `leftmost_child`。 -/
-theorem leftmost_child_all (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r root e : Nat)
-    (h : (frameAt s r).parent e = some root) :
-    (frameAt s r).parent (root + 1) = some root := by
-  cases r with
-  | zero =>
-      have := linear_child_eq h
-      rw [← this]
-      exact h
-  | succ k => exact leftmost_child s hs k root e h
+/-- 入力列から作る塔。 -/
+def linearTower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Tower where
+  frame0 := linearForest
+  base := ofSequence s
+  hbase := fun _ => rfl
+  hpos := ofSequence_positive s hs
+  A0 := fun _ _ h => by rw [← linear_child_eq h]; exact h
+  B0 := fun _ e _ he hlt => by
+    have hce := linear_child_eq he
+    omega
 
-/-- 層 0 まで込めた `sibSucc`。 -/
-theorem sibSucc_all (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r root e : Nat)
-    (hj : (frameAt s r).parent (root + 1) = some root)
-    (he : (frameAt s r).parent e = some root) (hlt : root + 1 < e) :
-    towerVal s r e ≤ towerVal s r (root + 1) := by
-  cases r with
-  | zero =>
-      exfalso
-      have := linear_child_eq he
-      omega
-  | succ k => exact sibSucc s hs k root e hj he hlt
+theorem leftmost_child_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k root e : Nat)
+    (h : (rows (ofSequence s) k).forest.parent e = some root) :
+    (rows (ofSequence s) k).forest.parent (root + 1) = some root :=
+  leftmost_child_rows (linearTower s hs) k root e h
 
-/-- 層 0 まで込めた liveness。親を持つ列はその層で値が正である。 -/
-theorem towerVal_pos_of_parent (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r q : Nat)
-    (h : ∃ z, (frameAt s r).parent q = some z) : 0 < towerVal s r q := by
-  cases r with
-  | zero => exact ofSequence_positive s hs q
-  | succ k => exact (frame_parent_iff_pos s k q).mp h
-
-/-- **非祖先の場合の (1)。全層で成り立つ形。** -/
-theorem one_of_nonancestor_tower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r : Nat)
-    {root p e : Nat}
-    (hp : (frameAt s (r + 1)).parent p = some root)
-    (he : (frameAt s r).parent e = some root)
-    (hanc : ZeroY.Forest.Ancestor (frameAt s r).parent p e ∨ e = p) :
-    towerVal s r p ≤ towerVal s r (root + 1) := by
-  rw [frameAt_step] at hp
-  have hj := leftmost_child_all s hs r root e he
-  have hposE := towerVal_pos_of_parent s hs r e ⟨root, he⟩
-  have hsib : towerVal s r e ≤ towerVal s r (root + 1) := by
-    rcases Nat.lt_or_ge (root + 1) e with hlt | hge
-    · exact sibSucc_all s hs r root e hj he hlt
-    · have hre := (frameAt s r).parent_left he
-      have heq : e = root + 1 := by omega
-      rw [heq]
-      exact Nat.le_refl _
-  exact one_of_nonancestor' hp he hanc hposE hsib
+theorem sibSucc_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m root e : Nat)
+    (hj : (rows (ofSequence s) m).forest.parent (root + 1) = some root)
+    (he : (rows (ofSequence s) m).forest.parent e = some root)
+    (hlt : root + 1 < e) :
+    (rows (ofSequence s) (m + 1)).value e ≤ (rows (ofSequence s) (m + 1)).value (root + 1) :=
+  sibSucc_rows (linearTower s hs) m root e hj he hlt
 
 end Yukito

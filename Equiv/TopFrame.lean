@@ -96,7 +96,7 @@ theorem topForest_leftmost_child (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root 
       exact ha
     · omega
   obtain ⟨a, hFa, _⟩ := child_toward hanc
-  have hf := leftmost_child_rows s hs (height (ofSequence s) root) root a hFa
+  have hf := leftmost_child_seq s hs (height (ofSequence s) root) root a hFa
   have hn : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent root = none := by
     cases hp : (rows (ofSequence s) (height (ofSequence s) root)).forest.parent root with
     | none => rfl
@@ -171,7 +171,7 @@ theorem topForest_sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat
   rw [hve, hvj]
   -- `root` の子 `a` で `e` に至る道の上にあるもの
   obtain ⟨a, hFa, hae⟩ := child_toward hanc
-  have hja := leftmost_child_rows s hs (height (ofSequence s) root) root a hFa
+  have hja := leftmost_child_seq s hs (height (ofSequence s) root) root a hFa
   have hapos : 0 < (rows (ofSequence s) (height (ofSequence s) root + 1)).value a :=
     (rows_parent_iff_next_live (ofSequence s) _ a).mp ⟨root, hFa⟩
   -- `e` はこの段が頂なので次の段で親を持たない
@@ -194,7 +194,7 @@ theorem topForest_sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat
   have haj : (rows (ofSequence s) (height (ofSequence s) root + 1)).value a
       ≤ (rows (ofSequence s) (height (ofSequence s) root + 1)).value (root + 1) := by
     rcases Nat.lt_or_ge (root + 1) a with hx | hx
-    · exact sibSucc_rows s hs (height (ofSequence s) root) root a hja hFa hx
+    · exact sibSucc_seq s hs (height (ofSequence s) root) root a hja hFa hx
     · have hra := (rows (ofSequence s) (height (ofSequence s) root)).forest.parent_left hFa
       have heqa : a = root + 1 := by omega
       rw [heqa]
