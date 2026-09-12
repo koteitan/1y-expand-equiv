@@ -1485,6 +1485,55 @@ expNd_eq_assemble  したがって expNd = assemble（K+1 段目以上）(fun _ 
 
 **これで山崎噴火の枝（原文の層 `k = K`）は、山の同定と頂の値の両方が片付いた。**
 
+### `k < K` の枝（`badAtLowerContext`）の読み
+
+原文の `badAtLowerContext a hbad hk = activeLowerContext a hbad.1 hk` は
+`LowerCopy.Context` で、
+
+```
+mountain    = mountain (layers a k).row
+coordinates = ⟨y, x, y < x⟩
+last_root   : mountain.rootAt (height y) x = y
+last_higher : height y < height x
+floor := height y
+rise  := height x − floor
+InCone c := floor ≤ height c ∧ rootAt floor c = y
+```
+
+JS 側と読み合わせると **`bh = floor`、`d = rise`** である。JS の
+`badRootHeight` は「列 `seam` を含む最上段」＝ `height y` であり、
+`cutHeight = height x` だからである。
+
+高さは
+
+```
+height c = if c ≤ x then M.height c
+           else if InCone (source c) then M.height (source c) + block c * rise
+                else M.height (source c)
+```
+
+で、JS の `kmax = if isAsc then seamH + d*i else seamH` に対応する。
+`isAscending` が `InCone` にあたる（「段 `floor` での鎖が継ぎ目 `y` に届く」）。
+`j = y` の列については `source = x`、`block = i−1` で、`InCone x` は `last_root`
+そのものだから `height = height x + (i−1)*rise = floor + i*rise` となり、
+JS の `floor + 1 + d*i`（= 高さ + 1）と合う。
+
+親は
+
+```
+parent r c = if c ≤ x then (M.row r).parent c
+             else if InCone s ∧ floor ≤ r then
+               if r < floor + b*rise then ((M.row floor).parent s).map (· + b*length)
+               else ((M.row (r − b*rise)).parent s).map (· + b*length)
+             else ((M.row r).parent s).map (parentCopy b)
+```
+
+で、真ん中の 2 つが JS の「Br replace」「Br extend」にあたる。山崎噴火の枝で
+`rise = 0` だったため潰れていた分岐がここで効いてくる。
+
+形式化の第一歩として、この枝では「行の最後から取るか」がつねに `isRep` に
+等しいことを示した（`fujiSrcRow` / `fujiSource_notyama`）。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
