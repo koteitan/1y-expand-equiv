@@ -140,11 +140,16 @@ def readState (M : List Rowj) (st : Nat × Nat) : Option (Nat × Nat) :=
     some (st.1, ((rowAt M st.1)[st.2]'hi).pos + st.1)
   else none
 
+/-- 状態の読み替えを `Option` へ持ち上げたもの。 -/
+def readOpt (M : List Rowj) : Option (Nat × Nat) → Option (Nat × Nat)
+  | none => none
+  | some st => readState M st
+
 /-- **脚 1 歩が一致する。** -/
 theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
     (hM : MountainRep M s) (h idx : Nat) (hh : h < M.length)
     (hidx : idx < (rowAt M h).size) (hn : ((rowAt M h)[idx]'hidx).pos + h < s.length) :
-    (legStepJS M h idx).bind (readState M)
+    readOpt M (legStepJS M h idx)
       = legStep (mountainOf s hs) h (((rowAt M h)[idx]'hidx).pos + h) := by
   have hrep := rep_top s M hM h hh
   have hpar : ParRep (rowAt M h) h (rows (ofSequence s) h).forest := by
@@ -152,11 +157,11 @@ theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
   have hP := hpar _ (mem_of_getElem _ idx hidx)
   cases h with
   | zero =>
-    show ((if hi : idx < (rowAt M 0).size then
+    show (readOpt M (if hi : idx < (rowAt M 0).size then
             match ((rowAt M 0)[idx]'hi).par with
             | none => none
             | some p => some ((0 : Nat), p)
-          else none).bind (readState M)) = _
+          else none)) = _
     rw [dif_pos hidx]
     cases hpp : ((rowAt M 0)[idx]'hidx).par with
     | none =>
@@ -171,7 +176,7 @@ theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
     | some p =>
         rw [hpp] at hP
         obtain ⟨hp, hFc⟩ := hP
-        show ((some ((0 : Nat), p)).bind (readState M)) = _
+        show (readOpt M (some ((0 : Nat), p))) = _
         show (readState M (0, p)) = _
         show (if hi : p < (rowAt M 0).size then
                 some ((0 : Nat), ((rowAt M 0)[p]'hi).pos + 0) else none) = _
@@ -203,7 +208,7 @@ theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
         (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) (by omega) hn hlive'
     have htarget : ((rowAt M (h' + 1))[idx]'hidx).pos + 1
         = (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) - h' := by omega
-    show ((legStepJS M (h' + 1) idx).bind (readState M)) = _
+    show (readOpt M (legStepJS M (h' + 1) idx)) = _
     rw [legStepJS]
     simp only [dif_pos hidx, htarget, hlk0]
     have hP' := hpar' _ (mem_of_getElem _ l0 hl0)
@@ -268,5 +273,90 @@ theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
                   (ofSequence_positive s hs _) (h' + 1)).mpr hcon))]
             show readState M (h', l) = _
             simp only [readState, dif_pos hl, Nat.add_sub_cancel]
+
+/-! ## 脚歩行の対応 -/
+
+/-- **脚歩行が一致する。** 1 歩の対応を歩行全体に回したもの。 -/
+theorem legWalkJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
+    (hM : MountainRep M s) :
+    ∀ fuel h idx, ∀ hh : h < M.length, ∀ hidx : idx < (rowAt M h).size,
+      ((rowAt M h)[idx]'hidx).pos + h < s.length →
+      legWalkJS M fuel h idx
+        = jsWalk (mountainOf s hs) fuel h (((rowAt M h)[idx]'hidx).pos + h) := by
+  intro fuel
+  induction fuel with
+  | zero => intro h idx _ _ _; rfl
+  | succ fuel ih =>
+    intro h idx hh hidx hn
+    have hstep := legStepJS_eq s hs M hM h idx hh hidx hn
+    rw [legWalkJS, jsWalk]
+    cases hst : legStepJS M h idx with
+    | none =>
+        rw [hst, readOpt] at hstep
+        rw [← hstep]
+    | some st =>
+        obtain ⟨h', idx'⟩ := st
+        rw [hst, readOpt] at hstep
+        dsimp only
+        by_cases hi : idx' < (rowAt M h').size
+        · rw [readState] at hstep
+          dsimp only at hstep
+          rw [dif_pos hi] at hstep
+          have hh'h : h' ≤ h := legStep_row_le _ hstep.symm
+          have hh' : h' < M.length := by omega
+          have hlt := legStep_col_lt _ hstep.symm
+          have hpar' : ParRep (rowAt M h') h' (rows (ofSequence s) h').forest := by
+            rw [rowAt_eq M h' hh']; exact (hM h' hh').2
+          have hP := hpar' _ (mem_of_getElem _ idx' hi)
+          rw [← hstep]
+          dsimp only
+          rw [dif_pos hi]
+          cases hpp : ((rowAt M h')[idx']'hi).par with
+          | none =>
+              rw [hpp] at hP
+              have hPn : ((mountainOf s hs).row h').parent
+                  (((rowAt M h')[idx']'hi).pos + h') = none := hP
+              rw [if_pos hPn]
+          | some p =>
+              rw [hpp] at hP
+              obtain ⟨hp, hFc⟩ := hP
+              rw [if_neg (show ¬ (((mountainOf s hs).row h').parent
+                  (((rowAt M h')[idx']'hi).pos + h') = none) from by
+                    show ¬ ((rows (ofSequence s) h').forest.parent
+                      (((rowAt M h')[idx']'hi).pos + h') = none)
+                    rw [hFc]
+                    intro hcon
+                    cases hcon)]
+              exact ih h' idx' hh' hi (by omega)
+        · rw [readState, dif_neg hi] at hstep
+          rw [← hstep]
+          dsimp only
+          rw [dif_neg hi]
+
+/-- **対角の 1 要素が一致する。** JS が積む値は `topValue`、歩行の結果は
+Phyrion の `Pseudo.parent` である。 -/
+theorem diagEntry_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
+    (hM : MountainRep M s) (i : Nat) (hi : i < s.length)
+    (hlen : height (ofSequence s) i < M.length) :
+    diagEntry M i
+      = some (topValue (ofSequence s) i, Pseudo.parent (mountainOf s hs) i) := by
+  obtain ⟨k, hk, hck, htop⟩ := topAt_eq s hs M hM i hi M.length (Nat.le_refl _) hlen
+  have hrep := rep_top s M hM (height (ofSequence s) i) hlen
+  have hval : ((rowAt M (height (ofSequence s) i))[k]'hk).val
+      = topValue (ofSequence s) i := by
+    have h := hrep.val _ (mem_of_getElem _ k hk)
+    rw [hck] at h
+    exact h
+  have hwalk : legWalkJS M (i + 1) (height (ofSequence s) i) k
+      = jsWalk (mountainOf s hs) (i + 1) (height (ofSequence s) i) i := by
+    have h := legWalkJS_eq s hs M hM (i + 1) (height (ofSequence s) i) k hlen hk
+      (by rw [hck]; exact hi)
+    rw [hck] at h
+    exact h
+  have hps : jsWalk (mountainOf s hs) (i + 1) (height (ofSequence s) i) i
+      = Pseudo.parent (mountainOf s hs) i :=
+    jsWalk_eq_pseudo (mountainOf s hs) i (i + 1) (by omega)
+  rw [diagEntry, htop]
+  simp only [dif_pos hk, hval, hwalk, hps]
 
 end Yukito

@@ -451,10 +451,17 @@ JS の 1 歩と密表現の `legStep` が 1 対 1 に対応する。段が下が
 位置引きは `lookupPos` として切り出した。`lookupPos_some` / `lookupPos_none` が
 「生きた列は引ける・死んだ列は引けない」を与える。
 
-抽出段に残るのは、脚歩行（`legWalkJS`）が `Pseudo.parent` に、2 つの探索
-（`pwScan` / `treeScan`）が `restrictedParent` に一致することである。密表現側では
-どちらも証明済み（`jsWalk_eq_pseudo`、`chainFind_eq_restrictedParent'`）なので、
-1 歩の対応を歩行全体に回す作業になる。
+1 歩の対応を歩行全体に回した（`legWalkJS_eq`）。密表現側の `jsWalk_eq_pseudo` と
+繋いで、**対角の 1 要素が一致する**ところまで来た（`diagEntry_eq`）。
+
+```
+JS の diagonal[i]      = topValue base i
+JS の diagonalTree[i]  = Pseudo.parent (mountainOf s hs) i
+```
+
+抽出段に残るのは、2 つの探索（`pwScan` / `treeScan`）が `restrictedParent` に一致
+すること、そして読み直し（`parseDiag`）まで含めて `rawExtract` になることである。
+探索の対応は密表現側で済んでいる（`chainFind_eq_restrictedParent'`）。
 
 ## 疎配列との橋渡し
 

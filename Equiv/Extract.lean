@@ -119,6 +119,41 @@ def legStep (M : RowMountain) (h c : Nat) : Option (Nat × Nat) :=
   | none => none
   | some q => if h ≤ M.height q then some (h, q) else some (h - 1, q)
 
+/-- 脚 1 歩で段は上がらない。 -/
+theorem legStep_row_le (M : RowMountain) {h c h' c' : Nat}
+    (hst : legStep M h c = some (h', c')) : h' ≤ h := by
+  rw [legStep] at hst
+  cases hp : (M.row (h - 1)).parent c with
+  | none => rw [hp] at hst; cases hst
+  | some q =>
+      rw [hp] at hst
+      dsimp only at hst
+      by_cases hq : h ≤ M.height q
+      · rw [if_pos hq] at hst
+        simp only [Option.some.injEq, Prod.mk.injEq] at hst
+        omega
+      · rw [if_neg hq] at hst
+        simp only [Option.some.injEq, Prod.mk.injEq] at hst
+        omega
+
+/-- 脚 1 歩で列は真に左へ動く。 -/
+theorem legStep_col_lt (M : RowMountain) {h c h' c' : Nat}
+    (hst : legStep M h c = some (h', c')) : c' < c := by
+  rw [legStep] at hst
+  cases hp : (M.row (h - 1)).parent c with
+  | none => rw [hp] at hst; cases hst
+  | some q =>
+      rw [hp] at hst
+      dsimp only at hst
+      have hlt := (M.row (h - 1)).parent_left hp
+      by_cases hq : h ≤ M.height q
+      · rw [if_pos hq] at hst
+        simp only [Option.some.injEq, Prod.mk.injEq] at hst
+        omega
+      · rw [if_neg hq] at hst
+        simp only [Option.some.injEq, Prod.mk.injEq] at hst
+        omega
+
 /-- JS の脚歩行。「その行で親を持たない」で止まり、その列を返す。 -/
 def jsWalk (M : RowMountain) : Nat → Nat → Nat → Option Nat
   | 0, _, _ => none
