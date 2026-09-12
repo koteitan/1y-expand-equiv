@@ -1678,4 +1678,60 @@ theorem expNd_eq_assemble (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
   · show x = (rowAt M 0).size - 1
     rw [hM.size0, hnn, hx]
 
+/-! ## `isAscending` は `InCone`
+
+原文の `LowerCopy.Context.InCone c` は「段 `floor` で列 `c` が生きていて、
+その段での根が継ぎ目 `y` である」。JS の `isAscending` は「段 `bh` で親鎖を辿って
+継ぎ目に届く」なので、`y` が段 `floor` で根であれば同じことになる。 -/
+
+/-- 2 つの `Ancestor` の言い換え。`ZeroY` 側は `TransGen`、`OneY` 側は帰納型。 -/
+theorem ancestor_conv (F : ParentForest) (a c : Nat) :
+    ZeroY.Forest.Ancestor F.parent c a ↔ F.Ancestor a c := by
+  constructor
+  · intro h
+    induction h with
+    | single hp => exact ParentForest.Ancestor.direct hp
+    | tail _ hp ih => exact ParentForest.Ancestor.trans (ParentForest.Ancestor.direct hp) ih
+  · intro h
+    induction h with
+    | direct hp => exact Relation.TransGen.single hp
+    | step _ hp ih => exact Relation.TransGen.trans (Relation.TransGen.single hp) ih
+
+/-- 根であることと、根が一致することの言い換え。 -/
+theorem root_eq_iff (F : ParentForest) (r c : Nat) (hr : F.parent r = none) :
+    F.root c = r ↔ (F.Ancestor r c ∨ r = c) := by
+  constructor
+  · intro h
+    rcases ParentForest.root_ancestor_or_eq F c with h1 | h1
+    · rw [h] at h1
+      exact Or.inl h1
+    · rw [h] at h1
+      exact Or.inr h1
+  · intro h
+    refine ParentForest.root_unique F hr ?_
+    rcases h with h | h
+    · exact Or.inl h
+    · exact Or.inr h
+
+/-- **`isAscending` は「段 `bh` での根が継ぎ目」と同値。** -/
+theorem isAscending_iff_root (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (bh seam j fuel : Nat) (hbh : bh < M.length) (hj : j < S.n)
+    (hfuel : (rowAt M bh).size ≤ fuel)
+    (hroot : (rows S.tower.base bh).forest.parent seam = none) :
+    isAscending M bh seam j fuel = true ↔
+      (bh ≤ height S.tower.base j ∧ (rows S.tower.base bh).forest.root j = seam) := by
+  rw [isAscending_iff S M hM bh seam j fuel hbh hj hfuel]
+  constructor
+  · rintro ⟨hlive, hpath⟩
+    refine ⟨(live_iff_le_height S.tower.base (S.tower.hpos j) bh).mp hlive, ?_⟩
+    refine (root_eq_iff _ seam j hroot).mpr ?_
+    rcases hpath with h | h
+    · exact Or.inr h.symm
+    · exact Or.inl ((ancestor_conv (rows S.tower.base bh).forest seam j).mp h)
+  · rintro ⟨hle, hr⟩
+    refine ⟨(live_iff_le_height S.tower.base (S.tower.hpos j) bh).mpr hle, ?_⟩
+    rcases (root_eq_iff _ seam j hroot).mp hr with h | h
+    · exact Or.inr ((ancestor_conv (rows S.tower.base bh).forest seam j).mpr h)
+    · exact Or.inl h.symm
+
 end Yukito
