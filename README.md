@@ -1355,6 +1355,22 @@ hasCol_state:
 原文の `parent_endpoint`（`r ≤ height p`）と合わせると、親の新しい列は段より右に
 あるので、JS の `parentPos` は負にならない。
 
+### 「原文に親があれば JS も見つける」の鎖（部品が揃った）
+
+```
+parRep_some_of_forest  密表現の親が some なら疎配列のセルも親を持つ
+rowMountain_height_le  どの山でも height c ≤ c
+  ＋ 原文の parent_endpoint（r ≤ height p）
+    ⇒ 親の新しい列は段より右
+parentPos_some         したがって parentPos = some（新しい列 − k）で、負にならない
+hasCol_state           その列は積む時点の段 k に載っている
+hasCol_pos             そこから添字と位置を取り出す
+fujiCell_par_isSome    lookupPos がその添字を見つけるので par は some
+```
+
+この鎖の対偶が `ShapeRep` の `parNone`（JS が親を見つけないなら原文も親なし）
+である。
+
 空段落としを通す運搬補題も揃えた。
 
 ```
