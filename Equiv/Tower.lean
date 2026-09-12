@@ -140,7 +140,32 @@ def Resolves (s : List Nat) (k q1 q2 : Nat) : Prop :=
         ZeroY.Forest.Ancestor (frameAt s k).parent q2 q1)
   ∨ (∃ t, (frameAt s k).parent q1 = some t ∧ (frameAt s k).parent q2 = some t)
 
-/-- 組み立て。`Resolves` があれば、生きている左の列について単調性が出る。 -/
+/-! ### 注意：`hres` の充足可能性は未確認
+
+下の `sib_mono_of_resolves` は `hres` を仮定した条件付き定理である。
+**その仮定が満たせるかはまだ示していない。** 不変量の候補を 2 つ試して、
+どちらも実測で落ちた。
+
+* `CommonBelow`（層 `k` の frame で共通祖先を `q1` より左に持つ）
+  → 結論すら含意しない。列 `(1,1,1,2,3)` の層 0 で `q1 = 3`、`q2 = 4` が
+    `U 3 = 2 < U 4 = 3` となる。
+* 「層 `k+1` で兄弟」→ 結論を含意しない。列 `(1,1,2,5,7,5)` の層 1 で
+  `q1 = 4`、`q2 = 5` が `U 4 = 2 < U 5 = 3` となる。
+
+実測で確かめてある正しい対応は次である。
+
+```
+兄弟      frameAt s k
+値        towerVal s k
+liveness  (frameAt s (k+1)).parent q1 ≠ none
+```
+
+この形なら値 12 まで 123,641 件で反例が無い。上の 2 つの反例も、この対応では
+該当層で `q1` が死んでいるため除外される。ただしこの形を `hres` の仮定に
+落とし込む作業は済んでいない。層の対応を取り違えやすいので注意する。 -/
+
+/-- 組み立て。`Resolves` があれば、生きている左の列について単調性が出る。
+`hres` の充足可能性は未確認である（上の注意を参照）。 -/
 theorem sib_mono_of_resolves (s : List Nat)
     (hres : ∀ k q1 q2, q1 < q2 → CommonBelow s k q1 q2 → Resolves s k q1 q2) :
     ∀ k q1 q2, q1 < q2 → CommonBelow s k q1 q2 →
