@@ -1216,4 +1216,54 @@ theorem valTop_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     rw [← hde]
     exact hp
 
+/-! ## 積んだセルの補助条件
+
+`m < kmaxAt` から、段と列についての条件がまとめて出る。 -/
+
+theorem push_side (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
+    (i' t' m : Nat) (ht' : t' < (expP M mfuel).len)
+    (hk' : m < kmaxAt M (expP M mfuel) (i' + 1) (y + t') (expRes M).length mfuel) :
+    y + t' < S.n - 1 ∧ m ≤ height S.tower.base (y + t') ∧ m < M.length ∧ m ≤ y + t' ∧
+      0 < (rows S.tower.base m).value (y + t') := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
+  have hjx : y + t' < S.n - 1 := by omega
+  have hkm := kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama (i' + 1) (y + t') hjx
+  have hhs := height_le_self' S.tower.base S.tower.hpos (y + t')
+  have htall := hM.tall (y + t') (by omega)
+  refine ⟨hjx, by omega, by omega, by omega, ?_⟩
+  exact (live_iff_le_height S.tower.base (S.tower.hpos (y + t')) m).mpr (by omega)
+
+/-- 積んだ時点の状態でも位置は真に増加している。 -/
+theorem rowsMono_state (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (i' t' : Nat) :
+    RowsMono (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
+  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
+    rw [hacl]
+    exact colLt_cutChild S M hM (expCutH M) hn (Nat.le_of_eq hcut.symm)
+  obtain ⟨hm1, hb1⟩ := fujiIters_invariant M (expP M mfuel) nd (expRes M).length mfuel hkm i'
+    (expRes M) (expP M mfuel).afterCutLength hcolLt (by omega)
+    (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM))
+  have hmul : (expP M mfuel).len * (i' + 1)
+      = (expP M mfuel).len * i' + (expP M mfuel).len := Nat.mul_succ _ _
+  exact (fujiSeams_invariant M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel hkm t'
+    (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))
+    ((expP M mfuel).badRootSeam + (expP M mfuel).len + (expP M mfuel).len * i')
+    hb1 (by omega) hm1).1
+
 end Yukito
