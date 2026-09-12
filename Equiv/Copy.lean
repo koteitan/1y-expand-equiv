@@ -1943,4 +1943,49 @@ theorem col_lt_lex (y x L : Nat) (hL : L = x - y) (hyx : y < x)
       have hexp : L * (i2 + 1) = L * i2 + L := Nat.mul_succ _ _
       omega
 
+/-! ## 山では高さは列番号以下
+
+どの `RowMountain` でも `height c ≤ c` である。親は真に左へ動き、親は自分の段まで
+生きているので、段を 1 つ上がるごとに列が 1 つ以上左へ寄るからである。 -/
+
+theorem rowMountain_height_le (M : RootGeometry.RowMountain) : ∀ c, M.height c ≤ c := by
+  intro c
+  induction c using Nat.strongRecOn with
+  | ind c ih =>
+      rcases Nat.eq_zero_or_pos (M.height c) with h | h
+      · omega
+      · obtain ⟨p, hp⟩ := M.parent_exists (M.height c - 1) c (by omega)
+        have hpc : p < c := (M.row _).parent_left hp
+        have hend : M.height c - 1 ≤ M.height p := M.parent_endpoint hp
+        have := ih p hpc
+        omega
+
+/-! ## 積むセルの値 -/
+
+theorem fujiCell_val_of_par_none (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal : Nat)
+    (h : (fujiCell M P cur sy sx k i j shifts topVal).par = none) :
+    (fujiCell M P cur sy sx k i j shifts topVal).val = topVal := by
+  rw [fujiCell_val, h]
+  rfl
+
+theorem fujiCell_val_of_par_some (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal p : Nat)
+    (h : (fujiCell M P cur sy sx k i j shifts topVal).par = some p) :
+    (fujiCell M P cur sy sx k i j shifts topVal).val = 0 := by
+  rw [fujiCell_val, h]
+  rfl
+
+theorem fujiCellAt_val_of_par_none (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i j : Nat) (isRep : Bool) (res : List Rowj) (k : Nat)
+    (h : (fujiCellAt M P nd i j isRep res k).par = none) :
+    (fujiCellAt M P nd i j isRep res k).val = nd (j + P.len * i) :=
+  fujiCell_val_of_par_none M P (rowAt res k) _ _ k i j _ _ h
+
+theorem fujiCellAt_val_of_par_some (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i j : Nat) (isRep : Bool) (res : List Rowj) (k p : Nat)
+    (h : (fujiCellAt M P nd i j isRep res k).par = some p) :
+    (fujiCellAt M P nd i j isRep res k).val = 0 :=
+  fujiCell_val_of_par_some M P (rowAt res k) _ _ k i j _ _ p h
+
 end Yukito
