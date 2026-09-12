@@ -1,4 +1,5 @@
 import Equiv.Yama
+import Equiv.NoCross
 
 /-!
 # `k < K` の枝のコピー先の山
@@ -153,6 +154,89 @@ def RootMono (S : Setting) : Prop :=
 def NoRootInside (S : Setting) : Prop :=
   ∀ (r c p w : Nat), ((mountainOf' S).row r).parent c = some p → p < w → w < c →
     r ≤ height S.tower.base w → ((mountainOf' S).row r).parent w ≠ none
+
+/-! ## 鎖は辺を跨げない
+
+森が非交差で、辺の内側に根が無ければ、辺の内側から始まる鎖は辺の下端に到達する。 -/
+
+/-- 辺 `(b, a)` の内側 `w` から始まる `F` 鎖は `b` に到達する。 -/
+theorem chain_hits (F : ParentForest) (hnc : NoCross F)
+    (hnri : ∀ u u' v, F.parent u = some u' → u' < v → v < u → F.parent v ≠ none)
+    (b a : Nat) (hba : F.parent a = some b) :
+    ∀ w, b < w → w < a → ZeroY.Forest.Ancestor F.parent w b := by
+  intro w
+  induction w using Nat.strongRecOn with
+  | ind w ih =>
+    intro hbw hwa
+    cases hv : F.parent w with
+    | none => exact absurd hv (hnri a b w hba hbw hwa)
+    | some v =>
+        have hvw : v < w := F.parent_left hv
+        rcases Nat.lt_or_ge v b with hvb | hbv
+        · exact absurd (hnc v w b a hv hba hvb hbw hwa) (by simp)
+        · rcases Nat.eq_or_lt_of_le hbv with hve | hvb'
+          · rw [hve]
+            exact Relation.TransGen.single hv
+          · exact Relation.TransGen.trans (Relation.TransGen.single hv)
+              (ih v hvw hvb' (by omega))
+
+/-- 親が無ければ祖先も無い。 -/
+theorem not_ancestor_of_parent_none (F : ParentForest) (c p : Nat) (hq : F.parent c = none)
+    (h : ZeroY.Forest.Ancestor F.parent c p) : False := by
+  induction h with
+  | single h1 => rw [hq] at h1; exact absurd h1 (by simp)
+  | tail _ _ ih => exact ih
+
+/-- 鎖の最初の一歩。 -/
+theorem ancestor_first_step (F : ParentForest) (c q p : Nat) (hq : F.parent c = some q)
+    (h : ZeroY.Forest.Ancestor F.parent c p) :
+    p = q ∨ ZeroY.Forest.Ancestor F.parent q p := by
+  induction h with
+  | single h1 =>
+      rw [hq] at h1
+      exact Or.inl (Option.some.inj h1).symm
+  | tail h1 h2 ih =>
+      rcases ih with he | ha
+      · rw [he] at h2
+        exact Or.inr (Relation.TransGen.single h2)
+      · exact Or.inr (Relation.TransGen.tail ha h2)
+
+/-- **間にある列は祖先の祖先。** `p` が `c` の `F` 祖先で `p < w < c` なら、
+`p` は `w` の `F` 祖先でもある。 -/
+theorem frame_ancestor_of_between (F : ParentForest) (hnc : NoCross F)
+    (hnri : ∀ u u' v, F.parent u = some u' → u' < v → v < u → F.parent v ≠ none) :
+    ∀ c p w, ZeroY.Forest.Ancestor F.parent c p → p < w → w < c →
+      ZeroY.Forest.Ancestor F.parent w p := by
+  intro c
+  induction c using Nat.strongRecOn with
+  | ind c ih =>
+    intro p w hpc hpw hwc
+    cases hq : F.parent c with
+    | none => exact (not_ancestor_of_parent_none F c p hq hpc).elim
+    | some q =>
+        have hqc : q < c := F.parent_left hq
+        have hpq : p = q ∨ ZeroY.Forest.Ancestor F.parent q p :=
+          ancestor_first_step F c q p hq hpc
+        have hpqle : p ≤ q := by
+          rcases hpq with h | h
+          · omega
+          · have := ZeroY.Forest.ancestor_lt F.parent_left h
+            omega
+        rcases Nat.lt_or_ge q w with hqw | hwq
+        · -- q < w < c、辺 (q, c) の内側
+          have hwq' : ZeroY.Forest.Ancestor F.parent w q := chain_hits F hnc hnri q c hq w hqw hwc
+          rcases hpq with h | h
+          · rw [h]; exact hwq'
+          · exact Relation.TransGen.trans hwq' h
+        · rcases Nat.eq_or_lt_of_le hwq with hwe | hwq'
+          · -- w = q
+            rcases hpq with h | h
+            · omega
+            · rw [hwe]; exact h
+          · -- w < q、q を新しい c として帰納
+            rcases hpq with h | h
+            · omega
+            · exact ih q hqc p w h hpw hwq'
 
 /-- **`NoRootInside` の第 1 の場合。** `w` が `c` の frame 祖先なら証明できる。
 `p` が最大の候補なので `U c ≤ U w`、そして `p` は `w` の frame 祖先で
