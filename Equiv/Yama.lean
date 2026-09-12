@@ -600,4 +600,67 @@ theorem hasCol_state (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
         (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M)) k j2
         (by omega) (by omega) (by rw [← hie]; exact hkmax)
 
+/-! ## 元の列を密表現の言葉で
+
+JS の `srcColYama` を、`Setting` と継ぎ目 `y` だけで書いた形。 -/
+
+/-- 元の列。置き換えの継ぎ目で `level` より下なら最後の列、そうでなければ `j`。 -/
+def srcColY (S : Setting) (y j k : Nat) : Nat :=
+  if j = y ∧ k < height S.tower.base (S.n - 1) - 1 then S.n - 1 else j
+
+theorem srcColYama_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (mfuel : Nat) (hyama : expYama M mfuel) (y : Nat)
+    (hseam : (expP M mfuel).badRootSeam = y) (j k : Nat) :
+    srcColYama S (expP M mfuel) j k (isRepAt (expP M mfuel) j) = srcColY S y j k := by
+  have hbh := expP_badRootHeight_yama S M hM hn mfuel hyama
+  show (if (isRepAt (expP M mfuel) j && decide (k < (expP M mfuel).badRootHeight)) = true
+        then S.n - 1 else j) = _
+  unfold srcColY
+  rcases Decidable.em (j = y) with hje | hjne
+  · have hrep : isRepAt (expP M mfuel) j = true := by
+      show decide (j = (expP M mfuel).badRootSeam) = true
+      rw [hseam, hje]
+      simp
+    rw [hrep, hbh]
+    rcases Nat.lt_or_ge k (height S.tower.base (S.n - 1) - 1) with hk | hk
+    · rw [if_pos (by simp [hk]), if_pos ⟨hje, hk⟩]
+    · rw [if_neg (by simp [Nat.not_lt.mpr hk]), if_neg (by rintro ⟨_, h2⟩; omega)]
+  · have hrep : isRepAt (expP M mfuel) j = false := by
+      show decide (j = (expP M mfuel).badRootSeam) = false
+      rw [hseam]
+      simp [hjne]
+    rw [hrep, if_neg (by simp), if_neg (by rintro ⟨h1, _⟩; exact hjne h1)]
+
+theorem parentCopy_eq (C : CopyCoordinates.Context) (b p : Nat) :
+    C.parentCopy b p = p + (if C.y ≤ p then b * C.length else 0) :=
+  (js_shift_eq_parentCopy C b p).symm
+
+/-- **原文の親から、元の列とその親を取り出す。** -/
+theorem yamaContext_parent_src (S : Setting) (y : Nat) (hy hpar hh) (k i j pc : Nat)
+    (hi : 0 < i) (hjy : y ≤ j) (hjx : j < S.n - 1)
+    (hpc : (yamaContext S y hy hpar hh).parent k (j + (S.n - 1 - y) * i) = some pc) :
+    ∃ q, (rows S.tower.base k).forest.parent (srcColY S y j k) = some q ∧
+      pc = q + (if y ≤ q then (i - (if j = y then 1 else 0)) * (S.n - 1 - y) else 0) := by
+  have hcy : (yamaContext S y hy hpar hh).coordinates.y = y := rfl
+  have hcl : (yamaContext S y hy hpar hh).coordinates.length = S.n - 1 - y := rfl
+  unfold srcColY
+  rcases Decidable.em (j = y) with hje | hjne
+  · rcases Nat.lt_or_ge k (height S.tower.base (S.n - 1) - 1) with hk | hk
+    · rw [if_pos ⟨hje, hk⟩, if_pos hje]
+      rw [hje, yamaContext_parent_seam_low' S y hy hpar hh k i hi hk] at hpc
+      obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+      refine ⟨q, hq, ?_⟩
+      rw [← hqe, parentCopy_eq, hcy, hcl]
+    · rw [hje, if_neg (by rintro ⟨_, h2⟩; omega), if_pos rfl]
+      rw [hje, yamaContext_parent_seam_high' S y hy hpar hh k i hi hk] at hpc
+      refine ⟨pc, hpc, ?_⟩
+      have hlt := (rows S.tower.base k).forest.parent_left hpc
+      rw [if_neg (by omega)]
+      omega
+  · rw [if_neg (by rintro ⟨h1, _⟩; exact hjne h1), if_neg hjne]
+    rw [yamaContext_parent_other' S y hy hpar hh k j i (by omega) hjx] at hpc
+    obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+    refine ⟨q, hq, ?_⟩
+    rw [← hqe, parentCopy_eq, hcy, hcl, Nat.sub_zero]
+
 end Yukito
