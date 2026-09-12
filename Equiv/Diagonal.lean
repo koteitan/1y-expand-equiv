@@ -132,30 +132,47 @@ theorem chainFind_none {F : ParentForest} {pred : Nat → Bool} :
       · have := F.parent_left hq
         exact ih q (by omega) h p ha'
 
+/-- **探索は `restrictedParent` である。** 止まる条件に「値が正」も入れた形。
+疎配列では死んだ列がそもそも見えないので、JS 側ではこの条件が自動になる。 -/
+theorem chainFind_eq_restrictedParent' (F : ParentForest) (U : Nat → Nat)
+    (fuel c : Nat) (hf : c ≤ fuel) :
+    chainFind F (fun p => decide (0 < U p) && decide (U p < U c)) fuel c
+      = restrictedParent F U c := by
+  cases hw : chainFind F (fun p => decide (0 < U p) && decide (U p < U c)) fuel c with
+  | none =>
+    refine ((restrictedParent_none_iff F U c).mpr ?_).symm
+    intro p ha hp
+    have h := chainFind_none fuel c hf hw p ha
+    simp only [Bool.and_eq_false_iff, decide_eq_false_iff_not] at h
+    rcases h with h | h
+    · omega
+    · omega
+  | some p =>
+    obtain ⟨ha, hp, hmax⟩ := chainFind_some fuel c p hw
+    simp only [Bool.and_eq_true, decide_eq_true_eq] at hp
+    refine ((restrictedParent_some_iff F U c p).mpr
+      ⟨ParentForest.ancestor_to_zeroY ha, hp.1, hp.2, ?_⟩).symm
+    intro q hq hqp hqc
+    rcases Nat.lt_or_ge p q with hlt | hge
+    · have h := hmax q (ParentForest.ancestor_of_zeroY hq) hlt
+      simp only [Bool.and_eq_false_iff, decide_eq_false_iff_not] at h
+      rcases h with h | h
+      · omega
+      · omega
+    · exact hge
+
 /-- **探索は `restrictedParent` である。** 値がすべて正なら、
 `0 < value p` の条件は自動なので、JS の「値が小さい所で止まる」がそのまま
 Phyrion の `restrictedParent` に一致する。 -/
 theorem chainFind_eq_restrictedParent (F : ParentForest) (U : Nat → Nat)
     (hpos : ∀ p, 0 < U p) (fuel c : Nat) (hf : c ≤ fuel) :
     chainFind F (fun p => decide (U p < U c)) fuel c = restrictedParent F U c := by
-  cases hw : chainFind F (fun p => decide (U p < U c)) fuel c with
-  | none =>
-    refine ((restrictedParent_none_iff F U c).mpr ?_).symm
-    intro p ha _
-    have h := chainFind_none fuel c hf hw p ha
-    simp only [decide_eq_false_iff_not] at h
-    omega
-  | some p =>
-    obtain ⟨ha, hp, hmax⟩ := chainFind_some fuel c p hw
-    simp only [decide_eq_true_eq] at hp
-    refine ((restrictedParent_some_iff F U c p).mpr
-      ⟨ParentForest.ancestor_to_zeroY ha, hpos p, hp, ?_⟩).symm
-    intro q hq _ _
-    rcases Nat.lt_or_ge p q with hlt | hge
-    · have h := hmax q (ParentForest.ancestor_of_zeroY hq) hlt
-      simp only [decide_eq_false_iff_not] at h
-      omega
-    · exact hge
+  rw [← chainFind_eq_restrictedParent' F U fuel c hf]
+  have he : (fun p => decide (0 < U p) && decide (U p < U c))
+      = (fun p => decide (U p < U c)) := by
+    funext p
+    simp only [decide_eq_true (hpos p), Bool.true_and]
+  rw [he]
 
 /-! ## 対角の行
 

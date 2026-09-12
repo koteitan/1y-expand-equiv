@@ -31,6 +31,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/YukitoCheck.lean` | 書き起こしが `script.js` の出力と一致することの検査 |
 | `Equiv/Sparse.lean` | 疎配列の走査（`firstAtLeast`）の性質 |
 | `Equiv/Rep.lean` | 疎配列が密表現を表していること（`Rep`）と読み替えの正しさ |
+| `Equiv/Lookup.lean` | 列番号での引き方と、JS の隙間 break が無害であること |
 | `Equiv/Bridge.lean` | 疎表現（生きたセルだけを並べる）と密表現（値 0 が不在）の読み替え |
 | `Equiv/Row0.lean` | **行 0 の親写像が一致する**（`restrictedParent_linear`） |
 | `Equiv/Row0Spec.lean` | 行 0 の親の初等的な特徴づけ |
@@ -452,10 +453,38 @@ step_facts     残るセル 1 つぶんの事実（列・値・正値）
 rep_nextRow    階差行も表現になっている
 ```
 
+### JS の隙間 break
+
+JS の親探索には Lean 側に対応するもののない条件がもう 1 つある。
+
+```js
+if (j<0 || j<lastLayer.length-1 && lastLayer[j].position+1!=lastLayer[j+1].position) break;
+```
+
+「`j` のすぐ右に隙間があれば打ち切る」というもので、`Yukito.lean` の `breakHere`
+である。これは**右隣の列も生きていれば発動しない**（`not_breakHere`）。右隣の列が
+生きていれば配列でも隣り合うからである。
+
+親探索が見る列は鎖の要素であり、鎖の要素 `q` は必ず「ある列の親」なので、
+`leftmost_child_rows`（最左の子は右隣）から `q + 1` も生きている
+（`chain_succ_live`）。したがって**鎖の上では隙間 break は発動しない**。発動しうる
+のは鎖の根に降りたときだけで、そこは `firstLiveNotSmaller_ofSequence` が押さえる。
+
+```
+firstAtLeast_eq   走査の特徴づけ
+rep_lookup        生きた列は配列の中にあり、firstAtLeast はその添字を指す
+rep_lookup_dead   死んだ列を引くと、firstAtLeast は右隣を指す
+rep_succ_index    生きている 2 列が隣り合えば配列でも隣り合う
+not_breakHere     右隣が生きていれば隙間 break は発動しない
+chain_succ_live   鎖の要素の右隣はその行で生きている
+```
+
+`chainFind_eq_restrictedParent'` は、止まる条件に「値が正」も入れた形である。
+疎配列では死んだ列がそもそも見えないので、JS 側ではこの条件が自動になる。
+
 残るのは `assignParents` が計算する `par` が `restrictedParent` に対応すること、
-すなわち `ParRep` を実際に立てることである。ここで `searchUpper` が
-`chainFind`（`Diagonal.lean`）に、`firstAtLeast` のずれが
-`firstLiveNotSmaller_ofSequence` に繋がる。
+すなわち `ParRep` を実際に立てることである。上の部品でずれの箇所は全部押さえた
+ので、あとは `searchUpper` の再帰を `chainFind` の再帰に重ねる作業になる。
 
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。

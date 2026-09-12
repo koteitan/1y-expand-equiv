@@ -111,22 +111,30 @@ theorem firstAtLeast_at (row : Rowj) (target k : Nat) (hk : k < row.size)
     (h : firstAtLeast row target = k) : target ≤ (row[k]'hk).pos :=
   scanFrom_at row target 0 k hk h
 
+/-- **走査の特徴づけ。** 添字 `j` の位置が `target` 以上で、それより手前がすべて
+`target` 未満なら、`firstAtLeast` は `j` を指す。 -/
+theorem firstAtLeast_eq (row : Rowj) (target j : Nat) (hj : j < row.size)
+    (h1 : target ≤ (row[j]'hj).pos)
+    (h2 : ∀ i, ∀ hi : i < row.size, i < j → (row[i]'hi).pos < target) :
+    firstAtLeast row target = j := by
+  rcases Nat.lt_trichotomy (firstAtLeast row target) j with hlt | heq | hgt
+  · exfalso
+    have hk : firstAtLeast row target < row.size := by omega
+    have hge := firstAtLeast_at row target _ hk rfl
+    have := h2 _ hk hlt
+    omega
+  · exact heq
+  · exfalso
+    have := firstAtLeast_before row target j hj hgt
+    omega
+
 /-- **疎配列を列番号で引く。** 位置が狭義単調で、`position` がちょうど `target` の
 セルがあれば、`firstAtLeast` はそのセルを指す。 -/
 theorem firstAtLeast_eq_of_mem (row : Rowj) (hmono : PosMono row) (target m : Nat)
     (hm : m < row.size) (hpos : (row[m]'hm).pos = target) :
-    firstAtLeast row target = m := by
-  have hkm : firstAtLeast row target ≤ m := by
-    rcases Nat.lt_or_ge m (firstAtLeast row target) with hlt | hge
-    · have := firstAtLeast_before row target m hm hlt
-      omega
-    · exact hge
-  have hk : firstAtLeast row target < row.size := by omega
-  have hge := firstAtLeast_at row target _ hk rfl
-  rcases Nat.eq_or_lt_of_le hkm with heq | hlt
-  · exact heq
-  · have := hmono _ m hk hm hlt
-    omega
+    firstAtLeast row target = m :=
+  firstAtLeast_eq row target m hm (by omega)
+    (fun i hi hlt => by have := hmono i m hi hm hlt; omega)
 
 /-- ちょうどのセルが無いときは、`firstAtLeast` が指すセルは `target` より右にある。 -/
 theorem firstAtLeast_gt_of_not_mem (row : Rowj) (target k : Nat)

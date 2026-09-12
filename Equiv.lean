@@ -2,6 +2,7 @@ import Equiv.Yukito
 import Equiv.YukitoCheck
 import Equiv.Sparse
 import Equiv.Rep
+import Equiv.Lookup
 import Equiv.Bridge
 import Equiv.Row0
 import Equiv.Row0Spec
