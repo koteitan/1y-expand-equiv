@@ -1369,4 +1369,38 @@ theorem fujiCellAt_par_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
   rw [hcolsrc] at hq
   exact ⟨hp', q, hq, hcol⟩
 
+/-- **根 `y` の親は `y` より左にあるので、桁上げは効かない。** 原文が
+`level ≤ r` の場合に `parentCopy` を掛けないのと、JS が掛けるのとが一致する理由。 -/
+theorem parentCopy_of_parent_y (C : CopyCoordinates.Context) (F : ParentForest) (q : Nat)
+    (h : F.parent C.y = some q) (b : Nat) : C.parentCopy b q = q := by
+  have hlt := F.parent_left h
+  unfold CopyCoordinates.Context.parentCopy
+  rw [if_pos hlt]
+
+/-! ## 子を切ったあとの段のセル -/
+
+theorem size_rowAt_cutChild (M : List Rowj) (cutH m : Nat)
+    (h : m < (cutChild M cutH).length) :
+    (rowAt (cutChild M cutH) m).size
+      = if m < cutH + 1 then (rowAt M m).size - 1 else (rowAt M m).size := by
+  rw [rowAt_cutChild M cutH m h]
+  split
+  · rw [Array.size_pop]
+  · rfl
+
+/-- 残ったセルは元のセルそのもの。 -/
+theorem rowAt_cutChild_getElem? (M : List Rowj) (cutH m t : Nat)
+    (h : m < (cutChild M cutH).length) (ht : t < (rowAt (cutChild M cutH) m).size) :
+    (rowAt (cutChild M cutH) m)[t]? = (rowAt M m)[t]? := by
+  have hrow := rowAt_cutChild M cutH m h
+  rcases Nat.lt_or_ge m (cutH + 1) with hm | hm
+  · rw [if_pos hm] at hrow
+    rw [hrow] at ht ⊢
+    have hts : t < (rowAt M m).size := by
+      rw [Array.size_pop] at ht
+      omega
+    rw [Array.getElem?_eq_getElem ht, Array.getElem?_eq_getElem hts, Array.getElem_pop]
+  · rw [if_neg (by omega)] at hrow
+    rw [hrow]
+
 end Yukito
