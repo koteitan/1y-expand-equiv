@@ -41,6 +41,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/SibLive.lean` | 生きた左の兄弟についての単調性。基底と 2 つの場合、liveness の伝播 |
 | `Equiv/Tower.lean` | 森の塔。frame と値を層ごとに並べ、行 0 を特別扱いせずに済ませる |
 | `Equiv/Extract.lean` | 抽出段。JS の脚歩行が Phyrion の `Pseudo.parent` に一致すること |
+| `Equiv/Diagonal.lean` | 抽出段。対角の親が `rawExtract` の親に一致すること |
 
 ## 座標の対応
 
@@ -356,8 +357,47 @@ jsWalk_eq_pseudo  JS の脚歩行 = Phyrion の Pseudo.parent
 `<` で走ってから `==` を確かめる。後者はそのまま「その列が生きているか」の判定に
 なっており、山の段で見つかった `firstAtLeast` のようなずれは起きない。
 
-抽出段に残るのは、疎配列と密表現の橋渡し（`Bridge.lean` の続き）と、
-歩行の結果を並べた列が `rawExtract` に一致することである。
+### 対角の親
+
+`calcDiagonal` の後半は 2 つの探索からなる。どちらも「森の親を辿り、最初に値が
+小さい所で止まる」形をしている。
+
+```
+pw            線形森（i−1, i−2, …）を辿る
+後半のループ  diagonalTree（擬親森）を辿る
+```
+
+`diagonal[i]` は列 `i` の頂の値 `topValue base i`、`diagonalTree[i]` は脚歩行の
+結果すなわち `Pseudo.parent` である。Phyrion 側で対応するのは
+
+```
+rawExtract base hpos = select (Pseudo.forest (mountain base hpos)) (topValue base)
+```
+
+で、その値は `topValue base`、その親は
+`restrictedParent (Pseudo.forest …) (topValue base)` である。
+
+値がすべて正なので `restrictedParent` の `0 < value p` の条件は自動になり、
+JS の「値が小さい所で止まる」がそのまま `restrictedParent` に一致する。
+
+```
+chainFind                     森の親を辿り最初に pred を満たす所で止まる探索
+chainFind_some / chainFind_none  止まった列の特徴づけ
+chainFind_eq_restrictedParent 探索 = restrictedParent
+rawExtract_value              対角の値 = rawExtract の値
+rawExtract_parent             対角の親 = rawExtract の親
+pw_eq_restrictedParent        pw = 線形森の restrictedParent
+```
+
+JS は対角を文字列にしてから `calcMountain` に渡す。素の数として書けば読み直しの
+際に行 0 の規則で親が振られ、それは `restrictedParent linearForest` である
+（`restrictedParent_linear`）。一致しないときだけ `"値v親"` の形で親を明示し、
+`parseSequenceElement` が `forcedParent` を立てて行 0 の規則を飛ばす。どちらの枝
+でも復元される親は擬親森の `restrictedParent` である。明示側の添字は
+`Math.max(Math.min(i-1,p),-1)` で丸められるが、`p` は `i` の祖先なので `p < i`
+であり丸めは効かない。親が無い場合は `"値v-1"` と書かれ、読み直しでも `-1` に戻る。
+
+抽出段に残るのは、疎配列と密表現の橋渡し（`Bridge.lean` の続き）である。
 
 山の段が済んでも、抽出の残り・bad root・コピー層が残る。コピー層が全体の大半である。
 
