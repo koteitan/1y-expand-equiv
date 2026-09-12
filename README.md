@@ -471,9 +471,24 @@ diagList (calcMountain s (fuel+1))
 あたるので、生きた列がある限り段は伸びる（`mountainGo_length`）。段の数は
 `height_lt` と `sequence_value_le_bound` から `sequenceBound s` で押さえられる。
 
-抽出段に残るのは、2 つの探索（`pwScan` / `treeScan`）が `restrictedParent` に一致
-すること、そして読み直し（`parseDiag`）まで含めて `rawExtract` になることである。
-探索の対応は密表現側で済んでいる（`chainFind_eq_restrictedParent'`）。
+2 つの探索も繋いだ。
+
+```
+treeScan_eq      treeScan は chainFind（擬親森を辿る）
+pwScan_eq        pwScan は scanLeft（線形森を辿る）
+calcDiagonal_eq  出力全体
+```
+
+`calcDiagonal` の出力はこうなる。
+
+```
+値      topValue base i
+親      擬親森の restrictedParent（= rawExtract の親）
+"v"     線形森の restrictedParent（= 読み直しの既定の親）と食い違うときだけ付く
+```
+
+抽出段に残るのは、読み直し（`parseDiag`）とその行 0 の親付けまで含めて
+`rawExtract` になることである。
 
 ## 疎配列との橋渡し
 

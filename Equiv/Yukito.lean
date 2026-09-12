@@ -119,10 +119,15 @@ def mountainGo (cur : Rowj) : Nat → List Rowj
     if cur.all (fun c => c.par.isNone) then [cur]
     else cur :: mountainGo (assignParents (some cur) (nextRow cur)) f
 
-/-- JS の `calcMountain` 本体。 -/
-def calcMountain (s : List Nat) : Nat → List Rowj
+/-- JS の `calcMountain` 本体。JS は文字列でも配列でも受け取るので、
+行そのものから始める形にしておく。 -/
+def calcMountainFrom (base : Rowj) : Nat → List Rowj
   | 0 => []
-  | fuel+1 => mountainGo (assignParents none (row0 s)) fuel
+  | fuel+1 => mountainGo (assignParents none base) fuel
+
+/-- 素の数列から山を作る。 -/
+def calcMountain (s : List Nat) (fuel : Nat) : List Rowj :=
+  calcMountainFrom (row0 s) fuel
 
 /-! ## `calcDiagonal`
 

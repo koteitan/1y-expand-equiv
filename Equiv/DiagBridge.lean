@@ -383,4 +383,140 @@ theorem diagList_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
     diagEntry_eq s hs _ (mountainRep_calcMountain s hs fuel) i hi
       (height_lt_length s hs fuel hf i hi))
 
+/-! ## 2 つの探索
+
+`treeScan` は `diagonalTree`（擬親森）を辿る探索で、`Diagonal.lean` の `chainFind`
+と同じ形をしている。`pwScan` は線形森を辿る探索で、`Row0.lean` の `scanLeft` と
+同じ形である。 -/
+
+theorem getD_map_range {α : Type} (n i : Nat) (g : Nat → α) (dflt : α) (hi : i < n) :
+    ((List.range n).map g).getD i dflt = g i := by
+  simp only [List.getD, List.getElem?_map, List.getElem?_range hi, Option.map_some,
+    Option.getD_some]
+
+theorem getD_map_range_ge {α : Type} (n i : Nat) (g : Nat → α) (dflt : α) (hi : n ≤ i) :
+    ((List.range n).map g).getD i dflt = dflt := by
+  have h : (List.range n)[i]? = none :=
+    List.getElem?_eq_none (by simp only [List.length_range]; omega)
+  simp only [List.getD, List.getElem?_map, h, Option.map_none, Option.getD_none]
+
+/-- 対角の値の並び。 -/
+theorem diagVals (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    (diagList (calcMountain s (fuel + 1))).map Prod.fst
+      = (List.range s.length).map (topValue (ofSequence s)) := by
+  rw [diagList_eq s hs fuel hf, List.map_map]
+  rfl
+
+/-- 対角の歩行結果の並び。 -/
+theorem diagTree (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    (diagList (calcMountain s (fuel + 1))).map Prod.snd
+      = (List.range s.length).map (Pseudo.parent (mountainOf s hs)) := by
+  rw [diagList_eq s hs fuel hf, List.map_map]
+  rfl
+
+/-- 入力列の外の列は頂が段 0 なので擬親を持たない。 -/
+theorem pseudo_parent_of_ge (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (p : Nat)
+    (hp : s.length ≤ p) : Pseudo.parent (mountainOf s hs) p = none := by
+  refine (Pseudo.parent_none_iff (mountainOf s hs) p).mpr ?_
+  show height (ofSequence s) p = 0
+  rcases Nat.eq_zero_or_pos (height (ofSequence s) p) with h | h
+  · exact h
+  · exfalso
+    have hlive := height_live (ofSequence s) (ofSequence_positive s hs p)
+    rw [rows_value_zero_of_ge s (height (ofSequence s) p) p h hp] at hlive
+    omega
+
+/-- **`treeScan` は `chainFind` である。** -/
+theorem treeScan_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (target : Nat) :
+    ∀ fuel p,
+      treeScan ((List.range s.length).map (topValue (ofSequence s)))
+        ((List.range s.length).map (Pseudo.parent (mountainOf s hs))) target fuel p
+        = chainFind (Pseudo.forest (mountainOf s hs))
+            (fun q => decide (topValue (ofSequence s) q < target)) fuel p := by
+  intro fuel
+  induction fuel with
+  | zero => intro p; rfl
+  | succ fuel ih =>
+    intro p
+    rw [treeScan, chainFind]
+    have hkey : ((List.range s.length).map (Pseudo.parent (mountainOf s hs))).getD p none
+        = (Pseudo.forest (mountainOf s hs)).parent p := by
+      rcases Nat.lt_or_ge p s.length with h | h
+      · rw [getD_map_range s.length p _ none h]
+        rfl
+      · rw [getD_map_range_ge s.length p _ none h]
+        exact (pseudo_parent_of_ge s hs p h).symm
+    rw [hkey]
+    cases hq : (Pseudo.forest (mountainOf s hs)).parent p with
+    | none => rfl
+    | some q =>
+        dsimp only
+        have hqp : q < p := (Pseudo.forest (mountainOf s hs)).parent_left hq
+        have hpn : p < s.length := by
+          rcases Nat.lt_or_ge p s.length with h | h
+          · exact h
+          · exfalso
+            have h2 : Pseudo.parent (mountainOf s hs) p = some q := hq
+            rw [pseudo_parent_of_ge s hs p h] at h2
+            cases h2
+        rw [getD_map_range s.length q _ 0 (by omega)]
+        by_cases hc : topValue (ofSequence s) q < target
+        · rw [if_pos hc, if_pos (decide_eq_true hc)]
+        · rw [if_neg hc, if_neg (by simp [hc])]
+          exact ih q
+
+/-- **`pwScan` は `scanLeft` である。** -/
+theorem pwScan_eq (s : List Nat) (target : Nat) :
+    ∀ j, j ≤ s.length →
+      pwScan ((List.range s.length).map (topValue (ofSequence s))) target j
+        = scanLeft (topValue (ofSequence s)) target j := by
+  intro j
+  induction j with
+  | zero => intro _; rfl
+  | succ j ih =>
+      intro hj
+      rw [pwScan, scanLeft, getD_map_range s.length j _ 0 (by omega)]
+      by_cases hc : topValue (ofSequence s) j < target
+      · rw [if_pos hc, if_pos hc]
+      · rw [if_neg hc, if_neg hc]
+        exact ih (by omega)
+
+/-! ## `calcDiagonal` 全体 -/
+
+/-- **`calcDiagonal` の出力が一致する。** 各要素の値は `topValue`、明示する親は
+擬親森の `restrictedParent`（= `rawExtract` の親）で、線形森の `restrictedParent`
+（= 読み直しの既定の親）と食い違うときだけ `"v"` が付く。 -/
+theorem calcDiagonal_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    calcDiagonal (calcMountain s (fuel + 1))
+      = (List.range s.length).map (fun i =>
+          if restrictedParent (Pseudo.forest (mountainOf s hs))
+                (topValue (ofSequence s)) i
+              = restrictedParent linearForest (topValue (ofSequence s)) i then
+            { val := topValue (ofSequence s) i, forced := false, par := none }
+          else
+            { val := topValue (ofSequence s) i, forced := true,
+              par := restrictedParent (Pseudo.forest (mountainOf s hs))
+                (topValue (ofSequence s)) i }) := by
+  have hpos : ∀ p, 0 < topValue (ofSequence s) p :=
+    fun p => topValue_pos (ofSequence s) (ofSequence_positive s hs p)
+  have hd := diagVals s hs fuel hf
+  have ht := diagTree s hs fuel hf
+  show (List.range ((diagList (calcMountain s (fuel + 1))).map Prod.fst).length).map _ = _
+  rw [hd]
+  simp only [List.length_map, List.length_range]
+  refine List.map_congr_left ?_
+  intro i hi
+  have hin : i < s.length := List.mem_range.mp hi
+  have htarget : ((List.range s.length).map (topValue (ofSequence s))).getD i 0
+      = topValue (ofSequence s) i := getD_map_range s.length i _ 0 hin
+  simp only [hd, ht, htarget]
+  rw [treeScan_eq s hs (topValue (ofSequence s) i) (i + 1) i,
+    chainFind_eq_restrictedParent (Pseudo.forest (mountainOf s hs))
+      (topValue (ofSequence s)) hpos (i + 1) i (by omega),
+    pwScan_eq s (topValue (ofSequence s) i) i (by omega),
+    restrictedParent_linear (topValue (ofSequence s)) hpos i]
+
 end Yukito

@@ -17,21 +17,29 @@ open OneY OneY.Numeric
 
 /-! ## 行 0 -/
 
-/-- JS の左スキャン `searchBase` は `scanLeft` そのもの。 -/
-theorem searchBase_eq_scanLeft (s : List Nat) (i : Nat) (hi : i < (row0 s).size) :
-    ∀ j, j ≤ i → searchBase (row0 s) i j
-      = scanLeft (ofSequence s).value ((ofSequence s).value i) j := by
+/-- JS の左スキャン `searchBase` は `scanLeft` そのもの。位置が添字に一致し、
+値が `U` を表している行ならどれでも成り立つ。 -/
+theorem searchBase_eq_scanLeft' (row : Rowj) (U : Nat → Nat) (i : Nat)
+    (hi : i < row.size)
+    (hval : ∀ j, ∀ hj : j < row.size, (row[j]'hj).val = U j) :
+    ∀ j, j ≤ i → searchBase row i j = scanLeft U (U i) j := by
   intro j
   induction j with
   | zero => intro _; rfl
   | succ j ih =>
       intro hji
-      have hj : j < (row0 s).size := by omega
-      rw [searchBase, dif_pos hj, dif_pos hi, scanLeft, row0_val s j hj, row0_val s i hi]
-      by_cases hc : (ofSequence s).value j < (ofSequence s).value i
+      have hj : j < row.size := by omega
+      rw [searchBase, dif_pos hj, dif_pos hi, scanLeft, hval j hj, hval i hi]
+      by_cases hc : U j < U i
       · rw [if_pos hc, if_pos hc]
       · rw [if_neg hc, if_neg hc]
         exact ih (by omega)
+
+/-- 行 0 についての形。 -/
+theorem searchBase_eq_scanLeft (s : List Nat) (i : Nat) (hi : i < (row0 s).size) :
+    ∀ j, j ≤ i → searchBase (row0 s) i j
+      = scanLeft (ofSequence s).value ((ofSequence s).value i) j :=
+  searchBase_eq_scanLeft' (row0 s) (ofSequence s).value i hi (fun j hj => row0_val s j hj)
 
 /-- 行 0 の親も `restrictedParent` に一致する。 -/
 theorem parRep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
@@ -149,6 +157,10 @@ theorem rowAt_mountainGo_zero (cur : Rowj) (f : Nat) : rowAt (mountainGo cur f) 
       · rfl
 
 /-- 山の行 0 は入力列から作った行。 -/
+theorem rowAt_calcMountainFrom_zero (base : Rowj) (fuel : Nat) :
+    rowAt (calcMountainFrom base (fuel + 1)) 0 = assignParents none base :=
+  rowAt_mountainGo_zero _ fuel
+
 theorem rowAt_calcMountain_zero (s : List Nat) (fuel : Nat) :
     rowAt (calcMountain s (fuel + 1)) 0 = assignParents none (row0 s) :=
   rowAt_mountainGo_zero _ fuel
