@@ -134,7 +134,20 @@ root_pos_down        root がその層で生きていることも出る
 `RootChildAdjacent` については、`root + 1` が `p` の `F` 祖先（または `p` 自身）
 である場合を証明した（`rootChildAdjacent_of_ancestor`）。`e` を `root` の `F` 子で
 `p` の鎖にあるものとすると `root + 1 ≤ e` であり、`root + 1 = e` のときが
-これにあたる。残るのは `root + 1 < e` の場合である。
+これにあたる。残るのは `root + 1 < e` の場合である。この場合は
+「`root` が `root+1` の `F'` 祖先である」ことと「その層で値の大小が成り立つ」ことが
+互いを要求して噛み合わない。
+
+ただし `RootChildAdjacent` は必須ではない。`fparent_eq_root` は
+「間の列が死んでいる」という条件だけで `F.parent j = root` を与えるので、
+`j` と `e` が `F` 兄弟であることは `j = root + 1` を経由せずに出る
+（`j_e_siblings`）。非祖先の場合の組み上げも済んでいる（`one_of_nonancestor`）。
+
+したがって残る義務は次の 1 本に集約される。
+
+```
+U e ≤ U j     j と e は F 兄弟で j < e、j は生きている
+```
 
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち
