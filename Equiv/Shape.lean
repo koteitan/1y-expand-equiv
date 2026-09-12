@@ -14,6 +14,9 @@ namespace Yukito
 
 open OneY OneY.Numeric OneY.RootGeometry
 
+/-- 段 `r` の列 `c` に読める値（値の埋めのあと）。 -/
+def colVal (Rs : List Rowj) (r c : Nat) : Nat := readVal (rowAt (fillValues Rs) r) r c
+
 /-- 疎な山 `Rs` が、密な山 `G`・頂の値 `top`・列の上限 `W` を表している。 -/
 structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : Nat) : Prop where
   /-- 各段の位置は真に増加。 -/
@@ -34,9 +37,11 @@ structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : N
   /-- 親を持たないセルは密な山でも根。 -/
   parNone : ∀ (r i : Nat) (h : i < (rowAt Rs r).size),
     ((rowAt Rs r)[i]'h).par = none → (G.row r).parent (((rowAt Rs r)[i]'h).pos + r) = none
-  /-- 親を持つセルの値は未確定（0）。 -/
-  valZero : ∀ (r i : Nat) (h : i < (rowAt Rs r).size),
-    ((rowAt Rs r)[i]'h).par ≠ none → ((rowAt Rs r)[i]'h).val = 0
+  /-- **差分の関係。** 親のある列では、値は「同じ段の親の値 + 1 つ上の段の同じ列の
+  値」である。値 0 のセルでは埋めから、値が入っているセル（コピー元のまま残る列）
+  では元の山の差分の関係から出る。 -/
+  step : ∀ (r c p : Nat), c < W → (G.row r).parent c = some p →
+    colVal Rs r c = colVal Rs r p + colVal Rs (r + 1) c
   /-- 親を持たないセルの値は頂の値。 -/
   valTop : ∀ (r i : Nat) (h : i < (rowAt Rs r).size),
     ((rowAt Rs r)[i]'h).par = none → ((rowAt Rs r)[i]'h).val = top (((rowAt Rs r)[i]'h).pos + r)
@@ -46,9 +51,6 @@ structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : N
   tall : ∀ c, c < W → G.height c + 1 < Rs.length
 
 variable {Rs : List Rowj} {G : RowMountain} {top : Nat → Nat} {W : Nat}
-
-/-- 段 `r` の列 `c` に読める値。 -/
-def colVal (Rs : List Rowj) (r c : Nat) : Nat := readVal (rowAt (fillValues Rs) r) r c
 
 theorem ShapeRep.hzero (h : ShapeRep Rs G top W) (r c : Nat) (hc : c < W)
     (hgt : G.height c < r) : colVal Rs r c = 0 := by
@@ -90,28 +92,7 @@ theorem ShapeRep.htop (h : ShapeRep Rs G top W) (c : Nat) (hc : c < W) :
 
 theorem ShapeRep.hstep (h : ShapeRep Rs G top W) (r c p : Nat) (hc : c < W)
     (hp : (G.row r).parent c = some p) :
-    colVal Rs r c = colVal Rs r p + colVal Rs (r + 1) c := by
-  have hlt : r < G.height c := G.parent_source hp
-  obtain ⟨i, hi, hpos⟩ := h.cover r c hc (by omega)
-  cases hq : ((rowAt Rs r)[i]'hi).par with
-  | none =>
-      exfalso
-      have := h.parNone r i hi hq
-      rw [hpos, hp] at this
-      exact absurd this (by simp)
-  | some q =>
-      obtain ⟨hq', hG⟩ := h.parCol r i hi q hq
-      rw [hpos, hp] at hG
-      have hpe : ((rowAt Rs r)[q]'hq').pos + r = p := (Option.some.inj hG).symm
-      have hql : q < i := h.parLt r i hi q hq
-      have hposq : ((rowAt Rs r)[q]'hq').pos < ((rowAt Rs r)[i]'hi).pos :=
-        h.mono r q i hq' hi hql
-      have hrc : r + 1 ≤ c := by omega
-      have hval : ((rowAt Rs r)[i]'hi).val = 0 := h.valZero r i hi (by rw [hq]; simp)
-      have htall : r + 1 < Rs.length := by
-        have := h.tall c hc
-        omega
-      exact colVal_step_col Rs h.parLt r htall i hi (h.mono r) c hpos hrc hval q hq hq' p hpe
+    colVal Rs r c = colVal Rs r p + colVal Rs (r + 1) c := h.step r c p hc hp
 
 /-- **`ShapeRep` があれば、埋めたあとの値は `Reconstruction.value` に一致する。** -/
 theorem shapeRep_value (h : ShapeRep Rs G top W) (c : Nat) (hc : c < W) (r : Nat) :
