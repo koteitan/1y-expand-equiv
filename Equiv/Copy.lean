@@ -1443,4 +1443,97 @@ theorem coord_source_block_seam (C : CopyCoordinates.Context) (i : Nat) (hi : 0 
     rw [he, Nat.add_mul_div_left _ _ hLp, Nat.div_eq_of_lt hlt]
     omega
 
+/-! ## 親の添字は自分より前
+
+積むセルの親は「今の段」を `lookupPos` で引いた添字なので、必ずその時点の
+大きさより小さい。積む場所はちょうどその大きさなので、親は自分より前になる。 -/
+
+/-- どの段でも、親の添字は自分より前。 -/
+def ParLt (res : List Rowj) : Prop :=
+  ∀ (r t : Nat) (d : Cell), (rowAt res r)[t]? = some d → ∀ p, d.par = some p → p < t
+
+theorem ParLt.dep {Rs : List Rowj} (h : ParLt Rs) :
+    ∀ (r i : Nat) (hi : i < (rowAt Rs r).size) (p : Nat),
+      ((rowAt Rs r)[i]'hi).par = some p → p < i :=
+  fun r i hi p hp => h r i _ (Array.getElem?_eq_getElem hi) p hp
+
+theorem fujiCell_par_lt (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal p : Nat)
+    (hp : (fujiCell M P cur sy sx k i j shifts topVal).par = some p) : p < cur.size := by
+  rw [fujiCell_par] at hp
+  cases hq : parentPos M P sy sx k shifts with
+  | none => rw [hq] at hp; exact absurd hp (by simp)
+  | some q =>
+      rw [hq] at hp
+      dsimp only at hp
+      obtain ⟨h1, _⟩ := lookupPos_some_iff cur q p hp
+      exact h1
+
+theorem fujiCellAt_par_lt (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (res : List Rowj) (k p : Nat)
+    (hp : (fujiCellAt M P nd i j isRep res k).par = some p) : p < (rowAt res k).size :=
+  fujiCell_par_lt M P (rowAt res k) _ _ k i j _ _ p hp
+
+theorem parLt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (kmax : Nat) (res : List Rowj) (h : ParLt res) :
+    ParLt (fujiRows M P nd i j isRep kmax res) := by
+  intro r t d hd p hp
+  rw [rowAt_fujiRows] at hd
+  split at hd
+  · rw [Array.getElem?_push] at hd
+    split at hd
+    · next hte =>
+        have he := Option.some.inj hd
+        rw [← he] at hp
+        have h2 := fujiCellAt_par_lt M P nd i j isRep res r p hp
+        omega
+    · exact h r t d hd p hp
+  · exact h r t d hd p hp
+
+theorem parLt_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat) :
+    ∀ (t : Nat) (res : List Rowj), ParLt res → ParLt (fujiSeams M P nd i ach af t res) := by
+  intro t
+  induction t with
+  | zero => intro res h; exact h
+  | succ t ih =>
+      intro res h
+      rw [fujiSeams_succ]
+      exact parLt_fujiRows _ _ _ _ _ _ _ _ (ih res h)
+
+theorem parLt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat) :
+    ∀ (n : Nat) (res : List Rowj), ParLt res → ParLt (fujiIters M P nd ach af n res) := by
+  intro n
+  induction n with
+  | zero => intro res h; exact h
+  | succ n ih =>
+      intro res h
+      rw [fujiIters_succ]
+      exact parLt_fujiSeams _ _ _ _ _ _ _ _ (ih res h)
+
+/-- 元の山では、親の添字は自分より前（`par_index_lt`）。 -/
+theorem parLt_of_mtRep (S : Setting) (M : List Rowj) (hM : MtRep S M) : ParLt M := by
+  intro r t d hd p hp
+  have hts : t < (rowAt M r).size := lt_size_of_getElem? hd
+  have hdt : (rowAt M r)[t]'hts = d := by
+    rw [Array.getElem?_eq_getElem hts] at hd
+    exact Option.some.inj hd
+  rcases Nat.lt_or_ge r M.length with hr | hr
+  · have := par_index_lt S M hM r hr t p hts (by rw [hdt]; exact hp)
+    exact this.2
+  · exfalso
+    rw [rowAt_of_ge M r hr] at hts
+    simp at hts
+
+/-- 子を切っても親の添字は自分より前のまま。 -/
+theorem parLt_cutChild (M : List Rowj) (cutH : Nat) (h : ParLt M) :
+    ParLt (cutChild M cutH) := by
+  intro r t d hd p hp
+  have hts : t < (rowAt (cutChild M cutH) r).size := lt_size_of_getElem? hd
+  rcases Nat.lt_or_ge r (cutChild M cutH).length with hr | hr
+  · rw [rowAt_cutChild_getElem? M cutH r t hr hts] at hd
+    exact h r t d hd p hp
+  · exfalso
+    rw [rowAt_of_ge _ r hr] at hts
+    simp at hts
+
 end Yukito
