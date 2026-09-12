@@ -154,6 +154,26 @@ def NoRootInside (S : Setting) : Prop :=
   ∀ (r c p w : Nat), ((mountainOf' S).row r).parent c = some p → p < w → w < c →
     r ≤ height S.tower.base w → ((mountainOf' S).row r).parent w ≠ none
 
+/-- **`NoRootInside` の第 1 の場合。** `w` が `c` の frame 祖先なら証明できる。
+`p` が最大の候補なので `U c ≤ U w`、そして `p` は `w` の frame 祖先で
+`0 < U p < U c ≤ U w` だから `w` は親を持つ。 -/
+theorem noRootInside_ancestor {F : ParentForest} {U : Nat → Nat} {c p w : Nat}
+    (hp : restrictedParent F U c = some p) (hpw : p < w)
+    (hanc : ZeroY.Forest.Ancestor F.parent c w) (hlive : 0 < U w) :
+    restrictedParent F U w ≠ none := by
+  obtain ⟨hpa, hppos, hplt, hmax⟩ := (restrictedParent_some_iff F U c p).mp hp
+  have hge : U c ≤ U w := by
+    rcases Nat.lt_or_ge (U w) (U c) with hlt | hge
+    · have := hmax w hanc hlive hlt
+      omega
+    · exact hge
+  have hpw0 : ZeroY.Forest.Ancestor F.parent w p :=
+    ZeroY.Forest.ancestor_of_common_target F.parent_left hpa hanc hpw
+  have hpw1 : F.Ancestor p w := (ancestor_conv F p w).mp hpw0
+  intro hnone
+  have h2 := (restrictedParent_none_iff F U w).mp hnone p hpw1 hppos
+  omega
+
 /-- **「辺の内側に根は無い」から根の単調性が出る。** -/
 theorem rootMono_of_noRootInside (S : Setting) (h : NoRootInside S) : RootMono S := by
   intro r
