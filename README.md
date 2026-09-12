@@ -1332,8 +1332,28 @@ hasCol_fujiSeams / hasCol_fujiIters  途中の状態での被覆
 rowExt_fujiSeams / rowExt_fujiIters  段は後ろに伸びるだけ
 ```
 
-値の側は `fujiCell` の定義から直ちに出る。親を持たないセルの値は `topVal
-= nd（その列）`、親を持つセルの値は 0 である。
+値の側は `fujiCell` の定義から直ちに出る（`fujiCellAt_val_of_par_none` /
+`fujiCellAt_val_of_par_some`）。親を持たないセルの値は `topVal = nd（その列）`、
+親を持つセルの値は 0 である。
+
+### 積む時点での被覆（済）
+
+```
+hasCol_state:
+  (i'+1, y+t) を処理する直前の段 k には、
+    pc < (y+t) + L*(i'+1) かつ k ≤ height_G pc
+  を満たす列 pc がすべて載っている。
+```
+
+場合分けは 3 つ。`pc < n−1` なら元からある列で `hasCol_cutChild`、
+`pc = j2 + L*i2` で `i2 ≤ i'` なら前の繰り返しで `hasCol_fujiIters`、
+`i2 = i'+1` かつ `j2 < y+t` なら同じ繰り返しの前の継ぎ目で `hasCol_fujiSeams`。
+積む列が `(i, j)` の辞書式順で真に増えること（`col_lt_lex`）が効いている。
+
+親が負の位置にならないことも出た。どの `RowMountain` でも `height c ≤ c` である
+（`rowMountain_height_le`。親は真に左へ動き、親は自分の段まで生きているから）。
+原文の `parent_endpoint`（`r ≤ height p`）と合わせると、親の新しい列は段より右に
+あるので、JS の `parentPos` は負にならない。
 
 空段落としを通す運搬補題も揃えた。
 
