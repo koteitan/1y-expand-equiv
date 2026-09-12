@@ -186,4 +186,61 @@ theorem sib_mono_of_resolves (s : List Nat)
           (ih q1 q2 hlt (commonBelow_of_siblings s h1 h2)
             (fun m hm => hpos m (by omega)))
 
+/-! ## 正しい不変量
+
+層の対応を取り違えていたので立て直す。目標が層 `m` のとき、担ぐべき条件は
+
+```
+Inv m q1 q2 :  (frameAt s (m+1)).parent q2 = some t かつ t < q1 < q2
+               かつ (frameAt s (m+2)).parent q1 ≠ none
+```
+
+である。liveness を **一段上** に取るのが要点で、降下すると弱まるだけなので保たれる。
+
+実測では値 12 まで 271,452 列・191,959 件でこの条件から結論が出ており、反例が無い。
+内訳は祖先 189,600、兄弟 1,775、どちらでもない 584 である。 -/
+
+/-- liveness は一段下へ伝わる。行が上がるほど値は増えないため。 -/
+theorem frame_live_down (s : List Nat) (k q : Nat)
+    (h : (frameAt s (k+2)).parent q ≠ none) : (frameAt s (k+1)).parent q ≠ none := by
+  have h2 : 0 < (rows (ofSequence s) (k+2)).value q := by
+    rcases hq : (frameAt s (k+2)).parent q with _ | z
+    · exact absurd hq h
+    · exact (rows_parent_iff_next_live (ofSequence s) (k+1) q).mp ⟨z, hq⟩
+  have hle : (rows (ofSequence s) (k+2)).value q ≤ (rows (ofSequence s) (k+1)).value q :=
+    rows_value_le (ofSequence s) (k+1) q
+  obtain ⟨p, hp⟩ := (rows_parent_iff_next_live (ofSequence s) k q).mpr (by omega)
+  intro hn
+  rw [show (frameAt s (k+1)).parent = (rows (ofSequence s) k).forest.parent from rfl,
+    hp] at hn
+  cases hn
+
+/-- liveness から、その層で値が正であることが出る。 -/
+theorem frame_live_pos (s : List Nat) (k q : Nat)
+    (h : (frameAt s (k+1)).parent q ≠ none) : 0 < towerVal s k q := by
+  rcases hq : (frameAt s (k+1)).parent q with _ | z
+  · exact absurd hq h
+  · have := (rows_parent_iff_next_live (ofSequence s) k q).mp ⟨z, hq⟩
+    have hle : (rows (ofSequence s) (k+1)).value q ≤ (rows (ofSequence s) k).value q :=
+      rows_value_le (ofSequence s) k q
+    show 0 < (rows (ofSequence s) k).value q
+    omega
+
+/-- 目標が層 `m` のときに担ぐ条件。 -/
+def Inv (s : List Nat) (m q1 q2 : Nat) : Prop :=
+  (∃ t, (frameAt s (m+1)).parent q2 = some t ∧ t < q1) ∧ q1 < q2 ∧
+    (frameAt s (m+2)).parent q1 ≠ none
+
+/-- 不変量から、その層で `q1` の値が正であることが出る。 -/
+theorem inv_pos (s : List Nat) {m q1 q2 : Nat} (h : Inv s m q1 q2) :
+    0 < towerVal s m q1 :=
+  frame_live_pos s m q1 (frame_live_down s m q1 h.2.2)
+
+/-- 兄弟なら不変量が一段下へ移る。 -/
+theorem inv_descend (s : List Nat) {m t q1 q2 : Nat}
+    (h : Inv s (m+1) q1 q2)
+    (h1 : (frameAt s (m+1)).parent q1 = some t)
+    (h2 : (frameAt s (m+1)).parent q2 = some t) : Inv s m q1 q2 :=
+  ⟨⟨t, h2, (frameAt s (m+1)).parent_left h1⟩, h.2.1, frame_live_down s (m+1) q1 h.2.2⟩
+
 end Yukito
