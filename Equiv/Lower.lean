@@ -290,17 +290,17 @@ theorem lowerContext_length_eq (hyx : y < x) (hroot) (hhigher) :
     (lowerContext S y x hyx hroot hhigher).coordinates.length = x - y := rfl
 
 /-- 継ぎ目でない列（`y < j < x`）。 -/
-theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j pc : Nat)
-    (hi : 0 < i) (hjy : y < j) (hjx : j < x)
-    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = some pc) :
-    ∃ q, (rows S.tower.base
-        (if (lowerContext S y x hyx hroot hhigher).InCone j ∧ height S.tower.base y ≤ k then
-          max (height S.tower.base y)
-            (k - i * (height S.tower.base x - height S.tower.base y))
-         else k)).forest.parent j = some q ∧
-      pc = q + (if y ≤ q then i * (x - y) else 0) := by
+theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j : Nat)
+    (hi : 0 < i) (hjy : y < j) (hjx : j < x) :
+    (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i)
+      = ((rows S.tower.base
+          (if (lowerContext S y x hyx hroot hhigher).InCone j ∧ height S.tower.base y ≤ k then
+            max (height S.tower.base y)
+              (k - i * (height S.tower.base x - height S.tower.base y))
+           else k)).forest.parent j).map
+          (fun q => q + (if y ≤ q then i * (x - y) else 0)) := by
   have hcol : j + (x - y) * i = j + i * (x - y) := by rw [Nat.mul_comm]
-  rw [hcol, lowerContext_parent_new hyx hroot hhigher k j i hjy (by omega) hi] at hpc
+  rw [hcol, lowerContext_parent_new hyx hroot hhigher k j i hjy (by omega) hi]
   have hfl : (lowerContext S y x hyx hroot hhigher).floor = height S.tower.base y := rfl
   have hri : (lowerContext S y x hyx hroot hhigher).rise
       = height S.tower.base x - height S.tower.base y := rfl
@@ -308,8 +308,8 @@ theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j pc : Na
       ∧ height S.tower.base y ≤ k) with hcase | hcase
   · rw [if_pos hcase]
     rw [if_pos (show (lowerContext S y x hyx hroot hhigher).InCone j
-      ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k from ⟨hcase.1, hcase.2⟩)] at hpc
-    rw [hfl, hri] at hpc
+      ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k from ⟨hcase.1, hcase.2⟩)]
+    rw [hfl, hri]
     have hif : (if k < height S.tower.base y
               + i * (height S.tower.base x - height S.tower.base y) then
             ((lowerContext S y x hyx hroot hhigher).mountain.row
@@ -323,43 +323,48 @@ theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j pc : Na
       rw [← clamp_srcRow (height S.tower.base y) i
         (height S.tower.base x - height S.tower.base y) k]
       split <;> rfl
-    rw [hif] at hpc
-    obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
-    refine ⟨q, hq, ?_⟩
-    have hcone : (lowerContext S y x hyx hroot hhigher).InCone q :=
-      (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcase.1
-        (show (lowerContext S y x hyx hroot hhigher).floor
-          ≤ max (height S.tower.base y)
-              (k - i * (height S.tower.base x - height S.tower.base y)) by
-          rw [hfl]; exact Nat.le_max_left _ _) hq
-    have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hcone
-    rw [← hqe, if_pos hyq]
-    rfl
+    rw [hif, lowerContext_row]
+    cases hq : (rows S.tower.base (max (height S.tower.base y)
+        (k - i * (height S.tower.base x - height S.tower.base y)))).forest.parent j with
+    | none => rfl
+    | some q =>
+        have hcone : (lowerContext S y x hyx hroot hhigher).InCone q :=
+          (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcase.1
+            (show (lowerContext S y x hyx hroot hhigher).floor
+              ≤ max (height S.tower.base y)
+                  (k - i * (height S.tower.base x - height S.tower.base y)) by
+              rw [hfl]; exact Nat.le_max_left _ _) hq
+        have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hcone
+        show Option.map _ (some q) = Option.map _ (some q)
+        rw [Option.map_some, Option.map_some, if_pos hyq]
+        rfl
   · rw [if_neg hcase]
-    rw [if_neg (fun h => hcase ⟨h.1, h.2⟩)] at hpc
-    obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
-    refine ⟨q, hq, ?_⟩
-    rw [← hqe, parentCopy_eq, lowerContext_y_eq, lowerContext_length_eq]
+    rw [if_neg (fun h => hcase ⟨h.1, h.2⟩), lowerContext_row]
+    cases hq : (rows S.tower.base k).forest.parent j with
+    | none => rfl
+    | some q =>
+        show Option.map _ (some q) = Option.map _ (some q)
+        rw [Option.map_some, Option.map_some, parentCopy_eq,
+          lowerContext_y_eq, lowerContext_length_eq]
 
 /-- 継ぎ目の列（`j = y`）。この列の元の列は `x` で、繰り返し `i` のコピーは
 `x` の block `i−1` にあたる。 -/
-theorem lowerContext_parent_seam (hyx : y < x) (hroot) (hhigher) (k i pc : Nat)
-    (hi : 0 < i)
-    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (y + (x - y) * i) = some pc) :
-    ∃ q, (rows S.tower.base
-        (if height S.tower.base y ≤ k then
-          max (height S.tower.base y)
-            (k - (i - 1) * (height S.tower.base x - height S.tower.base y))
-         else k)).forest.parent x = some q ∧
-      pc = q + (if y ≤ q then (i - 1) * (x - y) else 0) := by
+theorem lowerContext_parent_seam (hyx : y < x) (hroot) (hhigher) (k i : Nat)
+    (hi : 0 < i) :
+    (lowerContext S y x hyx hroot hhigher).parent k (y + (x - y) * i)
+      = ((rows S.tower.base
+          (if height S.tower.base y ≤ k then
+            max (height S.tower.base y)
+              (k - (i - 1) * (height S.tower.base x - height S.tower.base y))
+           else k)).forest.parent x).map
+          (fun q => q + (if y ≤ q then (i - 1) * (x - y) else 0)) := by
   obtain ⟨m, rfl⟩ : ∃ m, i = m + 1 := ⟨i - 1, by omega⟩
   have hcol : y + (x - y) * (m + 1) = x + m * (x - y) := by
     have h1 : (x - y) * (m + 1) = (x - y) * m + (x - y) := Nat.mul_succ _ _
     have h2 : (x - y) * m = m * (x - y) := Nat.mul_comm _ _
     omega
   have hm1 : m + 1 - 1 = m := by omega
-  rw [hcol] at hpc
-  rw [hm1]
+  rw [hcol, hm1]
   have hfl : (lowerContext S y x hyx hroot hhigher).floor = height S.tower.base y := rfl
   have hri : (lowerContext S y x hyx hroot hhigher).rise
       = height S.tower.base x - height S.tower.base y := rfl
@@ -369,31 +374,37 @@ theorem lowerContext_parent_seam (hyx : y < x) (hroot) (hhigher) (k i pc : Nat)
   | zero =>
       have hx0 : x + 0 * (x - y) = x := by omega
       rw [hx0, (lowerContext S y x hyx hroot hhigher).parent_original
-        (show x ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x from Nat.le_refl _)] at hpc
-      refine ⟨pc, ?_, by simp⟩
-      rcases Nat.lt_or_ge k (height S.tower.base y) with hk | hk
-      · rw [if_neg (by omega)]
-        exact hpc
-      · rw [if_pos hk]
-        have hmx : max (height S.tower.base y)
-            (k - 0 * (height S.tower.base x - height S.tower.base y)) = k := by
-          simp only [Nat.max_def]
+        (show x ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x from Nat.le_refl _)]
+      have hrowk : (if height S.tower.base y ≤ k then
+            max (height S.tower.base y)
+              (k - 0 * (height S.tower.base x - height S.tower.base y))
+           else k) = k := by
+        split
+        · simp only [Nat.max_def]
           split <;> omega
-        rw [hmx]
-        exact hpc
+        · rfl
+      rw [hrowk, lowerContext_row]
+      cases hq : (rows S.tower.base k).forest.parent x with
+      | none => rfl
+      | some q => simp
   | succ m' =>
       rw [lowerContext_parent_new hyx hroot hhigher k x (m' + 1) hyx (Nat.le_refl _)
-        (by omega)] at hpc
+        (by omega)]
       rcases Nat.lt_or_ge k (height S.tower.base y) with hk | hk
-      · rw [if_neg (by omega)]
-        rw [if_neg (fun h => absurd h.2 (by rw [hfl]; omega))] at hpc
-        obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
-        refine ⟨q, hq, ?_⟩
-        rw [← hqe, parentCopy_eq, lowerContext_y_eq, lowerContext_length_eq]
+      · rw [if_neg (show ¬ (height S.tower.base y ≤ k) by omega)]
+        rw [if_neg (show ¬ ((lowerContext S y x hyx hroot hhigher).InCone x
+          ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k) by
+          rintro ⟨-, h2⟩; rw [hfl] at h2; omega), lowerContext_row]
+        cases hq : (rows S.tower.base k).forest.parent x with
+        | none => rfl
+        | some q =>
+            show Option.map _ (some q) = Option.map _ (some q)
+            rw [Option.map_some, Option.map_some, parentCopy_eq,
+              lowerContext_y_eq, lowerContext_length_eq]
       · rw [if_pos hk]
         rw [if_pos (show (lowerContext S y x hyx hroot hhigher).InCone x
           ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k from ⟨hcone, by rw [hfl]; exact hk⟩),
-          hfl, hri] at hpc
+          hfl, hri]
         have hif : (if k < height S.tower.base y
                   + (m' + 1) * (height S.tower.base x - height S.tower.base y) then
                 ((lowerContext S y x hyx hroot hhigher).mountain.row
@@ -409,33 +420,36 @@ theorem lowerContext_parent_seam (hyx : y < x) (hroot) (hhigher) (k i pc : Nat)
           rw [← clamp_srcRow (height S.tower.base y) (m' + 1)
             (height S.tower.base x - height S.tower.base y) k]
           split <;> rfl
-        rw [hif] at hpc
-        obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
-        refine ⟨q, hq, ?_⟩
-        have hconeq : (lowerContext S y x hyx hroot hhigher).InCone q :=
-          (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcone
-            (show (lowerContext S y x hyx hroot hhigher).floor
-              ≤ max (height S.tower.base y)
-                  (k - (m' + 1)
-                    * (height S.tower.base x - height S.tower.base y)) by
-              rw [hfl]; exact Nat.le_max_left _ _) hq
-        have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hconeq
-        rw [← hqe, if_pos hyq]
-        rfl
+        rw [hif, lowerContext_row]
+        cases hq : (rows S.tower.base (max (height S.tower.base y)
+            (k - (m' + 1) * (height S.tower.base x - height S.tower.base y)))).forest.parent x with
+        | none => rfl
+        | some q =>
+            have hconeq : (lowerContext S y x hyx hroot hhigher).InCone q :=
+              (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcone
+                (show (lowerContext S y x hyx hroot hhigher).floor
+                  ≤ max (height S.tower.base y)
+                      (k - (m' + 1)
+                        * (height S.tower.base x - height S.tower.base y)) by
+                  rw [hfl]; exact Nat.le_max_left _ _) hq
+            have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hconeq
+            show Option.map _ (some q) = Option.map _ (some q)
+            rw [Option.map_some, Option.map_some, if_pos hyq]
+            rfl
 
-/-- **原文の親から、JS が使う元の段・元の列とその親を取り出す。** -/
+/-- **原文の親は、JS が使う元の段・元の列の親の写しである。** -/
 theorem lowerContext_parent_src (hyx : y < x) (hroot) (hhigher) (P : FujiParams)
     (hbh : P.badRootHeight = height S.tower.base y)
     (hcut : P.cutHeight = height S.tower.base x)
     (hsm : P.badRootSeam = y)
-    (k i j pc : Nat) (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x) (isAsc : Bool)
+    (k i j : Nat) (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x) (isAsc : Bool)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
     (hk : k ≤ height S.tower.base y
-      + (height S.tower.base x - height S.tower.base y) * i)
-    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = some pc) :
-    ∃ q, (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).forest.parent
-          (if j = y then x else j) = some q ∧
-      pc = q + (if y ≤ q then (i - (if j = y then 1 else 0)) * (x - y) else 0) := by
+      + (height S.tower.base x - height S.tower.base y) * i) :
+    (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i)
+      = ((rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).forest.parent
+          (if j = y then x else j)).map
+          (fun q => q + (if y ≤ q then (i - (if j = y then 1 else 0)) * (x - y) else 0)) := by
   rw [fujiSrcRowAt_eq P hbh hcut i k (isRepAt P j) isAsc hk]
   rcases Decidable.em (j = y) with hje | hjne
   · subst hje
@@ -446,14 +460,14 @@ theorem lowerContext_parent_src (hyx : y < x) (hroot) (hhigher) (P : FujiParams)
     have hasct : isAsc = true := hasc.mpr (inCone_seam hyx hroot hhigher)
     rw [hrep, hasct, if_pos rfl, if_pos rfl]
     simp only [true_and]
-    exact lowerContext_parent_seam hyx hroot hhigher k i pc hi hpc
+    exact lowerContext_parent_seam hyx hroot hhigher k i hi
   · have hrep : isRepAt P j = false := by
       show decide (j = P.badRootSeam) = false
       rw [hsm]
       simp [hjne]
     rw [hrep]
     simp only [if_neg hjne, Bool.false_eq_true, if_false, Nat.sub_zero]
-    have h := lowerContext_parent_other hyx hroot hhigher k i j pc hi (by omega) hjx hpc
+    have h := lowerContext_parent_other hyx hroot hhigher k i j hi (by omega) hjx
     rcases Decidable.em ((lowerContext S y x hyx hroot hhigher).InCone j
         ∧ height S.tower.base y ≤ k) with hc | hc
     · rw [if_pos (show isAsc = true ∧ height S.tower.base y ≤ k from ⟨hasc.mpr hc.1, hc.2⟩)]
