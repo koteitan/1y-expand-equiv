@@ -1419,4 +1419,42 @@ theorem step_push_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
         (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hposi (by omega) hval
         q hq hq' p hpq
 
+/-! ## **`ShapeRep` の構成（山崎噴火の枝）** -/
+
+theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    ShapeRep (yamaRs M mfuel nd nrep) ((yamaContext S y hy hpar hh).toRowMountain) nd
+      ((S.n - 1) + (expP M mfuel).len * nrep) where
+  mono := rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep
+  parLt := (parLt_yama S M hM mfuel nd nrep).dep
+  cellCol := fun r i h =>
+    cellCol_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r i _
+      (getElem?_dropEmptyTop (yamaRaw M mfuel nd nrep) r i _ (Array.getElem?_eq_getElem h))
+  cover := fun r c hc hr => by
+    obtain ⟨i, hi, hpos⟩ := hasCol_pos _ r c (hasCol_dropEmptyTop _ r c
+      (cover_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c hc hr))
+    exact ⟨i, hi, hpos⟩
+  parCol := fun r i h p hp =>
+    parCol_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r i _
+      (Array.getElem?_eq_getElem h) p hp
+  parNone := fun r i h hp =>
+    parNone_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r i _
+      (Array.getElem?_eq_getElem h) hp
+  step := fun r c p hc hp => by
+    rcases Nat.lt_or_ge c (S.n - 1) with h | h
+    · exact step_orig_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c p h hp
+    · exact step_push_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c p hc h hp
+  valTop := fun r i h hp =>
+    valTop_yama S M hM mfuel hn hyama y hseam (expCutH_eq S M hM hn) nd hnd nrep r i _
+      (Array.getElem?_eq_getElem h) hp
+  topPos := hndpos
+  tall := fun c hc =>
+    tall_yama' S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c hc
+
 end Yukito
