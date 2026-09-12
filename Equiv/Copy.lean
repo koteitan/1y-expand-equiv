@@ -121,53 +121,54 @@ theorem rowAt_pushAt (res : List Rowj) (k m : Nat) (c : Cell) (hk : k ≤ res.le
 ループに入る前の段 `k` そのものである。 -/
 
 /-- `fujiRows` が段 `k` に積むセル。 -/
-def fujiCellAt (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool)
-    (res : List Rowj) (k : Nat) : Cell :=
-  let sysx := fujiSource P i k isRep
+def fujiCellAt (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep isAsc : Bool) (res : List Rowj) (k : Nat) : Cell :=
+  let sysx := fujiSourceAt P i k isRep isAsc
   let sx := sourceIdx M sysx.1 j sysx.2
   let ir := if isRep then 1 else 0
   fujiCell M P (rowAt res k) sysx.1 sx k i j (i - ir) (nd (j + P.len * i))
 
 theorem fujiRows_length (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) : ∀ (kmax : Nat) (res : List Rowj),
-      (fujiRows M P nd i j isRep kmax res).length = max res.length kmax := by
+    (isRep isAsc : Bool) : ∀ (kmax : Nat) (res : List Rowj),
+      (fujiRows M P nd i j isRep isAsc kmax res).length = max res.length kmax := by
   intro kmax
   induction kmax with
   | zero => intro res; simp only [fujiRows, Nat.max_def]; split <;> omega
   | succ kmax ih =>
       intro res
       have hlen := ih res
-      have hk : kmax ≤ (fujiRows M P nd i j isRep kmax res).length := by
+      have hk : kmax ≤ (fujiRows M P nd i j isRep isAsc kmax res).length := by
         rw [hlen]
         simp only [Nat.max_def]
         split <;> omega
-      show (pushAt (fujiRows M P nd i j isRep kmax res) kmax _).length = _
+      show (pushAt (fujiRows M P nd i j isRep isAsc kmax res) kmax _).length = _
       rw [pushAt_length _ _ _ hk, hlen]
       simp only [Nat.max_def]
       split <;> split <;> (first | omega | (split <;> omega))
 
 /-- **段のループの結果。** 段 `m < kmax` にはセルが 1 個増え、他は変わらない。 -/
 theorem rowAt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) : ∀ (kmax : Nat) (res : List Rowj) (m : Nat),
-      rowAt (fujiRows M P nd i j isRep kmax res) m
-        = if m < kmax then (rowAt res m).push (fujiCellAt M P nd i j isRep res m)
+    (isRep isAsc : Bool) : ∀ (kmax : Nat) (res : List Rowj) (m : Nat),
+      rowAt (fujiRows M P nd i j isRep isAsc kmax res) m
+        = if m < kmax then (rowAt res m).push (fujiCellAt M P nd i j isRep isAsc res m)
           else rowAt res m := by
   intro kmax
   induction kmax with
   | zero => intro res m; rw [if_neg (by omega)]; rfl
   | succ kmax ih =>
       intro res m
-      have hlen := fujiRows_length M P nd i j isRep kmax res
-      have hk : kmax ≤ (fujiRows M P nd i j isRep kmax res).length := by
+      have hlen := fujiRows_length M P nd i j isRep isAsc kmax res
+      have hk : kmax ≤ (fujiRows M P nd i j isRep isAsc kmax res).length := by
         rw [hlen]
         simp only [Nat.max_def]
         split <;> omega
-      have hcur : rowAt (fujiRows M P nd i j isRep kmax res) kmax = rowAt res kmax := by
+      have hcur : rowAt (fujiRows M P nd i j isRep isAsc kmax res) kmax = rowAt res kmax := by
         rw [ih res kmax, if_neg (by omega)]
-      show rowAt (pushAt (fujiRows M P nd i j isRep kmax res) kmax
-        (fujiCell M P (rowAt (fujiRows M P nd i j isRep kmax res) kmax)
-          (fujiSource P i kmax isRep).1
-          (sourceIdx M (fujiSource P i kmax isRep).1 j (fujiSource P i kmax isRep).2)
+      show rowAt (pushAt (fujiRows M P nd i j isRep isAsc kmax res) kmax
+        (fujiCell M P (rowAt (fujiRows M P nd i j isRep isAsc kmax res) kmax)
+          (fujiSourceAt P i kmax isRep isAsc).1
+          (sourceIdx M (fujiSourceAt P i kmax isRep isAsc).1 j
+            (fujiSourceAt P i kmax isRep isAsc).2)
           kmax i j (i - (if isRep then 1 else 0)) (nd (j + P.len * i)))) m = _
       rw [rowAt_pushAt _ _ _ _ hk]
       rcases Decidable.em (m = kmax) with hm | hm
@@ -183,9 +184,22 @@ theorem rowAt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j 
 /-- 継ぎ目の列 `j` が「置き換え」の列か。 -/
 def isRepAt (P : FujiParams) (j : Nat) : Bool := decide (j = P.badRootSeam)
 
+/-- 継ぎ目の列 `j` が上りかどうか。 -/
+def isAscAt (M : List Rowj) (P : FujiParams) (j ascFuel : Nat) : Bool :=
+  isAscending M P.badRootHeight P.badRootSeam j ascFuel
+
+/-- 置き換えの継ぎ目が上りなら、`isRepAt` から `isAscAt` が出る。 -/
+theorem hra_of_seamAsc (M : List Rowj) (P : FujiParams) (fuel j : Nat)
+    (h : isAscAt M P P.badRootSeam fuel = true) :
+    isRepAt P j = true → isAscAt M P j fuel = true := by
+  intro hr
+  have hj : j = P.badRootSeam := of_decide_eq_true hr
+  rw [hj]
+  exact h
+
 /-- 継ぎ目の列 `j` で積む段の数。 -/
 def kmaxAt (M : List Rowj) (P : FujiParams) (i j afterCutHeight ascFuel : Nat) : Nat :=
-  let isAsc := isAscending M P.badRootHeight P.badRootSeam j ascFuel
+  let isAsc := isAscAt M P j ascFuel
   let seamH := seamHeightOf M j afterCutHeight
   let d := P.cutHeight - P.badRootHeight
   if isAsc then seamH + d * i else seamH
@@ -197,6 +211,7 @@ theorem fujiSeams_succ (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
     (i ach af t : Nat) (res : List Rowj) :
     fujiSeams M P nd i ach af (t + 1) res
       = fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+          (isAscAt M P (P.badRootSeam + t) af)
           (kmaxAt M P i (P.badRootSeam + t) ach af) (fujiSeams M P nd i ach af t res) := rfl
 
 theorem fujiIters_zero (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
@@ -226,8 +241,8 @@ theorem RowExt.push (a : Rowj) (c : Cell) : RowExt a (a.push c) :=
    fun i hi => by rw [Array.getElem?_push, if_neg (by omega)]⟩
 
 theorem rowExt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) :
-    RowExt (rowAt res m) (rowAt (fujiRows M P nd i j isRep kmax res) m) := by
+    (isRep isAsc : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) :
+    RowExt (rowAt res m) (rowAt (fujiRows M P nd i j isRep isAsc kmax res) m) := by
   rw [rowAt_fujiRows]
   split
   · exact RowExt.push _ _
@@ -242,7 +257,7 @@ theorem rowExt_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i 
   | succ t ih =>
       intro res m
       rw [fujiSeams_succ]
-      exact RowExt.trans (ih res m) (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+      exact RowExt.trans (ih res m) (rowExt_fujiRows _ _ _ _ _ _ _ _ _ _)
 
 theorem rowExt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat) :
     ∀ (n : Nat) (res : List Rowj) (m : Nat),
@@ -467,17 +482,17 @@ theorem posMono_push (row : Rowj) (hmono : PosMono row) (c : Cell)
     exact h p (row[p]'hps) (Array.getElem?_eq_getElem hps)
 
 theorem fujiCellAt_col (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (res : List Rowj) (k : Nat) (h : k ≤ j + P.len * i) :
-    (fujiCellAt M P nd i j isRep res k).pos + k = j + P.len * i := by
+    (isRep isAsc : Bool) (res : List Rowj) (k : Nat) (h : k ≤ j + P.len * i) :
+    (fujiCellAt M P nd i j isRep isAsc res k).pos + k = j + P.len * i := by
   show (j + P.len * i - k) + k = j + P.len * i
   omega
 
 theorem fujiRows_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (kmax : Nat) (res : List Rowj) (b : Nat)
+    (isRep isAsc : Bool) (kmax : Nat) (res : List Rowj) (b : Nat)
     (hk : kmax ≤ j + P.len * i + 1) (hb : ColLt res b) (hbc : b ≤ j + P.len * i)
     (hmono : RowsMono res) :
-    RowsMono (fujiRows M P nd i j isRep kmax res) ∧
-      ColLt (fujiRows M P nd i j isRep kmax res) (j + P.len * i + 1) := by
+    RowsMono (fujiRows M P nd i j isRep isAsc kmax res) ∧
+      ColLt (fujiRows M P nd i j isRep isAsc kmax res) (j + P.len * i + 1) := by
   constructor
   · intro m
     rw [rowAt_fujiRows]
@@ -486,7 +501,7 @@ theorem fujiRows_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (
         refine posMono_push _ (hmono m) _ ?_
         intro t d hd
         have h1 := hb m t d hd
-        have h2 := fujiCellAt_col M P nd i j isRep res m (by omega)
+        have h2 := fujiCellAt_col M P nd i j isRep isAsc res m (by omega)
         omega
     · exact hmono m
   · intro m t c hc
@@ -496,7 +511,7 @@ theorem fujiRows_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (
         rw [Array.getElem?_push] at hc
         split at hc
         · have he := Option.some.inj hc
-          have h2 := fujiCellAt_col M P nd i j isRep res m (by omega)
+          have h2 := fujiCellAt_col M P nd i j isRep isAsc res m (by omega)
           rw [he] at h2
           omega
         · have := hb m t c hc
@@ -520,7 +535,8 @@ theorem fujiSeams_invariant (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) 
       obtain ⟨hm1, hb1⟩ := ih res b hb hbc hmono
       rw [fujiSeams_succ]
       have h := fujiRows_invariant M P nd i (P.badRootSeam + t)
-        (isRepAt P (P.badRootSeam + t)) (kmaxAt M P i (P.badRootSeam + t) ach af)
+        (isRepAt P (P.badRootSeam + t)) (isAscAt M P (P.badRootSeam + t) af)
+        (kmaxAt M P i (P.badRootSeam + t) ach af)
         (fujiSeams M P nd i ach af t res) (P.badRootSeam + t + P.len * i)
         (hkm i (P.badRootSeam + t)) hb1 (by omega) hm1
       exact ⟨h.1, h.2.mono (by omega)⟩
@@ -571,12 +587,12 @@ theorem HasCol.ext {res res' : List Rowj} {m c : Nat}
   exact ⟨t, d, (h.2 t (lt_size_of_getElem? ht)).trans ht, hd⟩
 
 theorem hasCol_fujiRows_new (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) (hm : m < kmax)
+    (isRep isAsc : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) (hm : m < kmax)
     (hk : m ≤ j + P.len * i) :
-    HasCol (fujiRows M P nd i j isRep kmax res) m (j + P.len * i) := by
-  refine ⟨(rowAt res m).size, fujiCellAt M P nd i j isRep res m, ?_, ?_⟩
+    HasCol (fujiRows M P nd i j isRep isAsc kmax res) m (j + P.len * i) := by
+  refine ⟨(rowAt res m).size, fujiCellAt M P nd i j isRep isAsc res m, ?_, ?_⟩
   · rw [rowAt_fujiRows, if_pos hm, Array.getElem?_push_size]
-  · exact fujiCellAt_col M P nd i j isRep res m hk
+  · exact fujiCellAt_col M P nd i j isRep isAsc res m hk
 
 theorem hasCol_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat)
     (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
@@ -590,12 +606,13 @@ theorem hasCol_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i 
       intro res m j hj1 hj2 hm
       rw [fujiSeams_succ]
       rcases Nat.lt_or_ge j (P.badRootSeam + t) with hlt | hge
-      · exact HasCol.ext (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+      · exact HasCol.ext (rowExt_fujiRows _ _ _ _ _ _ _ _ _ _)
           (ih res m j hj1 hlt hm)
       · have hje : j = P.badRootSeam + t := by omega
         subst hje
         exact hasCol_fujiRows_new M P nd i (P.badRootSeam + t)
-          (isRepAt P (P.badRootSeam + t)) (kmaxAt M P i (P.badRootSeam + t) ach af) _ m hm
+          (isRepAt P (P.badRootSeam + t)) (isAscAt M P (P.badRootSeam + t) af)
+          (kmaxAt M P i (P.badRootSeam + t) ach af) _ m hm
           (by have := hkm i (P.badRootSeam + t); omega)
 
 theorem hasCol_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
@@ -628,9 +645,9 @@ theorem hasCol_fujiIters_old (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
 逆向き。最終形のセルは、元からあったものか、`(i,j)` のどれかで積んだものである。 -/
 
 theorem cell_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m t : Nat) (d : Cell)
-    (h : (rowAt (fujiRows M P nd i j isRep kmax res) m)[t]? = some d) :
-    (rowAt res m)[t]? = some d ∨ (m < kmax ∧ d = fujiCellAt M P nd i j isRep res m) := by
+    (isRep isAsc : Bool) (kmax : Nat) (res : List Rowj) (m t : Nat) (d : Cell)
+    (h : (rowAt (fujiRows M P nd i j isRep isAsc kmax res) m)[t]? = some d) :
+    (rowAt res m)[t]? = some d ∨ (m < kmax ∧ d = fujiCellAt M P nd i j isRep isAsc res m) := by
   rw [rowAt_fujiRows] at h
   split at h
   · next hm =>
@@ -654,13 +671,14 @@ theorem cell_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ac
       intro res m u d h
       rw [fujiSeams_succ] at h
       rcases cell_fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+        (isAscAt M P (P.badRootSeam + t) af)
         (kmaxAt M P i (P.badRootSeam + t) ach af) _ m u d h with h1 | ⟨hm, hd⟩
       · rcases ih res m u d h1 with h2 | ⟨j, hj1, hj2, hj3, hj4⟩
         · exact Or.inl h2
         · exact Or.inr ⟨j, hj1, by omega, hj3, hj4⟩
       · refine Or.inr ⟨P.badRootSeam + t, by omega, by omega, hm, ?_⟩
         rw [hd]
-        exact fujiCellAt_col M P nd i (P.badRootSeam + t) _ _ m
+        exact fujiCellAt_col M P nd i (P.badRootSeam + t) _ _ _ m
           (by have := hkm i (P.badRootSeam + t); omega)
 
 theorem cell_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
@@ -1314,16 +1332,32 @@ theorem fujiCell_par_parentCopy (S : Setting) (M : List Rowj) (hM : MtRep S M)
 
 /-! ## 山崎噴火の枝で積むセル -/
 
+/-- 山崎噴火の枝での枝の選択。上りでない列は置き換えの継ぎ目ではないので、
+第 2 成分はどちらの枝でも同じになる。 -/
+theorem fujiSourceAt_yama (P : FujiParams) (hy : P.yamakazi = true)
+    (hd : P.cutHeight = P.badRootHeight) (i k : Nat) (isRep isAsc : Bool)
+    (hra : isRep = true → isAsc = true) :
+    fujiSourceAt P i k isRep isAsc = (k, isRep && decide (k < P.badRootHeight)) := by
+  unfold fujiSourceAt
+  cases hA : isAsc with
+  | true => simpa using fujiSource_yama P hy hd i k isRep
+  | false =>
+      have hR : isRep = false := by
+        cases hRp : isRep with
+        | true => rw [hA] at hra; exact absurd (hra hRp) (by simp)
+        | false => rfl
+      simp [hR]
+
 theorem fujiCellAt_yama (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (res : List Rowj) (k : Nat) (hy : P.yamakazi = true)
-    (hd : P.cutHeight = P.badRootHeight) :
-    fujiCellAt M P nd i j isRep res k
+    (isRep isAsc : Bool) (res : List Rowj) (k : Nat) (hy : P.yamakazi = true)
+    (hd : P.cutHeight = P.badRootHeight) (hra : isRep = true → isAsc = true) :
+    fujiCellAt M P nd i j isRep isAsc res k
       = fujiCell M P (rowAt res k) k
           (sourceIdx M k j (isRep && decide (k < P.badRootHeight))) k i j
           (i - (if isRep then 1 else 0)) (nd (j + P.len * i)) := by
   unfold fujiCellAt
   dsimp only
-  rw [fujiSource_yama P hy hd i k isRep]
+  rw [fujiSourceAt_yama P hy hd i k isRep isAsc hra]
 
 /-- 山崎噴火の枝での元の列。置き換えの継ぎ目で `badRootHeight` より下なら最後の列、
 そうでなければ継ぎ目の列そのもの。 -/
@@ -1353,18 +1387,19 @@ theorem sourceIdx_yama_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
 
 /-- **山崎噴火の枝で積むセルの親の列。** -/
 theorem fujiCellAt_par_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
-    (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool) (res : List Rowj) (k : Nat)
+    (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep isAsc : Bool) (res : List Rowj) (k : Nat)
     (hy : P.yamakazi = true) (hd : P.cutHeight = P.badRootHeight)
     (hk : k < M.length) (hn : 1 < S.n) (hkj : k ≤ j) (hj : j < S.n)
     (hlive : 0 < (rows S.tower.base k).value j)
     (hbh : P.badRootHeight ≤ height S.tower.base (S.n - 1))
+    (hra : isRep = true → isAsc = true)
     (C : CopyCoordinates.Context) (hcy : C.y = P.badRootSeam) (hcL : C.length = P.len)
-    (p : Nat) (hp : (fujiCellAt M P nd i j isRep res k).par = some p) :
+    (p : Nat) (hp : (fujiCellAt M P nd i j isRep isAsc res k).par = some p) :
     ∃ (hp' : p < (rowAt res k).size) (q : Nat),
       (rows S.tower.base k).forest.parent (srcColYama S P j k isRep) = some q ∧
         ((rowAt res k)[p]'hp').pos + k
           = C.parentCopy (i - (if isRep then 1 else 0)) q := by
-  rw [fujiCellAt_yama M P nd i j isRep res k hy hd] at hp
+  rw [fujiCellAt_yama M P nd i j isRep isAsc res k hy hd hra] at hp
   obtain ⟨hp', hsx, q, hq, hcol⟩ :=
     fujiCell_par_parentCopy S M hM P (rowAt res k) k
       (sourceIdx M k j (isRep && decide (k < P.badRootHeight))) k i j
@@ -1475,13 +1510,13 @@ theorem fujiCell_par_lt (M : List Rowj) (P : FujiParams) (cur : Rowj)
       exact h1
 
 theorem fujiCellAt_par_lt (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (res : List Rowj) (k p : Nat)
-    (hp : (fujiCellAt M P nd i j isRep res k).par = some p) : p < (rowAt res k).size :=
+    (isRep isAsc : Bool) (res : List Rowj) (k p : Nat)
+    (hp : (fujiCellAt M P nd i j isRep isAsc res k).par = some p) : p < (rowAt res k).size :=
   fujiCell_par_lt M P (rowAt res k) _ _ k i j _ _ p hp
 
 theorem parLt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
-    (isRep : Bool) (kmax : Nat) (res : List Rowj) (h : ParLt res) :
-    ParLt (fujiRows M P nd i j isRep kmax res) := by
+    (isRep isAsc : Bool) (kmax : Nat) (res : List Rowj) (h : ParLt res) :
+    ParLt (fujiRows M P nd i j isRep isAsc kmax res) := by
   intro r t d hd p hp
   rw [rowAt_fujiRows] at hd
   split at hd
@@ -1490,7 +1525,7 @@ theorem parLt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j 
     · next hte =>
         have he := Option.some.inj hd
         rw [← he] at hp
-        have h2 := fujiCellAt_par_lt M P nd i j isRep res r p hp
+        have h2 := fujiCellAt_par_lt M P nd i j isRep isAsc res r p hp
         omega
     · exact h r t d hd p hp
   · exact h r t d hd p hp
@@ -1503,7 +1538,7 @@ theorem parLt_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i a
   | succ t ih =>
       intro res h
       rw [fujiSeams_succ]
-      exact parLt_fujiRows _ _ _ _ _ _ _ _ (ih res h)
+      exact parLt_fujiRows _ _ _ _ _ _ _ _ _ (ih res h)
 
 theorem parLt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat) :
     ∀ (n : Nat) (res : List Rowj), ParLt res → ParLt (fujiIters M P nd ach af n res) := by
@@ -1981,15 +2016,15 @@ theorem fujiCell_val_of_par_some (M : List Rowj) (P : FujiParams) (cur : Rowj)
   rfl
 
 theorem fujiCellAt_val_of_par_none (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
-    (i j : Nat) (isRep : Bool) (res : List Rowj) (k : Nat)
-    (h : (fujiCellAt M P nd i j isRep res k).par = none) :
-    (fujiCellAt M P nd i j isRep res k).val = nd (j + P.len * i) :=
+    (i j : Nat) (isRep isAsc : Bool) (res : List Rowj) (k : Nat)
+    (h : (fujiCellAt M P nd i j isRep isAsc res k).par = none) :
+    (fujiCellAt M P nd i j isRep isAsc res k).val = nd (j + P.len * i) :=
   fujiCell_val_of_par_none M P (rowAt res k) _ _ k i j _ _ h
 
 theorem fujiCellAt_val_of_par_some (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
-    (i j : Nat) (isRep : Bool) (res : List Rowj) (k p : Nat)
-    (h : (fujiCellAt M P nd i j isRep res k).par = some p) :
-    (fujiCellAt M P nd i j isRep res k).val = 0 :=
+    (i j : Nat) (isRep isAsc : Bool) (res : List Rowj) (k p : Nat)
+    (h : (fujiCellAt M P nd i j isRep isAsc res k).par = some p) :
+    (fujiCellAt M P nd i j isRep isAsc res k).val = 0 :=
   fujiCell_val_of_par_some M P (rowAt res k) _ _ k i j _ _ p h
 
 /-! ## 密表現に親があれば疎配列にも親がある -/
@@ -2048,13 +2083,13 @@ theorem fujiCell_par_isSome (M : List Rowj) (P : FujiParams) (cur : Rowj)
   exact lookupPos_of_pos cur hmono z u hu hpos
 
 theorem fujiCellAt_par_isSome (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
-    (i j : Nat) (isRep : Bool) (res : List Rowj) (k z : Nat)
+    (i j : Nat) (isRep isAsc : Bool) (res : List Rowj) (k z : Nat)
     (hmono : PosMono (rowAt res k))
-    (hpp : parentPos M P (fujiSource P i k isRep).1
-      (sourceIdx M (fujiSource P i k isRep).1 j (fujiSource P i k isRep).2) k
+    (hpp : parentPos M P (fujiSourceAt P i k isRep isAsc).1
+      (sourceIdx M (fujiSourceAt P i k isRep isAsc).1 j (fujiSourceAt P i k isRep isAsc).2) k
       (i - (if isRep then 1 else 0)) = some z)
     (u : Nat) (hu : u < (rowAt res k).size) (hpos : ((rowAt res k)[u]'hu).pos = z) :
-    (fujiCellAt M P nd i j isRep res k).par = some u :=
+    (fujiCellAt M P nd i j isRep isAsc res k).par = some u :=
   fujiCell_par_isSome M P (rowAt res k) _ _ k i j _ _ z hmono hpp u hu hpos
 
 /-- 同じ配列なら同じセル。 -/
@@ -2170,6 +2205,7 @@ theorem cell_fujiSeams' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i a
         (rowAt res m)[u]? = some d ∨
           ∃ t', t' < t ∧ m < kmaxAt M P i (P.badRootSeam + t') ach af ∧
             d = fujiCellAt M P nd i (P.badRootSeam + t') (isRepAt P (P.badRootSeam + t'))
+              (isAscAt M P (P.badRootSeam + t') af)
               (fujiSeams M P nd i ach af t' res) m := by
   intro t
   induction t with
@@ -2178,6 +2214,7 @@ theorem cell_fujiSeams' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i a
       intro res m u d h
       rw [fujiSeams_succ] at h
       rcases cell_fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+        (isAscAt M P (P.badRootSeam + t) af)
         (kmaxAt M P i (P.badRootSeam + t) ach af) _ m u d h with h1 | ⟨hm, hd⟩
       · rcases ih res m u d h1 with h2 | ⟨t', ht', hk', hd'⟩
         · exact Or.inl h2
@@ -2191,7 +2228,7 @@ theorem cell_fujiIters' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach
           ∃ i' t', i' < n ∧ t' < P.len ∧
             m < kmaxAt M P (i' + 1) (P.badRootSeam + t') ach af ∧
             d = fujiCellAt M P nd (i' + 1) (P.badRootSeam + t')
-              (isRepAt P (P.badRootSeam + t'))
+              (isRepAt P (P.badRootSeam + t')) (isAscAt M P (P.badRootSeam + t') af)
               (fujiSeams M P nd (i' + 1) ach af t' (fujiIters M P nd ach af i' res)) m := by
   intro n
   induction n with
@@ -2222,7 +2259,7 @@ theorem rowExt_fujiSeams_mono (M : List Rowj) (P : FujiParams) (nd : Nat → Nat
       intro t1 h
       rcases Nat.lt_or_ge t1 (t + 1) with h1 | h1
       · rw [fujiSeams_succ]
-        exact RowExt.trans (ih t1 (by omega)) (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+        exact RowExt.trans (ih t1 (by omega)) (rowExt_fujiRows _ _ _ _ _ _ _ _ _ _)
       · have : t1 = t + 1 := by omega
         subst this
         exact RowExt.rfl' _

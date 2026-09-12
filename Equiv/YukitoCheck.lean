@@ -121,4 +121,19 @@ private def runExpand (s : List Nat) (n : Nat) : List Nat :=
 #guard runExpand [1, 3, 4, 3] 1 = [1, 3, 4, 2, 5, 9]
 #guard runExpand [1, 2, 3] 2 = [1, 2, 2, 2]
 
+/-! ## 上りでない列
+
+`isAscending` が偽の列では枝は Bb（`sy = k`）1 本だけである。その列が
+`badRootHeight` より高くなるのは値が 16 以上のときで、上の例には現れない。 -/
+
+/-- 燃料を明示する版。 -/
+private def runExpandF (s : List Nat) (n f : Nat) : List Nat :=
+  expandOut (expandJS n f f (calcMountain s f))
+
+#guard runExpandF [1, 4, 8, 17, 12, 5, 13, 4] 1 40
+  = [1, 4, 8, 17, 12, 5, 13, 3, 10, 23, 47, 42, 18, 34]
+
+#guard runExpandF [1, 4, 5, 15, 10, 7, 10, 4] 1 40
+  = [1, 4, 5, 15, 10, 7, 10, 3, 10, 18, 36, 31, 28, 41]
+
 end Yukito

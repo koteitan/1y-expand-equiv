@@ -59,6 +59,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Copy.lean` | Mt.Fuji シェルの三重ループの構造・座標・出力の幅 |
 | `Equiv/Shape.lean` | **`ShapeRep` と値の層の結論**（`expandOut_eq_value`） |
 | `Equiv/Yama.lean` | 山崎噴火の枝（原文の層 `k = K`）の組み立て |
+| `Equiv/Lower.lean` | `k < K` の枝（原文の `badAtLowerContext`）のコピー先の山 |
 
 ## 座標の対応
 
@@ -986,7 +987,8 @@ fujiCell     積むセル 1 個
 
 ```
 pushAt        段 k にセルを積む（段が無ければ作る）
-fujiSource    枝の選択（Bb / Br replace / Br extend / Be）
+fujiSource    上りの列の枝の選択（Bb / Br replace / Br extend / Be）
+fujiSourceAt  上りでない列は Bb 枝だけ（sy = k）
 fujiRows      段 k = 0 … kmax−1
 fujiSeams     継ぎ目の列 j = badRootSeam …
 fujiIters     繰り返し i = 1 … n
@@ -997,7 +999,10 @@ dropEmptyTop  末尾の空の段を落とす
 ```
 
 枝は `sy`（元の段）と `sx`（元のセルを行の最後から取るか）の選び方だけが違うので、
-`fujiSource` にまとめた。
+`fujiSource` にまとめた。`script.js` は `isAscending` で 2 つのループに分かれており、
+偽のほうは段が `k < seamHeight` までで枝も Bb だけである。`fujiSourceAt` がその
+場合分けにあたる。上りでない列が `badRootHeight` より高くなるのは値が 16 以上の
+ときなので、小さい例では 2 つのループの違いは表に出ない。
 
 入口も写した。
 
@@ -1015,8 +1020,8 @@ expandOut      行 0 の値の列（JS の出力）
 参照を積むため `position` が重複するが、値だけを見るぶんには影響しない。
 
 **写しは `script.js` の `expand` の出力と一致した。** 長さ 2〜5・値 4 以下・`n ∈ {1,2}`
-の 680 例で食い違いなし。分岐を一通り通す 9 例を `#guard` に固定してある
-（`YukitoCheck.lean`）。
+の 680 例と、上りでない列が `badRootHeight` より高くなる例で食い違いなし。分岐を
+一通り通す 11 例を `#guard` に固定してある（`YukitoCheck.lean`）。
 
 残るのは 2（層の再帰）と 3（森のコピー）の証明で、3 が全体の大半である。
 
@@ -1581,8 +1586,9 @@ parent r c = … else if InCone s ∧ floor ≤ r then
 | `y + L*i`（`source = x`, `b = i−1`） | `r < floor` | `((M.row r).parent x).map (parentCopy b)` | `sy = k`、元の列は行の最後（= `x`） |
 | 同上 | `floor ≤ r ≤ floor + b*rise` | `((M.row floor).parent x).map (·+b*L)` | `sy = bh` |
 | 同上 | `floor + b*rise < r` | `((M.row (r−b*rise)).parent x).map (·+b*L)` | `sy = k − d*(i−1)` |
-| `j + L*i`（`y < j < x`, `b = i`） | `r < floor` | `((M.row r).parent j).map (parentCopy b)` | `sy = k` |
+| `j + L*i`（`y < j < x`, `InCone j`, `b = i`） | `r < floor` | `((M.row r).parent j).map (parentCopy b)` | `sy = k` |
 | 同上 | `floor ≤ r ≤ floor + b*rise` | `((M.row floor).parent j).map (·+b*L)` | `sy = bh` |
+| `j + L*i`（`¬InCone j`） | 全段 | `((M.row r).parent j).map (parentCopy b)` | `sy = k`（Bb 枝のみ） |
 
 原文が真ん中の枝で `parentCopy` ではなく無条件の `(·+b*L)` を使うのは、
 そこでの親が `y` 以上だから（鎖が `y` に届く＝ `InCone`）で、
@@ -1590,55 +1596,16 @@ parent r c = … else if InCone s ∧ floor ≤ r then
 原文の第 3 枝に落ちるが `r − b*rise = floor` なので第 2 枝と同じ式になり、
 JS の `≤` と原文の `<` の食い違いは消える。
 
-**残る幾何的な義務**を `RootInterval` として名前付きにした。
+`¬InCone s` の枝は、原文が段 `r` そのものを使う（`((M.row r).parent s).map
+(parentCopy b)`）のに対し、`script.js` も `isAscending` が偽のときは Bb 枝
+（`sy = k`）しか使わないので、そのまま対応する。親のセルが積まれていることは
 
 ```
-RootInterval S :=
-  ∀ r y j x, rootAt r x = y → y < j → j < x → r ≤ height j → rootAt r j = y
-inCone_of_between            区間性があれば y と x の間の生きた列は InCone
-height_lt_floor_of_not_inCone  したがって InCone でない列は段 floor より下で死ぬ
+parent_endpoint        r ≤ M.height p
+height_parentCopy_ge   M.height p ≤ height (parentCopy b p)
 ```
 
-これが無いと `¬InCone j` かつ `floor ≤ height j` の場合に JS の `sy = bh` と
-原文の `sy = r` が食い違う。`rootAt floor x = y` から「`x` の鎖が `j` を跨ぐ」形に
-なるので、森の非交差性から従うはずである。
-
-原文の `RowMountain` の公理だけからは出ない。段 `r` で `x` の親が `y`、`j` が段 `r`
-で頂、という配置が公理と両立するからである。1-Y の山の非交差性が要る。本リポジトリ
-の `NoCross.lean` には線形森の場合と帰納段の主要な場合があるが、一般の段について
-まとめた形にはなっていない。
-
-さらにこれを**根の単調性**へ還元した。
-
-```
-RootMono S :=
-  ∀ r c1 c2, c1 ≤ c2 → 段 r で両方生きている → rootAt r c1 ≤ rootAt r c2
-rootInterval_of_rootMono : RootMono S → RootInterval S
-```
-
-還元は `rootAt r y = y ≤ rootAt r j ≤ rootAt r x = y` による（`rootAt r y = y` は
-`height y = r` と `top_root` から、`height y = r` は `root_height` から）。
-
-さらに単調性を「辺の内側に根は無い」へ還元した。
-
-```
-NoRootInside S :=
-  ∀ r c p w, 段 r で c の親が p → p < w < c → w は段 r で生きている →
-    段 r で w は根でない
-rootMono_of_noRootInside : NoRootInside S → RootMono S
-```
-
-還元は `c2` についての強い帰納法の中で `c1` についての強い帰納法を回す。
-`c2` が根なら `root c1 ≤ c1 ≤ c2`、`c2` の親 `p` が `c1` 以上なら外側の帰納法、
-`p < c1 < c2` なら `NoRootInside` から `c1` に親 `q` があり、`q ≤ p` なら外側、
-`p < q` なら内側の帰納法で閉じる。
-
-`NoRootInside` の**第 1 の場合（`w` が `c` の frame 祖先）は証明した**
-（`noRootInside_ancestor`）。`p` が最大の候補なので `U c ≤ U w`、また `p` と `w` は
-どちらも `c` の frame 祖先で `p < w` だから `p` は `w` の frame 祖先になり、
-`0 < U p < U c ≤ U w` から `w` は親を持つ。
-
-**残るのは `w` が `c` の frame 祖先でない場合だけである。**
+から出る。したがってこの枝に幾何的な追加の義務は無い。
 
 ### 元からあるセルについての条件（済）
 
@@ -1755,14 +1722,15 @@ bad root    済
 値の層      済（ShapeRep → expandOut_eq_value）
 森のコピー  山崎噴火の枝（原文の層 k = K）は済
             （shapeRep_yama / yamaContext_eq / expNd_eq_assemble）
-            残りの枝（k < K の badAtLowerContext）は未
+            k < K の枝（badAtLowerContext）は山の高さまで済
+            （lowerContext / kmaxAt_eq_height_lower）、親と ShapeRep は未
 層の再帰    未
 ```
 
 山崎噴火の枝については、JS の出力が原文の
 `Reconstruction.value (badAtTerminalMountain …) (assemble（K+1 段目以上）) 0`
-の並びに一致するところまで来た。残るのは `k < K` の枝（`badAtLowerContext`）と、
-JS の再帰がその枝を降りていくことの対応である。
+の並びに一致するところまで来た。残るのは `k < K` の枝（`badAtLowerContext`）で
+親の対応と `ShapeRep` を組むことと、JS の再帰がその枝を降りていくことの対応である。
 
 ## ビルド
 

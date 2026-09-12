@@ -457,13 +457,19 @@ def fujiSource (P : FujiParams) (i k : Nat) (isRep : Bool) : Nat × Bool :=
     (k - d * (i - 1), !P.yamakazi && isRep)
   else (k - d * i, !P.yamakazi && isRep)
 
+/-- 上りでない列の枝の選択。`script.js` の `isAscending` の else 側は Bb 枝
+（`sy = k`）1 本しかない。上りの列だけが 4 枝に分かれる。 -/
+def fujiSourceAt (P : FujiParams) (i k : Nat) (isRep isAsc : Bool) : Nat × Bool :=
+  if isAsc then fujiSource P i k isRep else (k, isRep)
+
 /-- 段 `k = 0 … kmax−1` を積む。 -/
-def fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool) :
+def fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep isAsc : Bool) :
     Nat → List Rowj → List Rowj
   | 0, res => res
   | kmax + 1, res =>
-      let res := fujiRows M P nd i j isRep kmax res
-      let sysx := fujiSource P i kmax isRep
+      let res := fujiRows M P nd i j isRep isAsc kmax res
+      let sysx := fujiSourceAt P i kmax isRep isAsc
       let sx := sourceIdx M sysx.1 j sysx.2
       let ir := if isRep then 1 else 0
       let topVal := nd (j + P.len * i)
@@ -481,7 +487,7 @@ def fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i afterCutHei
       let seamH := seamHeightOf M j afterCutHeight
       let d := P.cutHeight - P.badRootHeight
       let kmax := if isAsc then seamH + d * i else seamH
-      fujiRows M P nd i j isRep kmax res
+      fujiRows M P nd i j isRep isAsc kmax res
 
 /-- 繰り返し `i = 1 … n`。 -/
 def fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (afterCutHeight ascFuel : Nat) :
