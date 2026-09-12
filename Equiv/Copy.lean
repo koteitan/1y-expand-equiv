@@ -1118,4 +1118,71 @@ theorem readVal_of_no_col (row : Rowj) (r c : Nat)
     simp only [readVal, hmv, dif_pos hm, if_neg hne]
   · simp only [readVal, dif_neg (Nat.not_lt.mpr hm)]
 
+/-! ## 山崎噴火の枝の新しい対角
+
+JS は `(rowAt dg 0).pop`（対角の最後の列を落としたもの）に周期的なコピーを掛ける。
+`source0 c` はつねに `x` より小さいので、落とした列は使われない。 -/
+
+theorem source0_lt (y x c : Nat) (hyx : y < x) :
+    (if c < y then c else y + (c - y) % (x - y)) < x := by
+  split
+  · omega
+  · have := Nat.mod_lt (c - y) (show 0 < x - y by omega)
+    omega
+
+theorem valAtIdx_pop (base : Rowj) (s : Nat) (hs : s < base.size - 1) :
+    valAtIdx base.pop s = valAtIdx base s := by
+  have h1 : s < base.pop.size := by rw [Array.size_pop]; omega
+  have h2 : s < base.size := by omega
+  unfold valAtIdx
+  rw [dif_pos h1, dif_pos h2, Array.getElem_pop]
+
+/-- **最後の列を落としても周期的なコピーは変わらない。** -/
+theorem yamaVal_pop (base : Rowj) (y x c : Nat) (hyx : y < x) (hx : x < base.size) :
+    yamaVal base.pop y x c
+      = valAtIdx base (if c < y then c else y + (c - y) % (x - y)) := by
+  rw [yamaVal_eq base.pop y x c hyx]
+  exact valAtIdx_pop base _ (by have := source0_lt y x c hyx; omega)
+
+/-- `OrdinaryCopy` の言葉での言い換え。 -/
+theorem yamaVal_pop_source0 (base : Rowj) (C : OrdinaryCopy.Context) (c : Nat)
+    (hx : C.coordinates.x < base.size) :
+    yamaVal base.pop C.coordinates.y C.coordinates.x c = valAtIdx base (C.source0 c) := by
+  rw [yamaVal_pop base _ _ c C.coordinates.root_lt_last hx]
+  unfold OrdinaryCopy.Context.source0 CopyCoordinates.Context.length
+  rfl
+
+/-! ## 新しい対角の値の 2 つの枝 -/
+
+/-- **山崎噴火の枝。** 新しい対角は、対角の値を `source0` で読んだものである。 -/
+theorem expNd_yama (nrep mfuel efuel : Nat) (M : List Rowj) (h : expYama M mfuel)
+    (hyx : expSeam M mfuel < (rowAt M 0).size - 1)
+    (hx : (rowAt M 0).size - 1 < (rowAt (expDg M mfuel) 0).size) (c : Nat) :
+    expNd nrep mfuel efuel M c
+      = valAtIdx (rowAt (expDg M mfuel) 0)
+          (if c < expSeam M mfuel then c
+           else expSeam M mfuel
+             + (c - expSeam M mfuel) % ((rowAt M 0).size - 1 - expSeam M mfuel)) := by
+  unfold expNd
+  rw [if_pos h]
+  exact yamaVal_pop _ _ _ c hyx hx
+
+/-- `OrdinaryCopy` の言葉での言い換え。 -/
+theorem expNd_yama_source0 (nrep mfuel efuel : Nat) (M : List Rowj) (h : expYama M mfuel)
+    (C : OrdinaryCopy.Context) (hy : C.coordinates.y = expSeam M mfuel)
+    (hxx : C.coordinates.x = (rowAt M 0).size - 1)
+    (hx : (rowAt M 0).size - 1 < (rowAt (expDg M mfuel) 0).size) (c : Nat) :
+    expNd nrep mfuel efuel M c = valAtIdx (rowAt (expDg M mfuel) 0) (C.source0 c) := by
+  unfold expNd
+  rw [if_pos h, ← hy, ← hxx]
+  exact yamaVal_pop_source0 _ C c (by omega)
+
+/-- **そうでない枝。** 新しい対角は、対角の山を展開した行 0 の値である。 -/
+theorem expNd_not_yama (nrep mfuel efuel : Nat) (M : List Rowj) (h : ¬ expYama M mfuel)
+    (c : Nat) :
+    expNd nrep mfuel efuel M c
+      = valAtIdx (rowAt (expandJS nrep mfuel efuel (expDg M mfuel)) 0) c := by
+  unfold expNd
+  rw [if_neg h]
+
 end Yukito
