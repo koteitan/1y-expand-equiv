@@ -51,6 +51,11 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/TopFrame.lean` | 抽出後の行の下にある frame（`topForest`）についての底の義務 |
 | `Equiv/Extract.lean` | 抽出段。JS の脚歩行が Phyrion の `Pseudo.parent` に一致すること |
 | `Equiv/Diagonal.lean` | 抽出段。対角の親が `rawExtract` の親に一致すること |
+| `Equiv/BadRoot.lean` | `expand` の分岐条件と、JS の `getBadRoot` が `findBadRoot` に一致すること |
+| `Equiv/Recon.lean` | **差分の関係を満たす値は `Reconstruction.value` に一致する**（`value_of_diff`） |
+| `Equiv/Fuji.lean` | Mt.Fuji シェルの補助走査（列の有無・継ぎ目の高さ・上りの判定） |
+| `Equiv/Fill.lean` | **値の埋めの構造**。`fillRow` / `fillValues` が満たす差分の関係 |
+| `Equiv/NoBad.lean` | **bad root が無いときの一致**（`expand_eq_no_bad`） |
 
 ## 座標の対応
 
@@ -1012,13 +1017,65 @@ expandOut      行 0 の値の列（JS の出力）
 
 残るのは 2（層の再帰）と 3（森のコピー）の証明で、3 が全体の大半である。
 
+### 値の埋め
+
+`fillRow` は「直前までに積んだ結果を見ながら 1 つずつ積む折り畳み」である。この形を
+`pushFold` として取り出し、次を示した（`Fill.lean`）。
+
+```
+pushFold_size    大きさは積んだ個数だけ増える
+pushFold_prefix  既に積んだ要素は後から変わらない
+pushFold_get     i 番目は「i 個目までを積んだ時点の配列」から決まる
+```
+
+これで `fillRow` の値の決まり方が書ける。親の添字はつねに自分より前なので、右辺の
+「親の値」は途中の配列でも最終形でも同じである。
+
+```
+val(i) = if 元の値 ≠ 0 then 元の値
+         else val(親) + （1 つ上の段の 列 pos−1 の値）
+```
+
+`fillValues` は上から下へこれを繰り返すので、最上段より下の段について同じ形になる
+（`fillValues_val`）。`Recon.lean` の `value_of_diff` が
+
+```
+V r c = V r (行 r での c の親) + V (r+1) c ，V (height c) c = top c ，山の外は 0
+```
+
+を満たす `V` は `Reconstruction.value` に一致すると言うので、値の側はこれで閉じる。
+残るのは、コピーで作った森が Phyrion の `expandedMountain` と同じ形であることと、
+最上段の値が合っていることである。
+
+### bad root が無いときの一致（証明済み）
+
+`findBadRoot s hs (s.length−1) = none` のとき、両者は一致する（`expand_eq_no_bad`）。
+
+```
+expandOut (expandJS nrep mfuel (efuel+1) (calcMountain s (mf+1))) = expandValues s hs N
+```
+
+どちらも `s.take (s.length−1)` になる。JS 側は「行 0 の最後のセルを削る → 末尾の空段を
+落とす → 値を埋める」だが、行 0 にはもう値が入っているので埋めは行 0 を変えない。
+そのために次を示した。
+
+```
+pos_eq_index      行 0 の疎配列は密（位置 = 添字）
+readPar_row0      行 0 では列で引いた親 = 疎配列の親
+fillRow_id        値が入っている行は埋めで変わらない
+dropEmptyTop_row0 末尾の空段を落としても行 0 は変わらない
+row0Vals          行 0 の値の列は s そのもの
+```
+
 ## 残っている課題
 
 ```
-山の段    済（密表現・疎配列とも）
-抽出段    済（密表現・疎配列とも）
-bad root  済
-コピー層  未
+山の段      済（密表現・疎配列とも）
+抽出段      済（密表現・疎配列とも）
+bad root    済
+値の埋め    済（差分の関係 → Reconstruction.value）
+分岐 none   済（expand_eq_no_bad）
+コピー層    未（分岐 some）
 ```
 
 コピー層が全体の大半である。
