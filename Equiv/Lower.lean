@@ -1545,7 +1545,7 @@ theorem shapeRep_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
     (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
     (hyk : (expP M mfuel).yamakazi = false)
     (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
-    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    (nrep : Nat) (hndpos : ∀ c, c < x + (expP M mfuel).len * nrep → 0 < nd c) :
     ShapeRep (fujiRs M mfuel nd nrep)
       ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd
       (x + (expP M mfuel).len * nrep) where
@@ -1595,7 +1595,7 @@ theorem expandOut_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : 
     (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
     (hyk : (expP M mfuel).yamakazi = false)
     (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
-    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    (nrep : Nat) (hndpos : ∀ c, c < x + (expP M mfuel).len * nrep → 0 < nd c) :
     expandOut (fillValues (fujiRs M mfuel nd nrep))
       = (List.range (x + (expP M mfuel).len * nrep)).map
           (Reconstruction.value ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd 0) := by
@@ -1609,7 +1609,7 @@ theorem expandOut_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : 
   exact expandOut_eq_value (fujiRs M mfuel nd nrep)
     ((lowerContext S y x hyx hroot hhigher).toRowMountain) nd _
     (shapeRep_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
-      nd hnd hndpos nrep) hsz hpos
+      nd hnd nrep hndpos) hsz hpos
 
 /-- JS の `expand` の枝そのもので書いた形。 -/
 theorem expandJS_out_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
@@ -1624,7 +1624,7 @@ theorem expandJS_out_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel
     (hyk : (expP M mfuel).yamakazi = false)
     (nrep efuel : Nat)
     (hnd : ∀ c, c < S.n - 1 → expNd nrep mfuel efuel M c = topValue S.tower.base c)
-    (hndpos : ∀ c, 0 < expNd nrep mfuel efuel M c)
+    (hndpos : ∀ c, c < x + (expP M mfuel).len * nrep → 0 < expNd nrep mfuel efuel M c)
     (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
           then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
     expandOut (expandJS nrep mfuel (efuel + 1) M)
@@ -1633,7 +1633,7 @@ theorem expandJS_out_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel
             (expNd nrep mfuel efuel M) 0) := by
   rw [expandJS_some nrep mfuel efuel M hhas]
   exact expandOut_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel hyk
-    (expNd nrep mfuel efuel M) hnd hndpos nrep
+    (expNd nrep mfuel efuel M) hnd nrep hndpos
 
 /-! ## 原文の `badAtLowerContext` との同定 -/
 
@@ -1670,5 +1670,36 @@ theorem lowerContext_eq (s : List Nat) (hs : ZeroY.Legal s) (K d x y k : Nat)
   congr 1
   unfold mountainOf'
   congr 1
+
+/-! ## 上の層の畳み込み
+
+`k+1` 段目以上を畳んだ値は、列 `x` より左では層 `k+1` の値そのものである。
+原文の `assemble_family_prefix`（前置きが一致すれば畳み込みも一致する）と
+`assemble_originalGraphs`（元の塔の畳み込みはその層の値）から出る。 -/
+
+theorem assemble_above_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (k : Nat) {c : Nat} (hc : c < x)
+    (hk : k + 1 ≤ sequenceBound s) :
+    TowerReconstruction.assemble
+        ((List.range' (k + 1) (sequenceBound s - (k + 1))).map
+          (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c
+      = (layers (rootedSequence s hs) (k + 1)).row.value c := by
+  have h := TowerReconstruction.assemble_family_prefix
+    (expandedMountain (rootedSequence s hs) hbad)
+    (fun j => mountain (layers (rootedSequence s hs) j).row
+      (layers (rootedSequence s hs) j).positive)
+    (fun _ => 1) (fun _ => 1) x
+    (fun j _ hc' => expandedMountain_height_original _ hbad j hc')
+    (fun j r _ hc' => expandedMountain_parent_original _ hbad j r hc')
+    (fun _ _ => rfl) (k + 1) (sequenceBound s - (k + 1)) c hc
+  have hone : (layers (rootedSequence s hs)
+      ((k + 1) + (sequenceBound s - (k + 1)))).row.value = (fun _ => 1) := by
+    funext c'
+    exact sequence_layers_all_one s hs (by omega) c'
+  have h2 := TowerReconstruction.assemble_originalGraphs (rootedSequence s hs) (k + 1)
+    (sequenceBound s - (k + 1))
+  rw [hone] at h2
+  rw [h]
+  exact congrFun h2 c
 
 end Yukito

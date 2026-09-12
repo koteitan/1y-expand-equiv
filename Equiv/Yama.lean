@@ -1472,7 +1472,7 @@ theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
       (fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama))
       y hseam (expCutH_eq S M hM hn) nd hnd nrep r i _
       (Array.getElem?_eq_getElem h) hp
-  topPos := hndpos
+  topPos := fun c _ => hndpos c
   tall := fun c hc =>
     tall_yama' S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c hc
 

@@ -45,8 +45,8 @@ structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : N
   /-- 親を持たないセルの値は頂の値。 -/
   valTop : ∀ (r i : Nat) (h : i < (rowAt Rs r).size),
     ((rowAt Rs r)[i]'h).par = none → ((rowAt Rs r)[i]'h).val = top (((rowAt Rs r)[i]'h).pos + r)
-  /-- 頂の値は正。 -/
-  topPos : ∀ c, 0 < top c
+  /-- 頂の値は正（幅の中で）。 -/
+  topPos : ∀ c, c < W → 0 < top c
   /-- 段が足りている。 -/
   tall : ∀ c, c < W → G.height c < Rs.length
 
@@ -85,7 +85,7 @@ theorem ShapeRep.htop (h : ShapeRep Rs G top W) (c : Nat) (hc : c < W) :
   rw [hpos] at hval
   have hne : ((rowAt Rs (G.height c))[i]'hi).val ≠ 0 := by
     rw [hval]
-    have := h.topPos c
+    have := h.topPos c hc
     omega
   have htall := h.tall c hc
   rcases Nat.lt_or_ge (G.height c + 1) Rs.length with hlt | hge
