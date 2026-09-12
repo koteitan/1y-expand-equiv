@@ -25,11 +25,6 @@ namespace Yukito
 
 open OneY OneY.Numeric
 
-/-- 探索の結果（`row` の添字）を列番号に読み替える。 -/
-def readIdx (row : Rowj) (r : Nat) : Option Nat → Option Nat
-  | none => none
-  | some j => if h : j < row.size then some ((row[j]'h).pos + r) else none
-
 /-- 位置の大小から添字の大小が出る。 -/
 theorem index_lt_of_pos_lt (row : Rowj) (h : PosMono row) (i j : Nat)
     (hi : i < row.size) (hj : j < row.size)

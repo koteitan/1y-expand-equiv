@@ -141,6 +141,18 @@ theorem rep_read (row : Rowj) (r n : Nat) (V : Nat → Nat) (h : Rep row r n V)
       simp only [hfa, dif_pos hi, if_pos hci]
       rw [h.val _ (mem_of_getElem row i hi), hci]
 
+/-- 疎配列の添字を列番号に読み替える。 -/
+def readIdx (row : Rowj) (r : Nat) : Option Nat → Option Nat
+  | none => none
+  | some j => if h : j < row.size then some ((row[j]'h).pos + r) else none
+
+/-- 疎配列の親を列番号で引く。 -/
+def readPar (row : Rowj) (r c : Nat) : Option Nat :=
+  let j := firstAtLeast row (c - r)
+  if h : j < row.size then
+    if (row[j]'h).pos + r = c then readIdx row r ((row[j]'h).par) else none
+  else none
+
 /-! ## `assignParents` は表現を保つ
 
 `par` しか書き換えないので、`pos` と `val` はそのままである。 -/
@@ -201,6 +213,28 @@ theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r n : Nat) (V : Nat
 
 theorem row0_size (s : List Nat) : (row0 s).size = s.length := by
   simp only [row0, Array.size_mapIdx, List.size_toArray]
+
+theorem row0_pos (s : List Nat) (i : Nat) (hi : i < (row0 s).size) :
+    ((row0 s)[i]'hi).pos = i := by
+  simp only [row0, Array.getElem_mapIdx]
+
+/-- 入力列の中の列の値は列の要素そのもの。 -/
+theorem ofSequence_value_lt (s : List Nat) (i : Nat) (h : i < s.length) :
+    (ofSequence s).value i = s[i]'h := by
+  show s[i]?.getD 1 = _
+  rw [List.getElem?_eq_getElem h]
+  rfl
+
+theorem row0_val (s : List Nat) (i : Nat) (hi : i < (row0 s).size) :
+    ((row0 s)[i]'hi).val = (ofSequence s).value i := by
+  have h : i < s.length := by rw [← row0_size s]; exact hi
+  rw [ofSequence_value_lt s i h]
+  simp only [row0, Array.getElem_mapIdx, List.getElem_toArray]
+
+theorem assignParents_none_par (row : Rowj) (i : Nat)
+    (hi : i < (assignParents none row).size) (hi' : i < row.size) :
+    ((assignParents none row)[i]'hi).par = searchBase row i ((row[i]'hi').pos) := by
+  simp only [assignParents, Array.getElem_mapIdx]
 
 /-- 行 0 は入力列そのものを表す。 -/
 theorem rep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
@@ -348,6 +382,56 @@ theorem step_facts (row : Rowj) (r n : Nat) (a : Row)
     have hd : 0 < a.difference (x.pos + r) := (a.difference_pos_iff _).mpr ⟨_, hF⟩
     rw [hdiff] at hd
     omega
+
+/-- **親の読み替えの正しさ。** `Rep` と `ParRep` があれば、疎配列の親を列番号で
+引いた結果は密表現の親に一致する。 -/
+theorem rep_read_par (row : Rowj) (r n : Nat) (a : Row) (h : Rep row r n a.value)
+    (hpr : ParRep row r a.forest) (hzero : ∀ q, q < r → a.value q = 0)
+    (c : Nat) (hcn : c < n) : readPar row r c = a.forest.parent c := by
+  show (if hj : firstAtLeast row (c - r) < row.size then
+          if (row[firstAtLeast row (c - r)]'hj).pos + r = c then
+            readIdx row r ((row[firstAtLeast row (c - r)]'hj).par)
+          else none
+        else none) = a.forest.parent c
+  rcases Nat.eq_zero_or_pos (a.value c) with hv | hv
+  · have hnone : a.forest.parent c = none := by
+      cases hq : a.forest.parent c with
+      | none => rfl
+      | some q => have := (a.parent_values hq).2; omega
+    rw [hnone]
+    split
+    · rename_i hj
+      split
+      · rename_i he
+        exfalso
+        have h1 := h.val _ (mem_of_getElem row _ hj)
+        have h2 := h.live _ (mem_of_getElem row _ hj)
+        rw [he] at h1
+        omega
+      · rfl
+    · rfl
+  · have hrc : r ≤ c := by
+      rcases Nat.lt_or_ge c r with hcr | hrc
+      · rw [hzero c hcr] at hv; omega
+      · exact hrc
+    obtain ⟨x, hx, hcx⟩ := h.cover c hrc hcn hv
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem row hx
+    have hci : (row[i]'hi).pos + r = c := by rw [hix]; exact hcx
+    have hfa : firstAtLeast row (c - r) = i :=
+      firstAtLeast_eq_of_mem row h.posMono (c - r) i hi (by omega)
+    simp only [hfa, dif_pos hi, if_pos hci]
+    have hP := hpr _ (mem_of_getElem row i hi)
+    rw [hci] at hP
+    cases hpp : (row[i]'hi).par with
+    | none =>
+        rw [hpp] at hP
+        simp only [readIdx]
+        exact hP.symm
+    | some p =>
+        rw [hpp] at hP
+        obtain ⟨hp', hFc⟩ := hP
+        simp only [readIdx, dif_pos hp']
+        exact hFc.symm
 
 /-- **階差行も表現になっている。** -/
 theorem rep_nextRow (row : Rowj) (r n : Nat) (a : Row)

@@ -105,18 +105,17 @@ def assignParents (prev : Option Rowj) (row : Rowj) : Rowj :=
 def row0 (s : List Nat) : Rowj :=
   (s.toArray.mapIdx fun i v => { pos := i, val := v, par := none })
 
-/-- JS の `calcMountain`。`fuel` は層数の上限（JS は `hasNextLayer` で止まる）。 -/
+/-- JS の `calcMountain` の反復部。`fuel` は層数の上限
+（JS は `hasNextLayer` で止まる）。 -/
+def mountainGo (cur : Rowj) : Nat → List Rowj
+  | 0 => [cur]
+  | f+1 =>
+    if cur.all (fun c => c.par.isNone) then [cur]
+    else cur :: mountainGo (assignParents (some cur) (nextRow cur)) f
+
+/-- JS の `calcMountain` 本体。 -/
 def calcMountain (s : List Nat) : Nat → List Rowj
   | 0 => []
-  | fuel+1 =>
-    let base := assignParents none (row0 s)
-    let rec go (cur : Rowj) : Nat → List Rowj
-      | 0 => [cur]
-      | f+1 =>
-        if cur.all (fun c => c.par.isNone) then [cur]
-        else
-          let nxt := assignParents (some cur) (nextRow cur)
-          cur :: go nxt f
-    go base fuel
+  | fuel+1 => mountainGo (assignParents none (row0 s)) fuel
 
 end Yukito
