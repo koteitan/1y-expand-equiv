@@ -28,3 +28,4 @@ import Equiv.BadRoot
 import Equiv.Recon
 import Equiv.Fuji
 import Equiv.Fill
+import Equiv.NoBad
