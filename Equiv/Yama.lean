@@ -172,17 +172,18 @@ theorem kmaxAt_expRes_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel :
 
 /-- **コピーで作った列は「元の列の高さ」まで届く。** -/
 theorem hasCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
-    (nrep mfuel efuel : Nat) (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (nrep mfuel : Nat) (nd : Nat → Nat) (hn : 1 < S.n) (hM2 : 2 ≤ M.length)
+    (hyama : expYama M mfuel)
     (m i j : Nat) (hi : 0 < i) (hin : i ≤ nrep)
     (hjy : (expP M mfuel).badRootSeam ≤ j) (hjx : j < S.n - 1)
     (hm : m ≤ height S.tower.base j)
     (h0 : 0 < (expRes M).length) :
-    HasCol (fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length mfuel nrep
+    HasCol (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep
       (expRes M)) m (j + (expP M mfuel).len * i) := by
   have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
   have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
       = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
-  refine hasCol_fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length mfuel
+  refine hasCol_fujiIters M (expP M mfuel) nd (expRes M).length mfuel
     (fun i' j' => kmaxAt_le_yama' M (expP M mfuel) i' j' _ _ (expP_yama_cut M mfuel hyama))
     nrep (expRes M) m i j hi hin hjy (by omega) ?_
   rw [kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama i j hjx]
@@ -758,5 +759,43 @@ theorem fujiCellAt_parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
         hseam nd st i t k pc hi ht hk hkj hlivej hlast hmono hp (hcov pc hlt hge)
       rw [hu] at hnone
       exact absurd hnone (by simp)
+
+/-! ## `ShapeRep` の `cover` -/
+
+/-- **高さ `m` 以上の列は段 `m` に載る。** -/
+theorem cover_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep m c : Nat)
+    (hc : c < (S.n - 1) + (expP M mfuel).len * nrep)
+    (hm : m ≤ (yamaContext S y hy hpar hh).height c) :
+    HasCol (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)) m c := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  rcases Nat.lt_or_ge c (S.n - 1) with hcx | hcx
+  · have hkh : m ≤ height S.tower.base c := by
+      rwa [yamaContext_height_orig S y hy hpar hh c hcx] at hm
+    have hml : m < (expRes M).length := by
+      have := height_lt_expRes_length S M hM hn hM2 c hcx
+      omega
+    exact hasCol_fujiIters_old M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M) m c
+      (hasCol_cutChild S M hM hn (expCutH M) hcut m c hcx hkh hml)
+  · obtain ⟨i2, j2, hi2, hi2n, hj2y, hj2x, hceq⟩ :=
+      col_decomp y (S.n - 1) (expP M mfuel).len nrep c hLp (by omega) (by omega) hcx (by omega)
+    have hkh : m ≤ height S.tower.base j2 := by
+      have hc' : c = j2 + (S.n - 1 - y) * i2 := by rw [hceq, hLp]
+      rcases Decidable.em (j2 = y) with hje | hjne
+      · rw [hc', hje] at hm
+        rw [yamaContext_height_seam' S y hy hpar hh i2 hi2] at hm
+        rw [hje]
+        exact hm
+      · rw [hc'] at hm
+        rwa [yamaContext_height_other' S y hy hpar hh j2 i2 (by omega) hj2x] at hm
+    rw [hceq]
+    exact hasCol_yama S M hM nrep mfuel nd hn hM2 hyama m i2 j2 hi2 hi2n (by omega) hj2x hkh h0
 
 end Yukito
