@@ -1197,4 +1197,24 @@ theorem valTop_push_yama (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m
   rw [fujiCellAt_col_yama M mfuel nd i j m isRep st hyama hm]
   exact fujiCellAt_val_of_par_none M (expP M mfuel) nd i j isRep st m hp
 
+/-! ## `ShapeRep` の `valTop`（`yamaRs` の形） -/
+
+theorem valTop_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hyama : expYama M mfuel)
+    (y : Nat) (hseam : (expP M mfuel).badRootSeam = y)
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
+    (nrep m u : Nat) (d : Cell)
+    (hd : (rowAt (yamaRs M mfuel nd nrep) m)[u]? = some d) (hp : d.par = none) :
+    d.val = nd (d.pos + m) := by
+  rcases yamaRs_cell S M hM mfuel y hseam nd nrep m u d hd with hold | ⟨i', t', _, _, hk', hde⟩
+  · obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m u d hold
+    rw [hnd (d.pos + m) hbound]
+    exact valTop_orig_yama S M hM hn hcut m u d hold hp
+  · rw [hde]
+    refine valTop_push_yama M mfuel nd (i' + 1) (y + t') m
+      (isRepAt (expP M mfuel) (y + t')) _ hyama hk' ?_
+    rw [← hde]
+    exact hp
+
 end Yukito
