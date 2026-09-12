@@ -68,4 +68,30 @@ theorem lowerContext_height_orig (hyx : y < x) (hroot) (hhigher) (c : Nat) (hc :
     (lowerContext S y x hyx hroot hhigher).height c = height S.tower.base c :=
   (lowerContext S y x hyx hroot hhigher).height_original hc
 
+/-- **継ぎ目の列（`j = y`）の高さ。** -/
+theorem lowerContext_height_seam (hyx : y < x) (hroot) (hhigher) (i : Nat) :
+    (lowerContext S y x hyx hroot hhigher).height (y + (x - y) * i)
+      = height S.tower.base y
+        + i * (height S.tower.base x - height S.tower.base y) := by
+  have hc : y + (x - y) * i = (lowerContext S y x hyx hroot hhigher).coordinates.y
+      + i * (lowerContext S y x hyx hroot hhigher).coordinates.length := by
+    show y + (x - y) * i = y + i * (x - y)
+    rw [Nat.mul_comm]
+  rw [hc]
+  exact (lowerContext S y x hyx hroot hhigher).height_root_copy i
+
+/-- **それ以外の継ぎ目の列の高さ。** `InCone` なら `rise * i` だけ持ち上がる。 -/
+theorem lowerContext_height_other (hyx : y < x) (hroot) (hhigher) (j i : Nat)
+    (hj1 : y < j) (hj2 : j ≤ x) :
+    (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)
+      = if (lowerContext S y x hyx hroot hhigher).InCone j then
+          height S.tower.base j + i * (height S.tower.base x - height S.tower.base y)
+        else height S.tower.base j := by
+  have hc : j + (x - y) * i
+      = (lowerContext S y x hyx hroot hhigher).coordinates.encode j i := by
+    show j + (x - y) * i = j + i * (x - y)
+    rw [Nat.mul_comm]
+  rw [hc]
+  exact (lowerContext S y x hyx hroot hhigher).height_encode hj1 hj2 i
+
 end Yukito
