@@ -431,6 +431,9 @@ for (var i=1;i<=n;i++)            // 繰り返し
 ```
 -/
 
+/-- 添字で値を読む。 -/
+def valAtIdx (row : Rowj) (i : Nat) : Nat := if h : i < row.size then (row[i]'h).val else 0
+
 /-- 行 0 の列 `c` の値。 -/
 def readValAt (row : Rowj) (c : Nat) : Nat :=
   match lookupPos row c with
@@ -516,13 +519,10 @@ def cutChild (res : List Rowj) (cutH : Nat) : List Rowj :=
 値 0 が「未確定」の印である。 -/
 def fillRow (row up : Rowj) : Rowj :=
   row.foldl (init := #[]) fun acc c =>
-    if c.val ≠ 0 then acc.push c
-    else
-      let pv := match c.par with
-        | none => 0
-        | some p => if h : p < acc.size then (acc[p]'h).val else 0
-      let uv := readValAt up (c.pos - 1)
-      acc.push { c with val := pv + uv }
+    acc.push (if c.val ≠ 0 then c
+      else { c with val := (match c.par with
+                            | none => 0
+                            | some p => valAtIdx acc p) + readValAt up (c.pos - 1) })
 
 /-- 上から下へ値を埋める。 -/
 def fillValues : List Rowj → List Rowj
@@ -552,9 +552,6 @@ def dropEmptyTop : List Rowj → List Rowj
 `newDiagonal` は `.value` しか読まれないので、値の関数 `Nat → Nat` として持つ。
 JS は `newDiagonal[0].push(newDiagonal[0][j])` で同じセルの参照を積むため
 `position` が重複するが、値だけを見るぶんには影響しない。 -/
-
-/-- 添字で値を読む。 -/
-def valAtIdx (row : Rowj) (i : Nat) : Nat := if h : i < row.size then (row[i]'h).val else 0
 
 /-- 列 `j` を含む最上段。JS の `badRootHeight` の走査。 -/
 def topRowWithCol (M : List Rowj) (j : Nat) : Nat → Option Nat
