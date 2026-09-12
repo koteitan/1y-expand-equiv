@@ -1817,4 +1817,45 @@ theorem lt_dropEmptyTop_length (n : Nat) : ∀ (L : List Rowj) (m : Nat), L.leng
           rw [hd]
           exact hm
 
+/-- 空段落としのあとにあるセルは元にもある。 -/
+theorem getElem?_dropEmptyTop (L : List Rowj) (m t : Nat) (d : Cell)
+    (h : (rowAt (dropEmptyTop L) m)[t]? = some d) : (rowAt L m)[t]? = some d := by
+  have hts : t < (rowAt (dropEmptyTop L) m).size := lt_size_of_getElem? h
+  have hm : m < (dropEmptyTop L).length := by
+    rcases Nat.lt_or_ge m (dropEmptyTop L).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  rwa [rowAt_dropEmptyTop L.length L m (Nat.le_refl _) hm] at h
+
+/-- 元にある列は空段落としのあとにもある。 -/
+theorem hasCol_dropEmptyTop (L : List Rowj) (m c : Nat) (h : HasCol L m c) :
+    HasCol (dropEmptyTop L) m c := by
+  obtain ⟨t, d, hd, hdc⟩ := h
+  have hts : t < (rowAt L m).size := lt_size_of_getElem? hd
+  have hmL : m < L.length := by
+    rcases Nat.lt_or_ge m L.length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge L m h1] at hts
+      simp at hts
+  have hm : m < (dropEmptyTop L).length :=
+    lt_dropEmptyTop_length L.length L m (Nat.le_refl _) hmL (by omega)
+  refine ⟨t, d, ?_, hdc⟩
+  rw [rowAt_dropEmptyTop L.length L m (Nat.le_refl _) hm]
+  exact hd
+
+theorem rowsMono_dropEmptyTop (L : List Rowj) (h : RowsMono L) : RowsMono (dropEmptyTop L) := by
+  intro m
+  rcases Nat.lt_or_ge m (dropEmptyTop L).length with h1 | h1
+  · rw [rowAt_dropEmptyTop L.length L m (Nat.le_refl _) h1]
+    exact h m
+  · rw [rowAt_of_ge _ m h1]
+    intro p q hp _ _
+    simp at hp
+
+theorem parLt_dropEmptyTop (L : List Rowj) (h : ParLt L) : ParLt (dropEmptyTop L) :=
+  fun r t d hd p hp => h r t d (getElem?_dropEmptyTop L r t d hd) p hp
+
 end Yukito
