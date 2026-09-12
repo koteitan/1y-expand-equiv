@@ -838,4 +838,85 @@ theorem cellCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
     · rw [hc', yamaContext_height_other' S y hy hpar hh j2 i2 (by omega) hj2x']
       exact hkh
 
+/-! ## 元からあるセルについての条件
+
+コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
+`parCol` / `parNone` / `valTop` を示す必要がある。こちらは元の山の `ParRep` と
+`yamaContext_parent_orig` から出る。 -/
+
+theorem parNone_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (m t : Nat) (d : Cell) (hd : (rowAt (expRes M) m)[t]? = some d) (hp : d.par = none) :
+    (yamaContext S y hy hpar hh).parent m (d.pos + m) = none := by
+  obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m t d hd
+  have hts : t < (rowAt (expRes M) m).size := lt_size_of_getElem? hd
+  have hm : m < (expRes M).length := by
+    rcases Nat.lt_or_ge m (expRes M).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hdM : (rowAt M m)[t]? = some d := by
+    rw [← rowAt_cutChild_getElem? M (expCutH M) m t hm hts]
+    exact hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hdM
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hdM
+    exact Option.some.inj hdM
+  have hmM : m < M.length := by
+    have h2 : (expRes M).length ≤ M.length := cutChild_length_le M (expCutH M)
+    omega
+  have hF := parRep_none S M hM m hmM t htM (by rw [hdt]; exact hp)
+  rw [hdt] at hF
+  rw [yamaContext_parent_orig S y hy hpar hh m (d.pos + m) hbound]
+  exact hF
+
+theorem parCol_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hcut : expCutH M = height S.tower.base (S.n - 1))
+    (st : List Rowj) (hext : ∀ m, RowExt (rowAt (expRes M) m) (rowAt st m))
+    (m t : Nat) (d : Cell) (hd : (rowAt (expRes M) m)[t]? = some d)
+    (p : Nat) (hp : d.par = some p) :
+    ∃ hp' : p < (rowAt st m).size,
+      (yamaContext S y hy hpar hh).parent m (d.pos + m)
+        = some (((rowAt st m)[p]'hp').pos + m) := by
+  obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut m t d hd
+  have hts : t < (rowAt (expRes M) m).size := lt_size_of_getElem? hd
+  have hm : m < (expRes M).length := by
+    rcases Nat.lt_or_ge m (expRes M).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hdM : (rowAt M m)[t]? = some d := by
+    rw [← rowAt_cutChild_getElem? M (expCutH M) m t hm hts]
+    exact hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hdM
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hdM
+    exact Option.some.inj hdM
+  have hmM : m < M.length := by
+    have h2 : (expRes M).length ≤ M.length := cutChild_length_le M (expCutH M)
+    omega
+  obtain ⟨hpM, hF⟩ := parRep_some S M hM m hmM t htM p (by rw [hdt]; exact hp)
+  rw [hdt] at hF
+  -- 親の添字は自分より前なので、切ったあとの段にも残っている
+  have hpt : p < t := (par_index_lt S M hM m hmM t p htM (by rw [hdt]; exact hp)).2
+  have hpc : p < (rowAt (expRes M) m).size := by omega
+  have hpe : (rowAt (expRes M) m)[p]? = (rowAt M m)[p]? :=
+    rowAt_cutChild_getElem? M (expCutH M) m p hm hpc
+  obtain ⟨hp', hpeq⟩ := (hext m).getElem p hpc
+  refine ⟨hp', ?_⟩
+  rw [yamaContext_parent_orig S y hy hpar hh m (d.pos + m) hbound, hF]
+  have hcell : (rowAt st m)[p]'hp' = (rowAt M m)[p]'hpM := by
+    rw [hpeq]
+    rw [Array.getElem?_eq_getElem hpc, Array.getElem?_eq_getElem hpM] at hpe
+    exact Option.some.inj hpe
+  rw [hcell]
+
 end Yukito
