@@ -6,3 +6,4 @@ import Equiv.RowSucc
 import Equiv.RootCase
 import Equiv.RootZero
 import Equiv.RootGen
+import Equiv.NoCross
