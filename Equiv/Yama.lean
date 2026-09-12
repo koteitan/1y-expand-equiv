@@ -958,4 +958,28 @@ theorem valTop_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 
   rw [← hme]
   simpa using hval
 
+/-- **列が `n−1` より小さいセルは元からあるセルである。** 積んだセルの列は
+`y + L*i ≥ y + L = n−1` だからである。 -/
+theorem cell_orig_of_col_lt (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep m t : Nat) (d : Cell)
+    (hd : (rowAt (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)) m)[t]?
+      = some d)
+    (hlt : d.pos + m < S.n - 1) :
+    (rowAt (expRes M) m)[t]? = some d := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
+  rcases cell_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm nrep (expRes M) m t d hd
+    with hold | ⟨i2, j2, hi2, _, hj2y, _, _, hceq⟩
+  · exact hold
+  · exfalso
+    have hmul : (expP M mfuel).len * 1 ≤ (expP M mfuel).len * i2 :=
+      Nat.mul_le_mul_left _ hi2
+    have hone : (expP M mfuel).len * 1 = (expP M mfuel).len := Nat.mul_one _
+    omega
+
 end Yukito
