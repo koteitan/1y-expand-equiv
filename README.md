@@ -772,8 +772,23 @@ extractSetting s hs  抽出後の行から作る設定
 これで**抽出後の行から作った山も全行が一致する**（`calcMountain_extract_rep`）。
 抽出の繰り返し（`getBadRoot` や `expand` の再帰）を支える土台になる。
 
-残るのは、抽出段（`DiagBridge`）も一般の設定へ広げて、抽出を任意回繰り返せる形に
-することである。
+抽出段（`DiagBridge`）も一般の設定へ広げた。JS の山が設定に対応していることを
+`MtRep` にまとめ、すべての定理をその形にした。
+
+```
+structure MtRep (S : Setting) (M : List Rowj) : Prop where
+  rowRep  各行が Rep と ParRep を満たす
+  size0   行 0 の大きさは列の上限
+  tall    段が足りている
+```
+
+これで `calcDiagonal` の対応（`diagList_eq` / `calcDiagonal_eq` / `parRep_extract` /
+`extract_value` / `extract_parent`）が、入力列の山でも抽出後の行から作った山でも
+そのまま使える。入力列の場合は `mtRep_calcMountain` が `MtRep` を与える。
+
+残るのは、抽出後の行から作った山についても `MtRep` を組み立てることである
+（`rowRep` は `calcMountainFrom_rep`、`size0` は `calcDiagonal_eq'` の長さ、
+`tall` は `mountainGo_length` の一般版）。それができると抽出を任意回繰り返せる。
 
 ## 残っている課題
 

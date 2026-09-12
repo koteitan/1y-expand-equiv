@@ -50,13 +50,17 @@ theorem mountainOf_rootAt_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r c : Nat
     (mountainOf s hs).rootAt r c = (rows (ofSequence s) r).forest.root c := rfl
 
 /-- 山の頂の高さは列番号以下。生きた列は 1 行ごとに右へずれるからである。 -/
-theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
-    height (ofSequence s) c ≤ c := by
-  rcases Nat.lt_or_ge c (height (ofSequence s) c) with h | h
-  · have hl := height_live (ofSequence s) (ofSequence_positive s hs c)
-    rw [rows_value_zero_of_lt (ofSequence s) _ c h] at hl
+theorem height_le_self' (base : Row) (hpos : ∀ c, 0 < base.value c) (c : Nat) :
+    height base c ≤ c := by
+  rcases Nat.lt_or_ge c (height base c) with h | h
+  · have hl := height_live base (hpos c)
+    rw [rows_value_zero_of_lt base _ c h] at hl
     omega
   · exact h
+
+theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
+    height (ofSequence s) c ≤ c :=
+  height_le_self' (ofSequence s) (ofSequence_positive s hs) c
 
 /-- `select (frameAt s r) (towerVal s r)` の差分は次の層の値そのもの。 -/
 theorem difference_eq_towerVal (T : Tower) (r : Nat) :
