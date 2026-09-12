@@ -239,4 +239,25 @@ theorem fparent_succ_down (base : Row) (root : Nat) :
         rw [this]; exact h
       exact fparent_succ_step base k root (fparent_succ_down base root m (k+1) h')
 
+/-- `F` 親が `root` なら、その層で `U root < U (root+1)` が成り立つ。
+`Row.parent_values` がそのまま与える。 -/
+theorem value_lt_of_fparent (base : Row) (k root : Nat)
+    (hp : (rows base k).forest.parent (root + 1) = some root) :
+    0 < (rows base k).value root ∧
+      (rows base k).value root < (rows base k).value (root + 1) :=
+  (rows base k).parent_values hp
+
+/-- 連鎖と合わせた形。行 `k+m` で `j = root+1` の親が `root` なら、
+行 `k` でも値の大小が成り立つ。 -/
+theorem value_lt_down (base : Row) (root : Nat) (m k : Nat)
+    (h : (rows base (k + m)).forest.parent (root + 1) = some root) :
+    (rows base k).value root < (rows base k).value (root + 1) :=
+  (value_lt_of_fparent base k root (fparent_succ_down base root m k h)).2
+
+/-- `root` が下の層で生きていることも同時に出る。 -/
+theorem root_pos_down (base : Row) (root : Nat) (m k : Nat)
+    (h : (rows base (k + m)).forest.parent (root + 1) = some root) :
+    0 < (rows base k).value root :=
+  (value_lt_of_fparent base k root (fparent_succ_down base root m k h)).1
+
 end Yukito
