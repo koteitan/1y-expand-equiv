@@ -972,7 +972,28 @@ fujiCell     積むセル 1 個
 値は、親が無いときだけ確定し、あるときは後で埋める。JS は後者を `NaN` にするが、
 ここでは値 0 を「未確定」の印にした。実際の値はつねに正なので混ざらない。
 
-残るのは 2（層の再帰）と 3（森のコピー）で、3 が全体の大半である。
+### 三重ループと後処理
+
+`expand` の本体も写した。
+
+```
+pushAt        段 k にセルを積む（段が無ければ作る）
+fujiSource    枝の選択（Bb / Br replace / Br extend / Be）
+fujiRows      段 k = 0 … kmax−1
+fujiSeams     継ぎ目の列 j = badRootSeam …
+fujiIters     繰り返し i = 1 … n
+cutChild      子を切る
+fillRow       段 1 つぶんの値の埋め
+fillValues    上から下へ値を埋める
+dropEmptyTop  末尾の空の段を落とす
+```
+
+枝は `sy`（元の段）と `sx`（元のセルを行の最後から取るか）の選び方だけが違うので、
+`fujiSource` にまとめた。
+
+残るのは、これらを繋ぐ `expand` の入口（`cutHeight` などの計算と `newDiagonal` の
+再帰）と、`#guard` による突き合わせである。そのあとが 2（層の再帰）と
+3（森のコピー）で、3 が全体の大半である。
 
 ## 残っている課題
 

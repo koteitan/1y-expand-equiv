@@ -420,4 +420,128 @@ def fujiCell (M : List Rowj) (P : FujiParams) (cur : Rowj) (sy sx k i j shifts :
   { pos := j + P.len * i - k, val := if pi.isNone then topVal else 0,
     par := pi, forced := fp }
 
+/-! ## Mt.Fuji シェルの三重ループ
+
+```js
+for (var i=1;i<=n;i++)            // 繰り返し
+  for (var j=badRootSeam;j<afterCutLength;j++)   // 継ぎ目の列
+    …isAscending と seamHeight を求める…
+    for (var k=0;k<kmax;k++)      // 段
+      …枝に応じて sy と sx を選び、セルを積む…
+```
+-/
+
+/-- 行 0 の列 `c` の値。 -/
+def readValAt (row : Rowj) (c : Nat) : Nat :=
+  match lookupPos row c with
+  | none => 0
+  | some m => if h : m < row.size then (row[m]'h).val else 0
+
+/-- `res` の段 `k` にセルを積む。段が無ければ作る（JS の
+`if (!result[k]) result.push([]);`）。 -/
+def pushAt (res : List Rowj) (k : Nat) (c : Cell) : List Rowj :=
+  if k < res.length then res.set k ((res.getD k #[]).push c) else res ++ [#[c]]
+
+/-- 枝の選択。JS の Bb / Br replace / Br extend / Be。
+返すのは（元の段, 元のセルを行の最後から取るか）。 -/
+def fujiSource (P : FujiParams) (i k : Nat) (isRep : Bool) : Nat × Bool :=
+  let d := P.cutHeight - P.badRootHeight
+  let ir := if isRep then 1 else 0
+  if k < P.badRootHeight then (k, isRep)
+  else if k ≤ P.badRootHeight + d * (i - ir) then
+    (P.badRootHeight, !P.yamakazi && isRep)
+  else if isRep && k ≤ P.badRootHeight + d * i then
+    (k - d * (i - 1), !P.yamakazi && isRep)
+  else (k - d * i, !P.yamakazi && isRep)
+
+/-- 段 `k = 0 … kmax−1` を積む。 -/
+def fujiRows (M : List Rowj) (P : FujiParams) (nd : Rowj) (i j : Nat) (isRep : Bool) :
+    Nat → List Rowj → List Rowj
+  | 0, res => res
+  | kmax + 1, res =>
+      let res := fujiRows M P nd i j isRep kmax res
+      let sysx := fujiSource P i kmax isRep
+      let sx := sourceIdx M sysx.1 j sysx.2
+      let ir := if isRep then 1 else 0
+      let topVal := readValAt nd (j + P.len * i)
+      pushAt res kmax (fujiCell M P (rowAt res kmax) sysx.1 sx kmax i j (i - ir) topVal)
+
+/-- 継ぎ目の列 `j = badRootSeam … badRootSeam+t−1` を回す。 -/
+def fujiSeams (M : List Rowj) (P : FujiParams) (nd : Rowj) (i afterCutHeight ascFuel : Nat) :
+    Nat → List Rowj → List Rowj
+  | 0, res => res
+  | t + 1, res =>
+      let res := fujiSeams M P nd i afterCutHeight ascFuel t res
+      let j := P.badRootSeam + t
+      let isRep := decide (j = P.badRootSeam)
+      let isAsc := isAscending M P.badRootHeight P.badRootSeam j ascFuel
+      let seamH := seamHeightOf M j afterCutHeight
+      let d := P.cutHeight - P.badRootHeight
+      let kmax := if isAsc then seamH + d * i else seamH
+      fujiRows M P nd i j isRep kmax res
+
+/-- 繰り返し `i = 1 … n`。 -/
+def fujiIters (M : List Rowj) (P : FujiParams) (nd : Rowj) (afterCutHeight ascFuel : Nat) :
+    Nat → List Rowj → List Rowj
+  | 0, res => res
+  | i + 1, res =>
+      let res := fujiIters M P nd afterCutHeight ascFuel i res
+      fujiSeams M P nd (i + 1) afterCutHeight ascFuel P.len res
+
+/-! ## 切りと値の埋め
+
+```js
+for (var i=0;i<=actualCutHeight;i++) result[i].pop();   // 子を切る
+if (!result[result.length-1].length) result.pop();
+
+for (var i=result.length-1;i>=0;i--){                   // 上から下へ値を埋める
+  if (!result[i].length){ result.pop(); continue; }
+  for (var j=0;j<result[i].length;j++){
+    if (!isNaN(result[i][j].value)) continue;
+    …result[i][j].value = 親の値 + 1 つ上の段の同じ列の値…
+  }
+}
+```
+-/
+
+/-- JS の「子を切る」。段 `0 … cutH` の最後のセルを落とし、最上段が空なら段ごと落とす。 -/
+def cutChild (res : List Rowj) (cutH : Nat) : List Rowj :=
+  let res := (List.range (cutH + 1)).foldl
+    (fun r i => if i < r.length then r.set i ((r.getD i #[]).pop) else r) res
+  if 0 < res.length ∧ (res.getD (res.length - 1) #[]).size = 0 then
+    res.take (res.length - 1)
+  else res
+
+/-- 段 1 つぶんの値の埋め。`up` は 1 つ上の段（埋め終わっている）。
+値 0 が「未確定」の印である。 -/
+def fillRow (row up : Rowj) : Rowj :=
+  row.foldl (init := #[]) fun acc c =>
+    if c.val ≠ 0 then acc.push c
+    else
+      let pv := match c.par with
+        | none => 0
+        | some p => if h : p < acc.size then (acc[p]'h).val else 0
+      let uv := readValAt up (c.pos - 1)
+      acc.push { c with val := pv + uv }
+
+/-- 上から下へ値を埋める。 -/
+def fillValues : List Rowj → List Rowj
+  | [] => []
+  | [r] => [r]
+  | r :: rest =>
+      let rest := fillValues rest
+      fillRow r (rest.headD #[]) :: rest
+
+/-- 末尾の空の段を落とす。 -/
+def dropEmptyTop : List Rowj → List Rowj
+  | [] => []
+  | a :: t =>
+      if ((a :: t).getD (t.length) #[]).size = 0 then
+        dropEmptyTop ((a :: t).take t.length)
+      else a :: t
+  termination_by l => l.length
+  decreasing_by
+    simp only [List.length_take, List.length_cons]
+    omega
+
 end Yukito
