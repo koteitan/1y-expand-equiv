@@ -1,5 +1,6 @@
 import Equiv.DiagBridge
 import OneY.Expansion
+import OneY.RootSearch
 
 /-!
 # bad root と `expand` の分岐
@@ -246,5 +247,105 @@ theorem getBadRoot_eq (m : Nat) :
       have := topValue_pos S.tower.base (S.tower.hpos (S.n - 1))
       show 1 < topValue S.tower.base (S.n - 1)
       omega
+
+/-! ## 密表現側の探索と `findBadRoot`
+
+`badRootOf` の再帰は Phyrion の `layers`（抽出の繰り返し）にあたる。停止条件は
+`badAt_height_and_top`（bad root の層では `topValue = 1`）と対応し、`badAt_unique`
+（bad root は唯一）が「それより手前の層では止まらない」ことを与える。 -/
+
+/-- 設定を `k` 回抽出したもの。 -/
+def iterSet (S : Setting) : Nat → Setting
+  | 0 => S
+  | k + 1 => extractSet (iterSet S k)
+
+theorem rawExtract_congr {b1 b2 : Row} (h : b1 = b2) (h1 : ∀ c, 0 < b1.value c)
+    (h2 : ∀ c, 0 < b2.value c) : rawExtract b1 h1 = rawExtract b2 h2 := by
+  subst h
+  rfl
+
+/-- `k` 回抽出した設定の底は、Phyrion の `layers` の `k` 段目である。 -/
+theorem iterSet_base (s : List Nat) (hs : ZeroY.Legal s) (k : Nat) :
+    (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+      show rawExtract (iterSet (linearSetting s hs.1) k).tower.base _
+        = rawExtract (layers (rootedSequence s hs) k).row _
+      exact rawExtract_congr ih _ _
+
+/-- bad root の層まで降りると、`badRootOf` はその親を返す。 -/
+theorem badRootOf_of_badAt (s : List Nat) (hs : ZeroY.Legal s) (c : Nat)
+    {K r p : Nat} (h : BadAt (rootedSequence s hs) K r c p) :
+    ∀ fuel k, K < k + fuel → k ≤ K →
+      badRootOf (iterSet (linearSetting s hs.1) k) c fuel = some p := by
+  intro fuel
+  induction fuel with
+  | zero => intro k h1 h2; omega
+  | succ fuel ih =>
+    intro k h1 h2
+    rw [badRootOf]
+    rcases Nat.eq_or_lt_of_le h2 with heq | hlt
+    · -- ちょうど bad root の層
+      subst heq
+      obtain ⟨hh, ht⟩ := badAt_height_and_top h
+      have hb : (iterSet (linearSetting s hs.1) k).tower.base
+          = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+      rw [hb, ht, if_pos rfl, hh]
+      show (rows (layers (rootedSequence s hs) k).row (r + 1 - 1)).forest.parent c = some p
+      rw [show r + 1 - 1 = r from by omega]
+      exact h.1
+    · -- まだ手前の層
+      have hb : (iterSet (linearSetting s hs.1) k).tower.base
+          = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+      have hgt : 1 < (layers (rootedSequence s hs) k).row.value c := by
+        have h1' := badAt_value_gt_one h
+        have h2' := layers_value_antitone (rootedSequence s hs) h2 c
+        omega
+      have hne : topValue (layers (rootedSequence s hs) k).row c ≠ 1 := by
+        intro hcon
+        obtain ⟨r', p', hb'⟩ := badAt_of_top_one (layers (rootedSequence s hs) k) hgt hcon
+        have hb'' : BadAt (rootedSequence s hs) k r' c p' := hb'
+        obtain ⟨hkk, _, _⟩ := badAt_unique hb'' h
+        omega
+      rw [hb, if_neg hne]
+      show badRootOf (iterSet (linearSetting s hs.1) (k + 1)) c fuel = some p
+      exact ih (k + 1) (by omega) (by omega)
+
+/-- **密表現側の探索は `findBadRoot` である。** -/
+theorem badRootOf_eq (s : List Nat) (hs : ZeroY.Legal s) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel)
+    (hp : (ofSequence s).forest.parent (s.length - 1) ≠ none) :
+    badRootOf (linearSetting s hs.1) (s.length - 1) fuel
+      = (findBadRoot s hs (s.length - 1)).map (·.column) := by
+  obtain ⟨K, hK, r, p, _, hbad⟩ := sequence_badRoot_exists s hs (s.length - 1) hp
+  have hfr : findBadRoot s hs (s.length - 1) = some ⟨K, r, p⟩ := by
+    cases hz : findBadRoot s hs (s.length - 1) with
+    | none =>
+        exfalso
+        rw [findBadRoot_none_iff] at hz
+        exact hp hz
+    | some z =>
+        have hzs := (findBadRoot_sound s hs (s.length - 1) hz).2
+        rw [rootAddress_unique (z := z) (w := ⟨K, r, p⟩) hzs hbad]
+  rw [hfr]
+  show _ = some p
+  exact badRootOf_of_badAt s hs (s.length - 1) hbad fuel 0 (by omega) (by omega)
+
+/-- **JS の `getBadRoot` は Phyrion の `findBadRoot` の列である。** -/
+theorem getBadRoot_eq_findBadRoot (s : List Nat) (hs : ZeroY.Legal s) (m fuel : Nat)
+    (hm : sequenceBound s ≤ m) (hf : sequenceBound s ≤ fuel) (hn : 1 < s.length)
+    (hp : (ofSequence s).forest.parent (s.length - 1) ≠ none) :
+    getBadRoot (calcMountain s (m + 1)) (m + 1) fuel
+      = (findBadRoot s hs (s.length - 1)).map (·.column) := by
+  have hgt : 1 < (ofSequence s).value (s.length - 1) := by
+    have hpos := ofSequence_positive s hs.1 (s.length - 1)
+    rcases Nat.lt_or_ge 1 ((ofSequence s).value (s.length - 1)) with h | h
+    · exact h
+    · exact absurd (Row.parent_none_of_one (ofSequence s) (by omega)) hp
+  rw [getBadRoot_eq m fuel (linearSetting s hs.1) (calcMountain s (m + 1))
+    (mtRep_calcMountain s hs.1 m hm) hm hn hgt]
+  exact badRootOf_eq s hs fuel hf hp
 
 end Yukito

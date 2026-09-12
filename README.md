@@ -841,16 +841,28 @@ lastVal_eq        行 0 の最後のセルの値は列 n−1 の値（停止条�
 これがあると停止した層で `height (n−1) ≥ 1` が言え、JS が `mountain[i-1]` を
 触るのが安全になる。
 
-残るのは `badRootOf` が Phyrion の `findBadRoot` に一致することである。こちらは
-密表現だけの話で、`badAt_height_and_top`（bad root の層では `topValue = 1`）と
-`badAt_unique`（bad root は唯一）が効く。
+`badRootOf` が Phyrion の `findBadRoot` に一致することも示した。
+
+```
+iterSet_base          k 回抽出した設定の底は layers の k 段目
+badRootOf_of_badAt    bad root の層まで降りるとその親を返す
+badRootOf_eq          badRootOf = findBadRoot の column
+getBadRoot_eq_findBadRoot   JS の getBadRoot = findBadRoot の column
+```
+
+手前の層で止まらないことは `badAt_unique`（bad root は唯一）から出る。もし手前の
+層 `j` で `topValue = 1` なら `badAt_of_top_one` がそこに bad root を作ってしまい、
+唯一性に反する。
+
+**これで bad root が閉じた。** `expand` の `none` の枝と合わせて、残るのは `some` の
+枝、すなわちコピー層だけである。
 
 ## 残っている課題
 
 ```
 山の段    済（密表現・疎配列とも）
 抽出段    済（密表現・疎配列とも）
-bad root  読みは付いた。橋渡しを一般の行へ広げるのが先
+bad root  済
 コピー層  未
 ```
 
