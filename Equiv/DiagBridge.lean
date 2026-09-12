@@ -519,4 +519,219 @@ theorem calcDiagonal_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
     pwScan_eq s (topValue (ofSequence s) i) i (by omega),
     restrictedParent_linear (topValue (ofSequence s)) hpos i]
 
+/-! ## 読み直し
+
+JS は対角を文字列にして `calcMountain` に渡す。`parseSequenceElement` にあたるのが
+`parseDiag` で、`"v"` 付きは `forced` を立てて親を固定し、素の数は行 0 の規則に
+任せる。素の数になるのは擬親森と線形森の `restrictedParent` が一致するときだけ
+なので、どちらの枝でも親は擬親森の `restrictedParent` になる。 -/
+
+/-- 抽出後の行（Phyrion 側）。 -/
+def extractRow (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Row :=
+  rawExtract (ofSequence s) (ofSequence_positive s hs)
+
+theorem parseDiag_size (l : List DiagItem) : (parseDiag l).size = l.length := by
+  simp only [parseDiag, Array.size_mapIdx, List.size_toArray]
+
+theorem parseDiag_pos (l : List DiagItem) (i : Nat) (hi : i < (parseDiag l).size) :
+    ((parseDiag l)[i]'hi).pos = i := by
+  simp only [parseDiag, Array.getElem_mapIdx]
+
+theorem parseDiag_val (l : List DiagItem) (i : Nat) (hi : i < (parseDiag l).size)
+    (hi' : i < l.length) : ((parseDiag l)[i]'hi).val = (l[i]'hi').val := by
+  simp only [parseDiag, Array.getElem_mapIdx, List.getElem_toArray]
+
+theorem parseDiag_forced (l : List DiagItem) (i : Nat) (hi : i < (parseDiag l).size)
+    (hi' : i < l.length) : ((parseDiag l)[i]'hi).forced = (l[i]'hi').forced := by
+  simp only [parseDiag, Array.getElem_mapIdx, List.getElem_toArray]
+
+theorem parseDiag_par (l : List DiagItem) (i : Nat) (hi : i < (parseDiag l).size)
+    (hi' : i < l.length) : ((parseDiag l)[i]'hi).par
+      = if (l[i]'hi').forced then clampPar i (l[i]'hi').par else none := by
+  simp only [parseDiag, Array.getElem_mapIdx, List.getElem_toArray]
+
+/-- 親が左にあるなら丸めは効かない。 -/
+theorem clampPar_of_lt (i : Nat) (p : Option Nat) (h : ∀ q, p = some q → q < i) :
+    clampPar i p = p := by
+  cases i with
+  | zero =>
+      cases hp : p with
+      | none => rfl
+      | some q => exact absurd (h q hp) (by omega)
+  | succ i' =>
+      cases hp : p with
+      | none => rfl
+      | some q =>
+          have := h q hp
+          simp only [clampPar, Nat.min_eq_right (show q ≤ i' by omega)]
+
+theorem forced_keeps (prev : Option Rowj) (row : Rowj) (i : Nat)
+    (hi : i < (assignParents prev row).size) (hi' : i < row.size)
+    (hf : (row[i]'hi').forced = true) :
+    ((assignParents prev row)[i]'hi).par = (row[i]'hi').par := by
+  simp only [assignParents, Array.getElem_mapIdx, hf, if_pos]
+
+/-- `calcDiagonal_eq` が与える 1 要素。 -/
+def diagItem (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (i : Nat) : DiagItem :=
+  if restrictedParent (Pseudo.forest (mountainOf s hs)) (topValue (ofSequence s)) i
+      = restrictedParent linearForest (topValue (ofSequence s)) i then
+    { val := topValue (ofSequence s) i, forced := false, par := none }
+  else
+    { val := topValue (ofSequence s) i, forced := true,
+      par := restrictedParent (Pseudo.forest (mountainOf s hs))
+        (topValue (ofSequence s)) i }
+
+theorem calcDiagonal_eq' (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    calcDiagonal (calcMountain s (fuel + 1)) = (List.range s.length).map (diagItem s hs) :=
+  calcDiagonal_eq s hs fuel hf
+
+theorem diagItem_val (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (i : Nat) :
+    (diagItem s hs i).val = topValue (ofSequence s) i := by
+  unfold diagItem
+  split <;> rfl
+
+/-- `"v"` の有無によらず、読み直しで復元される親は擬親森の `restrictedParent`。 -/
+theorem diagItem_par (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (i : Nat) :
+    (if (diagItem s hs i).forced then clampPar i (diagItem s hs i).par
+     else scanLeft (topValue (ofSequence s)) (topValue (ofSequence s) i) i)
+      = restrictedParent (Pseudo.forest (mountainOf s hs)) (topValue (ofSequence s)) i := by
+  have hpos : ∀ p, 0 < topValue (ofSequence s) p :=
+    fun p => topValue_pos (ofSequence s) (ofSequence_positive s hs p)
+  unfold diagItem
+  split
+  · rename_i heq
+    rw [← restrictedParent_linear (topValue (ofSequence s)) hpos i, ← heq]
+    simp
+  · rename_i hne
+    rw [if_pos rfl]
+    exact clampPar_of_lt i _ (fun q hq => restrictedParent_left _ _ hq)
+
+theorem getElem_map_range {α : Type} (n i : Nat) (g : Nat → α)
+    (h : i < ((List.range n).map g).length) : ((List.range n).map g)[i]'h = g i := by
+  have hi : i < (List.range n).length := by simpa using h
+  rw [List.getElem_map]
+  simp only [List.getElem_range]
+
+/-- 読み直した行は抽出後の値を表す。 -/
+theorem rep_parseDiag (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    Rep (parseDiag (calcDiagonal (calcMountain s (fuel + 1)))) 0 s.length
+      (extractRow s hs).value := by
+  rw [calcDiagonal_eq' s hs fuel hf]
+  have hlen : ((List.range s.length).map (diagItem s hs)).length = s.length := by simp
+  have hsz : (parseDiag ((List.range s.length).map (diagItem s hs))).size = s.length := by
+    rw [parseDiag_size, hlen]
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · rw [List.pairwise_iff_getElem]
+    intro i j hi hj hij
+    rw [Array.length_toList] at hi hj
+    rw [Array.getElem_toList, Array.getElem_toList,
+      parseDiag_pos _ i hi, parseDiag_pos _ j hj]
+    exact hij
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+    rw [← hix, parseDiag_pos _ i hi,
+      parseDiag_val _ i hi (by rw [hlen]; omega), getElem_map_range, diagItem_val,
+      Nat.add_zero]
+    rfl
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+    rw [← hix, parseDiag_val _ i hi (by rw [hlen]; omega), getElem_map_range, diagItem_val]
+    exact topValue_pos (ofSequence s) (ofSequence_positive s hs i)
+  · intro x hx
+    obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
+    rw [← hix, parseDiag_pos _ i hi]
+    omega
+  · intro c _ hcn _
+    refine ⟨_, mem_of_getElem _ c (by omega), ?_⟩
+    rw [parseDiag_pos _ c (by omega)]
+    omega
+
+/-- **抽出段が閉じた。** 読み直して行 0 に親を付けた行は、Phyrion の `rawExtract`
+そのものである。 -/
+theorem parRep_extract (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    ParRep (assignParents none
+        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0
+      (extractRow s hs).forest := by
+  rw [calcDiagonal_eq' s hs fuel hf]
+  have hlen : ((List.range s.length).map (diagItem s hs)).length = s.length := by simp
+  have hsz : (parseDiag ((List.range s.length).map (diagItem s hs))).size = s.length := by
+    rw [parseDiag_size, hlen]
+  have hval : ∀ j, ∀ hj : j < (parseDiag ((List.range s.length).map (diagItem s hs))).size,
+      ((parseDiag ((List.range s.length).map (diagItem s hs)))[j]'hj).val
+        = topValue (ofSequence s) j := by
+    intro j hj
+    rw [parseDiag_val _ j hj (by rw [hlen]; omega), getElem_map_range, diagItem_val]
+  intro y hy
+  obtain ⟨i, hi, hiy⟩ := getElem_of_mem _ hy
+  have hsz2 := assignParents_size none
+    (parseDiag ((List.range s.length).map (diagItem s hs)))
+  have hi' : i < (parseDiag ((List.range s.length).map (diagItem s hs))).size := by omega
+  have hpos : ((assignParents none
+      (parseDiag ((List.range s.length).map (diagItem s hs))))[i]'hi).pos = i := by
+    rw [assignParents_pos none _ i hi hi', parseDiag_pos _ i hi']
+  -- 親は「`"v"` 付きならそのまま、素の数なら左スキャン」
+  have hpar : ((assignParents none
+      (parseDiag ((List.range s.length).map (diagItem s hs))))[i]'hi).par
+      = restrictedParent (Pseudo.forest (mountainOf s hs)) (topValue (ofSequence s)) i := by
+    rw [← diagItem_par s hs i]
+    by_cases hfo : (diagItem s hs i).forced = true
+    · have hfo' : ((parseDiag ((List.range s.length).map (diagItem s hs)))[i]'hi').forced
+          = true := by
+        rw [parseDiag_forced _ i hi' (by rw [hlen]; omega), getElem_map_range]
+        exact hfo
+      rw [forced_keeps none _ i hi hi' hfo',
+        parseDiag_par _ i hi' (by rw [hlen]; omega), getElem_map_range, if_pos hfo,
+        if_pos hfo]
+    · have hfo' : ((parseDiag ((List.range s.length).map (diagItem s hs)))[i]'hi').forced
+          = false := by
+        rw [parseDiag_forced _ i hi' (by rw [hlen]; omega), getElem_map_range]
+        exact Bool.not_eq_true _ ▸ hfo
+      rw [assignParents_none_par _ i hi hi' hfo', parseDiag_pos _ i hi',
+        searchBase_eq_scanLeft' _ (topValue (ofSequence s)) i hi' hval i (Nat.le_refl _),
+        if_neg hfo]
+  rw [← hiy, hpar, hpos]
+  cases hrp : restrictedParent (Pseudo.forest (mountainOf s hs))
+      (topValue (ofSequence s)) i with
+  | none =>
+      show (extractRow s hs).forest.parent (i + 0) = none
+      rw [Nat.add_zero]
+      exact hrp
+  | some p =>
+      have hpi : p < i := restrictedParent_left _ _ hrp
+      refine ⟨by omega, ?_⟩
+      show (extractRow s hs).forest.parent (i + 0)
+        = some (((assignParents none
+            (parseDiag ((List.range s.length).map (diagItem s hs))))[p]'(by omega)).pos + 0)
+      rw [Nat.add_zero, Nat.add_zero,
+        assignParents_pos none _ p (by omega) (by omega), parseDiag_pos _ p (by omega)]
+      exact hrp
+
+/-- 読み直して親を付けた行の `Rep`。 -/
+theorem rep_extract (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    Rep (assignParents none
+        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0 s.length
+      (extractRow s hs).value :=
+  rep_assignParents none _ 0 s.length _ (rep_parseDiag s hs fuel hf)
+
+/-- **抽出段の値が一致する。** -/
+theorem extract_value (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) (c : Nat) (hc : c < s.length) :
+    readVal (assignParents none
+        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0 c
+      = (extractRow s hs).value c :=
+  rep_read _ 0 s.length _ (rep_extract s hs fuel hf) (fun q hq => absurd hq (by omega)) c hc
+
+/-- **抽出段の親が一致する。** -/
+theorem extract_parent (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) (c : Nat) (hc : c < s.length) :
+    readPar (assignParents none
+        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0 c
+      = (extractRow s hs).forest.parent c :=
+  rep_read_par _ 0 s.length (extractRow s hs) (rep_extract s hs fuel hf)
+    (parRep_extract s hs fuel hf) (fun q hq => absurd hq (by omega)) c hc
+
 end Yukito

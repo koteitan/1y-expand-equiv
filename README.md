@@ -487,8 +487,24 @@ calcDiagonal_eq  出力全体
 "v"     線形森の restrictedParent（= 読み直しの既定の親）と食い違うときだけ付く
 ```
 
-抽出段に残るのは、読み直し（`parseDiag`）とその行 0 の親付けまで含めて
-`rawExtract` になることである。
+### 読み直し
+
+JS は対角を文字列にして `calcMountain` に渡す。`parseSequenceElement` にあたるのが
+`parseDiag` で、`"v"` 付きは `forced` を立てて親を固定し、素の数は行 0 の規則に
+任せる。素の数になるのは擬親森と線形森の `restrictedParent` が一致するときだけ
+なので、**どちらの枝でも親は擬親森の `restrictedParent`** になる（`diagItem_par`）。
+
+明示側の丸め `Math.max(Math.min(i-1,p),-1)` は、親が左にあるので効かない
+（`clampPar_of_lt`）。
+
+```
+rep_parseDiag    読み直した行は抽出後の値を表す
+parRep_extract   行 0 に親を付けた行の親 = rawExtract の親
+extract_value    列番号で引いた値 = rawExtract の値
+extract_parent   列番号で引いた親 = rawExtract の親
+```
+
+**これで抽出段が閉じた。**
 
 ## 疎配列との橋渡し
 
@@ -628,7 +644,7 @@ parRep_assignParents  assignParents の親 = restrictedParent
 
 ```
 山の段    済（密表現・疎配列とも）
-抽出段    密表現での対応は済。疎配列との橋渡しが残り
+抽出段    済（密表現・疎配列とも）
 bad root  未
 コピー層  未
 ```
