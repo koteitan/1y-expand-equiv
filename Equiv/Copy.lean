@@ -398,4 +398,43 @@ theorem rowAt_cutChild (res : List Rowj) (cutH m : Nat) (h : m < (cutChild res c
     split at h <;> omega
   · rw [if_neg hc]
 
+/-! ## 伸びても引ける
+
+`fujiCell` は `lookupPos` で親の添字を引く。段は後ろに伸びるだけなので、その添字は
+最終形でも同じ添字である。 -/
+
+theorem RowExt.getElem {a b : Rowj} (h : RowExt a b) (i : Nat) (hi : i < a.size) :
+    ∃ hb : i < b.size, (b[i]'hb) = (a[i]'hi) := by
+  have hb : i < b.size := Nat.lt_of_lt_of_le hi h.1
+  refine ⟨hb, ?_⟩
+  have h2 := h.2 i hi
+  rw [Array.getElem?_eq_getElem hb, Array.getElem?_eq_getElem hi] at h2
+  exact Option.some.inj h2
+
+theorem lookupPos_some_iff (row : Rowj) (q i : Nat) (hl : lookupPos row q = some i) :
+    ∃ hi : i < row.size, (row[i]'hi).pos = q := by
+  unfold lookupPos at hl
+  dsimp only at hl
+  split at hl
+  · next hm =>
+      split at hl
+      · next hpos =>
+          have heq : firstAtLeast row q = i := Option.some.inj hl
+          subst heq
+          exact ⟨hm, hpos⟩
+      · exact absurd hl (by simp)
+  · exact absurd hl (by simp)
+
+theorem lookupPos_of_pos (row : Rowj) (hmono : PosMono row) (q i : Nat) (hi : i < row.size)
+    (hpos : (row[i]'hi).pos = q) : lookupPos row q = some i := by
+  have hfa : firstAtLeast row q = i := firstAtLeast_eq_of_mem row hmono q i hi hpos
+  simp only [lookupPos, hfa, dif_pos hi, if_pos hpos]
+
+/-- **伸びた段でも同じ添字が引ける。** -/
+theorem lookupPos_of_rowExt {a b : Rowj} (h : RowExt a b) (hmono : PosMono b) (q i : Nat)
+    (hl : lookupPos a q = some i) : lookupPos b q = some i := by
+  obtain ⟨hi, hpos⟩ := lookupPos_some_iff a q i hl
+  obtain ⟨hb, heq⟩ := h.getElem i hi
+  exact lookupPos_of_pos b hmono q i hb (by rw [heq]; exact hpos)
+
 end Yukito
