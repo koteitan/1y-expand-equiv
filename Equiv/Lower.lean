@@ -1702,4 +1702,112 @@ theorem assemble_above_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
   rw [h]
   exact congrFun h2 c
 
+/-! ## 層の再帰
+
+`k < K` の枝では、新しい対角は対角の山を展開した行 0 の値である。上の層の
+畳み込みと突き合わせると、層が 1 つ降りる。 -/
+
+/-- `expandOut` の要素は行 0 の値そのもの。 -/
+theorem valAtIdx_of_expandOut (M' : List Rowj) (W : Nat) (f : Nat → Nat)
+    (h : expandOut M' = (List.range W).map f) (c : Nat) (hc : c < W) :
+    valAtIdx (rowAt M' 0) c = f c := by
+  have hlen : (rowAt M' 0).size = W := by
+    have hl := congrArg List.length h
+    simpa [expandOut] using hl
+  have hc' : c < (rowAt M' 0).size := by omega
+  have h2 : (expandOut M')[c]? = ((List.range W).map f)[c]? := by rw [h]
+  rw [show expandOut M' = (rowAt M' 0).toList.map (fun d => d.val) from rfl] at h2
+  simp only [List.getElem?_map, List.getElem?_range, Array.getElem?_toList,
+    Array.getElem?_eq_getElem hc', hc, ↓reduceIte, Option.map_some] at h2
+  unfold valAtIdx
+  rw [dif_pos hc']
+  exact Option.some.inj h2
+
+/-- **層が 1 つ降りる。** 対角の展開が `k+1` 段目以上の畳み込みなら、
+この層の展開は `k` 段目以上の畳み込みである。 -/
+theorem expandOut_step_lower (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hK : K < sequenceBound s)
+    (hxs : s.length - 1 = x) (hyx : y < x) (k : Nat) (hk : k < K)
+    (M : List Rowj) (mfuel efuel nrep : Nat)
+    (hM : MtRep (iterSet (linearSetting s hs.1) k) M) (hM2 : 2 ≤ M.length)
+    (hbh : (expP M mfuel).badRootHeight
+      = height (iterSet (linearSetting s hs.1) k).tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight
+      = height (iterSet (linearSetting s hs.1) k).tower.base x)
+    (hfuel : (rowAt M (height (iterSet (linearSetting s hs.1) k).tower.base y)).size ≤ mfuel)
+    (hyk : ¬ expYama M mfuel)
+    (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true)
+    (hIH : expandOut (expandJS nrep mfuel efuel (expDg M mfuel))
+      = (List.range (x + (x - y) * nrep)).map
+          (TowerReconstruction.assemble
+            ((List.range' (k + 1) (sequenceBound s - (k + 1))).map
+              (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1))) :
+    expandOut (expandJS nrep mfuel (efuel + 1) M)
+      = (List.range (x + (x - y) * nrep)).map
+          (TowerReconstruction.assemble
+            ((List.range' k (sequenceBound s - k)).map
+              (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1)) := by
+  have hnn : (iterSet (linearSetting s hs.1) k).n = s.length := iterSet_n s hs.1 k
+  have hb : (iterSet (linearSetting s hs.1) k).tower.base
+      = (layers (rootedSequence s hs) k).row := iterSet_base s hs k
+  have hx : x = (iterSet (linearSetting s hs.1) k).n - 1 := by omega
+  have hn : 1 < (iterSet (linearSetting s hs.1) k).n := by omega
+  obtain ⟨hroot, hhigher⟩ := lower_root_higher s hs K d x y k hbad hk
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hlenP : (expP M mfuel).len = x - y :=
+    expP_len_lower (iterSet (linearSetting s hs.1) k) M hM mfuel h0 y x hsm hx
+  have hyk' : (expP M mfuel).yamakazi = false :=
+    expP_yamakazi_lower M mfuel hyk
+  -- 上の層の畳み込み
+  have hup : ∀ c, c < x + (x - y) * nrep →
+      expNd nrep mfuel efuel M c
+        = TowerReconstruction.assemble
+            ((List.range' (k + 1) (sequenceBound s - (k + 1))).map
+              (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c := by
+    intro c hc
+    rw [expNd_not_yama nrep mfuel efuel M hyk]
+    exact valAtIdx_of_expandOut _ _ _ hIH c hc
+  have hnd : ∀ c, c < (iterSet (linearSetting s hs.1) k).n - 1 →
+      expNd nrep mfuel efuel M c
+        = topValue (iterSet (linearSetting s hs.1) k).tower.base c := by
+    intro c hc
+    rw [hup c (by omega), assemble_above_layer s hs hbad k (by omega) (by omega), hb]
+    rfl
+  have hndpos : ∀ c, c < x + (expP M mfuel).len * nrep → 0 < expNd nrep mfuel efuel M c := by
+    intro c hc
+    rw [hlenP] at hc
+    rw [hup c hc]
+    exact TowerReconstruction.assemble_positive _ _ (fun _ => by decide) c
+  -- JS の出力
+  have hjs := expandJS_out_lower (iterSet (linearSetting s hs.1) k) M hM mfuel hn hM2 y x
+    hbh hsm hcut hx hyx hroot hhigher hfuel hyk' nrep efuel hnd hndpos hhas
+  rw [hlenP] at hjs
+  rw [hjs]
+  -- 原文側を 1 段ほどく
+  have hsplit : sequenceBound s - k = (sequenceBound s - (k + 1)) + 1 := by omega
+  have hG : expandedMountain (rootedSequence s hs) hbad k
+      = (lowerContext (iterSet (linearSetting s hs.1) k) y x hyx hroot hhigher).toRowMountain := by
+    rw [lowerContext_eq s hs K d x y k hbad hk hyx hroot hhigher]
+    show _ = (badAtLowerContext (rootedSequence s hs) hbad hk).toRowMountain
+    simp only [expandedMountain, dif_pos hk]
+  refine List.map_congr_left ?_
+  intro c hc
+  have hc' : c < x + (x - y) * nrep := by
+    rw [List.mem_range] at hc
+    exact hc
+  rw [hsplit]
+  show _ = TowerReconstruction.assemble
+    ((List.range' k ((sequenceBound s - (k + 1)) + 1)).map
+      (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c
+  rw [List.range'_succ]
+  show _ = Reconstruction.value (expandedMountain (rootedSequence s hs) hbad k)
+    (TowerReconstruction.assemble
+      ((List.range' (k + 1) (sequenceBound s - (k + 1))).map
+        (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1)) 0 c
+  rw [hG]
+  exact Reconstruction.value_prefix_congr _ _ _ _ (x + (x - y) * nrep)
+    (fun _ _ => rfl) (fun _ _ _ => rfl) hup c hc' 0
+
 end Yukito
