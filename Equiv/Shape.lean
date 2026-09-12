@@ -48,7 +48,7 @@ structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : N
   /-- 頂の値は正。 -/
   topPos : ∀ c, 0 < top c
   /-- 段が足りている。 -/
-  tall : ∀ c, c < W → G.height c + 1 < Rs.length
+  tall : ∀ c, c < W → G.height c < Rs.length
 
 variable {Rs : List Rowj} {G : RowMountain} {top : Nat → Nat} {W : Nat}
 
@@ -88,7 +88,9 @@ theorem ShapeRep.htop (h : ShapeRep Rs G top W) (c : Nat) (hc : c < W) :
     have := h.topPos c
     omega
   have htall := h.tall c hc
-  rw [colVal, colVal_top Rs h.parLt (G.height c) htall i hi (h.mono _) c hpos hne, hval]
+  rcases Nat.lt_or_ge (G.height c + 1) Rs.length with hlt | hge
+  · rw [colVal, colVal_top Rs h.parLt (G.height c) hlt i hi (h.mono _) c hpos hne, hval]
+  · rw [colVal, colVal_top_last Rs (G.height c) (by omega) i hi (h.mono _) c hpos, hval]
 
 theorem ShapeRep.hstep (h : ShapeRep Rs G top W) (r c p : Nat) (hc : c < W)
     (hp : (G.row r).parent c = some p) :

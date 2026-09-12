@@ -2099,4 +2099,29 @@ theorem cutChild_cell_live (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 
   refine (live_iff_le_height S.tower.base (S.tower.hpos (d.pos + m)) m).mp ?_
   omega
 
+/-- 最上段は埋めで変わらないので、その段の値はセルの値そのもの。 -/
+theorem colVal_top_last (Rs : List Rowj) (r : Nat) (hr : r = Rs.length - 1) (i : Nat)
+    (hi : i < (rowAt Rs r).size) (hmono : PosMono (rowAt Rs r)) (c : Nat)
+    (hc : ((rowAt Rs r)[i]'hi).pos + r = c) :
+    readVal (rowAt (fillValues Rs) r) r c = ((rowAt Rs r)[i]'hi).val := by
+  have htop : rowAt (fillValues Rs) r = rowAt Rs r := by
+    rw [hr]
+    exact fillValues_top Rs
+  rw [htop, readVal_of_index _ hmono r c i hi hc]
+  unfold valAtIdx
+  rw [dif_pos hi]
+
+/-- 空段落としのあとにセルがあれば、その段は元のまま。 -/
+theorem rowAt_dropEmptyTop_of_cell (L : List Rowj) (m t : Nat) (d : Cell)
+    (hd : (rowAt (dropEmptyTop L) m)[t]? = some d) :
+    rowAt (dropEmptyTop L) m = rowAt L m := by
+  have hts : t < (rowAt (dropEmptyTop L) m).size := lt_size_of_getElem? hd
+  have hm : m < (dropEmptyTop L).length := by
+    rcases Nat.lt_or_ge m (dropEmptyTop L).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  exact rowAt_dropEmptyTop L.length L m (Nat.le_refl _) hm
+
 end Yukito
