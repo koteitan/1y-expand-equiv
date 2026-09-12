@@ -1457,4 +1457,56 @@ theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
   tall := fun c hc =>
     tall_yama' S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c hc
 
+/-! ## 行 0 は密（`yamaRs` の形） -/
+
+theorem row0_yamaRs (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep : Nat) :
+    (rowAt (fillValues (yamaRs M mfuel nd nrep)) 0).size
+        = (S.n - 1) + (expP M mfuel).len * nrep ∧
+      ∀ (t : Nat) (ht : t < (rowAt (fillValues (yamaRs M mfuel nd nrep)) 0).size),
+        ((rowAt (fillValues (yamaRs M mfuel nd nrep)) 0)[t]'ht).pos = t := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlenpos : 0 < (expP M mfuel).len := by
+    show 0 < (expP M mfuel).afterCutLength - (expP M mfuel).badRootSeam
+    omega
+  have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
+      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
+  have hkpos : ∀ i r, r < (expP M mfuel).len →
+      0 < kmaxAt M (expP M mfuel) i ((expP M mfuel).badRootSeam + r)
+        (expRes M).length mfuel := by
+    intro i r hr
+    exact kmaxAt_pos' S M hM (by omega) (expP M mfuel) i _ _ _ (by omega) h0
+  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
+    rw [hacl]
+    exact colLt_cutChild S M hM (expCutH M) hn (Nat.le_of_eq hcut.symm)
+  have hd0 : ∀ c, c < (expP M mfuel).afterCutLength → HasCol (expRes M) 0 c := by
+    intro c hc
+    rw [hacl] at hc
+    exact hasCol_cutChild_zero S M hM (expCutH M) h0 (by omega) c hc
+  obtain ⟨hsz, hposd⟩ := row0_dense_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm
+    hkpos hlenpos hlen nrep (expRes M)
+    (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM)) hcolLt hd0
+  have hrow0 : rowAt (yamaRs M mfuel nd nrep) 0 = rowAt (yamaRaw M mfuel nd nrep) 0 :=
+    dropEmptyTop_row0 (yamaRaw M mfuel nd nrep).length (yamaRaw M mfuel nd nrep) (Nat.le_refl _)
+  have hsz' : (rowAt (yamaRaw M mfuel nd nrep) 0).size
+      = (expP M mfuel).afterCutLength + (expP M mfuel).len * nrep := hsz
+  have hszRs : (rowAt (fillValues (yamaRs M mfuel nd nrep)) 0).size
+      = (S.n - 1) + (expP M mfuel).len * nrep := by
+    rw [fillValues_size, hrow0, hsz', hacl]
+  refine ⟨hszRs, fun t ht => ?_⟩
+  have ht' : t < (rowAt (yamaRs M mfuel nd nrep) 0).size := by
+    rw [fillValues_size] at ht
+    exact ht
+  rw [fillValues_pos_get (yamaRs M mfuel nd nrep) 0 t ht ht']
+  have ht'' : t < (rowAt (yamaRaw M mfuel nd nrep) 0).size := by rwa [hrow0] at ht'
+  rw [getElem_congr_arr _ _ hrow0 t ht' ht'']
+  exact hposd t ht''
+
 end Yukito

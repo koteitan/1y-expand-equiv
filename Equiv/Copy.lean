@@ -2057,6 +2057,12 @@ theorem fujiCellAt_par_isSome (M : List Rowj) (P : FujiParams) (nd : Nat → Nat
     (fujiCellAt M P nd i j isRep res k).par = some u :=
   fujiCell_par_isSome M P (rowAt res k) _ _ k i j _ _ z hmono hpp u hu hpos
 
+/-- 同じ配列なら同じセル。 -/
+theorem getElem_congr_arr (a b : Rowj) (h : a = b) (t : Nat) (ha : t < a.size)
+    (hb : t < b.size) : a[t]'ha = b[t]'hb := by
+  subst h
+  rfl
+
 /-- `HasCol` から添字と位置を取り出す。 -/
 theorem hasCol_pos (res : List Rowj) (k c : Nat) (h : HasCol res k c) :
     ∃ (u : Nat) (hu : u < (rowAt res k).size), ((rowAt res k)[u]'hu).pos + k = c := by
