@@ -1617,4 +1617,29 @@ theorem colLt_cutChild (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH : Na
     rw [rowAt_of_ge _ m hm] at hts
     simp at hts
 
+/-- 子を切っても段の数は 1 つしか減らない。 -/
+theorem cutChild_length_ge (M : List Rowj) (cutH : Nat) :
+    M.length - 1 ≤ (cutChild M cutH).length := by
+  have hlen := popFold_length (cutH + 1) M
+  rw [cutChild_eq]
+  split
+  · rw [List.length_take]
+    simp only [Nat.min_def]
+    split <;> omega
+  · omega
+
+/-- **子を切ったあとの行 0 は `0 … n−2` を覆う。** -/
+theorem hasCol_cutChild_zero (S : Setting) (M : List Rowj) (hM : MtRep S M) (cutH : Nat)
+    (h0 : 0 < (cutChild M cutH).length) (hM0 : 0 < M.length) (c : Nat) (hc : c < S.n - 1) :
+    HasCol (cutChild M cutH) 0 c := by
+  have hsz := size_rowAt_cutChild_zero S M hM cutH h0
+  have hcs : c < (rowAt (cutChild M cutH) 0).size := by omega
+  have hcM : c < (rowAt M 0).size := by rw [hM.size0]; omega
+  refine ⟨c, (rowAt (cutChild M cutH) 0)[c]'hcs, Array.getElem?_eq_getElem hcs, ?_⟩
+  have hget := rowAt_cutChild_getElem? M cutH 0 c h0 hcs
+  rw [Array.getElem?_eq_getElem hcs, Array.getElem?_eq_getElem hcM] at hget
+  rw [Option.some.inj hget]
+  have := pos_eq_index (rowAt M 0) S.n _ (rep_top S M hM 0 hM0) hM.size0 c hcM
+  omega
+
 end Yukito
