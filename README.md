@@ -459,6 +459,18 @@ JS の diagonal[i]      = topValue base i
 JS の diagonalTree[i]  = Pseudo.parent (mountainOf s hs) i
 ```
 
+対角のリスト全体も繋いだ（`diagList_eq`）。
+
+```
+diagList (calcMountain s (fuel+1))
+  = (List.range s.length).map (fun i => (topValue base i, Pseudo.parent MM i))
+```
+
+これには「山が十分な段を持つ」ことが要る（`height_lt_length`）。`mountainGo` は
+「その行の全セルが親を持たない」ところで止まるが、密表現ではそれが「次の行が空」に
+あたるので、生きた列がある限り段は伸びる（`mountainGo_length`）。段の数は
+`height_lt` と `sequence_value_le_bound` から `sequenceBound s` で押さえられる。
+
 抽出段に残るのは、2 つの探索（`pwScan` / `treeScan`）が `restrictedParent` に一致
 すること、そして読み直し（`parseDiag`）まで含めて `rawExtract` になることである。
 探索の対応は密表現側で済んでいる（`chainFind_eq_restrictedParent'`）。

@@ -138,4 +138,107 @@ theorem calcMountain_parent (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel r c :
     (calcMountain_rep s hs fuel r hr).1 (calcMountain_rep s hs fuel r hr).2
     (fun q hq => rows_value_zero_of_lt (ofSequence s) r q hq) c hc
 
+/-- 反復部の先頭はその行そのもの。 -/
+theorem rowAt_mountainGo_zero (cur : Rowj) (f : Nat) : rowAt (mountainGo cur f) 0 = cur := by
+  cases f with
+  | zero => rfl
+  | succ f =>
+      simp only [mountainGo]
+      split
+      · rfl
+      · rfl
+
+/-- 山の行 0 は入力列から作った行。 -/
+theorem rowAt_calcMountain_zero (s : List Nat) (fuel : Nat) :
+    rowAt (calcMountain s (fuel + 1)) 0 = assignParents none (row0 s) :=
+  rowAt_mountainGo_zero _ fuel
+
+/-- 山の行 0 の大きさは入力列の長さ。 -/
+theorem size_rowAt_calcMountain_zero (s : List Nat) (fuel : Nat) :
+    (rowAt (calcMountain s (fuel + 1)) 0).size = s.length := by
+  rw [rowAt_calcMountain_zero, assignParents_size, row0_size]
+
+/-! ## 段の数
+
+`mountainGo` は「その行の全セルが親を持たない」ところで止まる。密表現では
+「次の行が空」にあたるので、生きた列がある限り段は伸びる。 -/
+
+/-- 生きた列がある限り、反復部は段を作る。 -/
+theorem mountainGo_length (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
+    ∀ f cur k, Rep cur k s.length (rows (ofSequence s) k).value →
+      ParRep cur k (rows (ofSequence s) k).forest →
+      ∀ r, r ≤ f → (∃ c, c < s.length ∧ 0 < (rows (ofSequence s) (k + r)).value c) →
+        r < (mountainGo cur f).length := by
+  intro f
+  induction f with
+  | zero =>
+      intro cur k _ _ r hr _
+      simp only [mountainGo, List.length_cons, List.length_nil]
+      omega
+  | succ f ih =>
+      intro cur k hrep hpar r hr hex
+      cases r with
+      | zero =>
+          simp only [mountainGo]
+          split <;> simp
+      | succ r =>
+          obtain ⟨c, hcn, hcv⟩ := hex
+          -- 列 `c` は行 `k+1` でも生きている
+          have hlive1 : 0 < (rows (ofSequence s) (k + 1)).value c := by
+            have := rows_value_antitone (ofSequence s)
+              (show k + 1 ≤ k + (r + 1) by omega) c
+            omega
+          have hlive0 : 0 < (rows (ofSequence s) k).value c := by
+            have := rows_value_le (ofSequence s) k c
+            omega
+          -- したがって `cur` のどれかのセルは親を持つ
+          have hall : cur.all (fun x => x.par.isNone) = false := by
+            obtain ⟨j, hj, hcj, _⟩ :=
+              rep_lookup cur k s.length _ hrep c
+                (by rcases Nat.lt_or_ge c k with hx | hx
+                    · rw [rows_value_zero_of_lt (ofSequence s) k c hx] at hlive0; omega
+                    · exact hx) hcn hlive0
+            have hP := hpar _ (mem_of_getElem cur j hj)
+            rw [hcj] at hP
+            rw [Array.all_eq_false]
+            refine ⟨j, hj, ?_⟩
+            cases hpp : (cur[j]'hj).par with
+            | none =>
+                rw [hpp] at hP
+                obtain ⟨t, ht⟩ :=
+                  (rows_parent_iff_next_live (ofSequence s) k c).mpr hlive1
+                rw [hP] at ht
+                cases ht
+            | some p => simp
+          have hnall : ¬ (cur.all (fun x => x.par.isNone) = true) := by
+            rw [hall]
+            exact fun h => Bool.noConfusion h
+          simp only [mountainGo, if_neg hnall, List.length_cons]
+          have hnr : Rep (nextRow cur) (k + 1) s.length
+              (rows (ofSequence s) (k + 1)).value :=
+            rep_nextRow cur k s.length (rows (ofSequence s) k) hrep hpar
+          have hnrep : Rep (assignParents (some cur) (nextRow cur)) (k + 1) s.length
+              (rows (ofSequence s) (k + 1)).value :=
+            rep_assignParents (some cur) (nextRow cur) (k + 1) s.length _ hnr
+          have hnpar := parRep_assignParents s hs k cur (nextRow cur) hrep hpar hnr
+            (noForced_nextRow cur)
+          have := ih (assignParents (some cur) (nextRow cur)) (k + 1) hnrep hnpar r
+            (by omega) ⟨c, hcn, by rw [show k + 1 + r = k + (r + 1) from by omega]; exact hcv⟩
+          omega
+
+/-- **山は十分な段を持つ。** 入力列の中の列については、その頂の段が山にある。 -/
+theorem height_lt_length (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) (i : Nat) (hi : i < s.length) :
+    height (ofSequence s) i < (calcMountain s (fuel + 1)).length := by
+  have hb : height (ofSequence s) i < sequenceBound s := by
+    have h1 := height_lt (ofSequence s) (ofSequence_positive s hs i)
+    have h2 := sequence_value_le_bound s i
+    omega
+  have hlive : 0 < (rows (ofSequence s) (0 + height (ofSequence s) i)).value i := by
+    rw [Nat.zero_add]
+    exact height_live (ofSequence s) (ofSequence_positive s hs i)
+  exact mountainGo_length s hs fuel (assignParents none (row0 s)) 0
+    (rep_assignParents none (row0 s) 0 s.length _ (rep_row0 s hs))
+    (parRep_row0 s hs) (height (ofSequence s) i) (by omega) ⟨i, hi, hlive⟩
+
 end Yukito

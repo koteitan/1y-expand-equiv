@@ -359,4 +359,28 @@ theorem diagEntry_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
   rw [diagEntry, htop]
   simp only [dif_pos hk, hval, hwalk, hps]
 
+/-! ## 対角のリスト -/
+
+theorem filterMap_range_eq_map {α : Type} (n : Nat) (f : Nat → Option α) (g : Nat → α)
+    (h : ∀ i, i < n → f i = some (g i)) :
+    (List.range n).filterMap f = (List.range n).map g := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+      rw [List.range_succ, List.filterMap_append, List.map_append,
+        ih (fun i hi => h i (by omega))]
+      simp [h n (by omega)]
+
+/-- **対角のリストが一致する。** JS の `diagonal` と `diagonalTree` は、
+Phyrion の `topValue` と `Pseudo.parent` の並びである。 -/
+theorem diagList_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
+    (hf : sequenceBound s ≤ fuel) :
+    diagList (calcMountain s (fuel + 1))
+      = (List.range s.length).map
+          (fun i => (topValue (ofSequence s) i, Pseudo.parent (mountainOf s hs) i)) := by
+  rw [diagList, size_rowAt_calcMountain_zero]
+  exact filterMap_range_eq_map _ _ _ (fun i hi =>
+    diagEntry_eq s hs _ (mountainRep_calcMountain s hs fuel) i hi
+      (height_lt_length s hs fuel hf i hi))
+
 end Yukito

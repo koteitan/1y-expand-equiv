@@ -210,7 +210,7 @@ def diagEntry (M : List Rowj) (i : Nat) : Option (Nat × Option Nat) :=
 
 /-- 対角の値と歩行結果の並び。JS の `diagonal` と `diagonalTree`。 -/
 def diagList (M : List Rowj) : List (Nat × Option Nat) :=
-  (List.range (M.headD #[]).size).filterMap (diagEntry M)
+  (List.range (rowAt M 0).size).filterMap (diagEntry M)
 
 /-- JS の `pw`：左へ走って最初に値が小さい添字。 -/
 def pwScan (d : List Nat) (target : Nat) : Nat → Option Nat
