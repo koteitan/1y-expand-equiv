@@ -533,7 +533,7 @@ parRep_assignParents  assignParents の親 = restrictedParent
 ## 残っている課題
 
 ```
-山の段    密表現での対応は済。疎配列との橋渡しが残り
+山の段    済（密表現・疎配列とも）
 抽出段    密表現での対応は済。疎配列との橋渡しが残り
 bad root  未
 コピー層  未
