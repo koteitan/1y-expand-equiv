@@ -437,6 +437,15 @@ theorem expP_len_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
 
 /-! ## 素の形での言い換え -/
 
+theorem yamaContext_height_seam' (S : Setting) (y : Nat) (hy hpar hh) (i : Nat) (hi : 0 < i) :
+    (yamaContext S y hy hpar hh).height (y + (S.n - 1 - y) * i) = height S.tower.base y :=
+  yamaContext_height_seam S y hy hpar hh i hi
+
+theorem yamaContext_height_other' (S : Setting) (y : Nat) (hy hpar hh) (j i : Nat)
+    (hj1 : y < j) (hj2 : j < S.n - 1) :
+    (yamaContext S y hy hpar hh).height (j + (S.n - 1 - y) * i) = height S.tower.base j :=
+  yamaContext_height_other S y hy hpar hh j i hj1 hj2
+
 theorem yamaContext_parent_seam_low' (S : Setting) (y : Nat) (hy hpar hh) (r i : Nat)
     (hi : 0 < i) (hr : r < height S.tower.base (S.n - 1) - 1) :
     (yamaContext S y hy hpar hh).parent r (y + (S.n - 1 - y) * i)
@@ -528,5 +537,67 @@ theorem fujiCellAt_parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
     rw [hsrc] at hq
     rw [yamaContext_parent_other' S y hy hpar hh k j i (by omega) hjx, hq, hcol]
     rfl
+
+/-! ## 積む時点での被覆
+
+`(i'+1, y+t)` を処理する直前の段 `k` には、`pc < (y+t) + L*(i'+1)` かつ
+`k ≤ height_G pc` を満たす列 `pc` がすべて載っている。積む列が `(i, j)` の
+辞書式順で真に増えるからである。 -/
+
+theorem hasCol_state (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (i' t k pc : Nat) (ht : t < (expP M mfuel).len)
+    (hlt : pc < (y + t) + (expP M mfuel).len * (i' + 1))
+    (hk : k ≤ (yamaContext S y hy hpar hh).height pc) :
+    HasCol (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) k pc := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+  have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
+  rcases Nat.lt_or_ge pc (S.n - 1) with hpc | hpc
+  · -- 元からある列
+    have hkh : k ≤ height S.tower.base pc := by
+      rwa [yamaContext_height_orig S y hy hpar hh pc hpc] at hk
+    have hkl : k < (expRes M).length := by
+      have := height_lt_expRes_length S M hM hn hM2 pc hpc
+      omega
+    have hres : HasCol (expRes M) k pc :=
+      hasCol_cutChild S M hM hn (expCutH M) hcut k pc hpc hkh hkl
+    exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+      (hasCol_fujiIters_old M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M) k pc hres)
+  · -- コピーで作った列
+    obtain ⟨i2, j2, hi2, hi2n, hj2y, hj2x, hpceq⟩ :=
+      col_decomp y (S.n - 1) (expP M mfuel).len (i' + 1) pc hLp (by omega) (by omega) hpc
+        (by omega)
+    have hkh : k ≤ height S.tower.base j2 := by
+      have hpc' : pc = j2 + (S.n - 1 - y) * i2 := by rw [hpceq, hLp]
+      rcases Decidable.em (j2 = y) with hje | hjne
+      · rw [hpc', hje] at hk
+        rw [yamaContext_height_seam' S y hy hpar hh i2 hi2] at hk
+        rw [hje]
+        exact hk
+      · rw [hpc'] at hk
+        rwa [yamaContext_height_other' S y hy hpar hh j2 i2 (by omega) hj2x] at hk
+    have hkmax : k < kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel := by
+      rw [kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama i2 j2 hj2x]
+      omega
+    rcases col_lt_lex y (S.n - 1) (expP M mfuel).len hLp (by omega) j2 i2 (y + t) (i' + 1)
+      hj2y hj2x (by omega) (by omega) (by omega) with hlex | ⟨hie, hje⟩
+    · rw [hpceq]
+      exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+        (hasCol_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm i' (expRes M) k i2 j2
+          hi2 (by omega) (by omega) (by omega) hkmax)
+    · rw [hpceq, hie]
+      exact hasCol_fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel hkm t
+        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M)) k j2
+        (by omega) (by omega) (by rw [← hie]; exact hkmax)
 
 end Yukito
