@@ -683,4 +683,36 @@ theorem cell_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach 
             hi.2.2.2.2.2⟩
       · exact Or.inr ⟨n + 1, j, by omega, Nat.le_refl _, hj.1, hj.2.1, hj.2.2.1, hj.2.2.2⟩
 
+/-! ## 積むセルの中身 -/
+
+theorem fujiCell_par (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal : Nat) :
+    (fujiCell M P cur sy sx k i j shifts topVal).par
+      = (match parentPos M P sy sx k shifts with
+         | none => none
+         | some q => lookupPos cur q) := rfl
+
+theorem fujiCell_val (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal : Nat) :
+    (fujiCell M P cur sy sx k i j shifts topVal).val
+      = (if ((fujiCell M P cur sy sx k i j shifts topVal).par).isNone then topVal else 0) := rfl
+
+/-- **積むセルの親の列。** 親の列は「元の親の列 + 桁上げ」である。 -/
+theorem fujiCell_par_col (M : List Rowj) (P : FujiParams) (cur : Rowj)
+    (sy sx k i j shifts topVal : Nat) (hsy : sy ≤ k) (p : Nat)
+    (hp : (fujiCell M P cur sy sx k i j shifts topVal).par = some p) :
+    ∃ (hp' : p < cur.size) (hx : sx < (rowAt M sy).size) (sp : Nat),
+      ((rowAt M sy)[sx]'hx).par = some sp ∧ ∃ hsp : sp < (rowAt M sy).size,
+        (cur[p]'hp').pos + k = ((rowAt M sy)[sp]'hsp).pos + sy
+          + (if P.badRootSeam ≤ ((rowAt M sy)[sp]'hsp).pos + sy then shifts * P.len else 0) := by
+  rw [fujiCell_par] at hp
+  cases hq : parentPos M P sy sx k shifts with
+  | none => rw [hq] at hp; exact absurd hp (by simp)
+  | some q =>
+      rw [hq] at hp
+      dsimp only at hp
+      obtain ⟨hp', hpos⟩ := lookupPos_some_iff cur q p hp
+      obtain ⟨hx, sp, hpar, hsp, hcol⟩ := parentPos_eq M P sy sx k shifts q hsy hq
+      exact ⟨hp', hx, sp, hpar, hsp, by rw [hpos]; exact hcol⟩
+
 end Yukito
