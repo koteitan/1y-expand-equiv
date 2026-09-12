@@ -1858,4 +1858,49 @@ theorem rowsMono_dropEmptyTop (L : List Rowj) (h : RowsMono L) : RowsMono (dropE
 theorem parLt_dropEmptyTop (L : List Rowj) (h : ParLt L) : ParLt (dropEmptyTop L) :=
   fun r t d hd p hp => h r t d (getElem?_dropEmptyTop L r t d hd) p hp
 
+/-- **子を切ったあとも、列 `n−1` より左の生きた列は残る。** -/
+theorem hasCol_cutChild (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (hn : 1 < S.n) (cutH : Nat) (hcut : cutH = height S.tower.base (S.n - 1))
+    (m c : Nat) (hc : c < S.n - 1) (hlive : m ≤ height S.tower.base c)
+    (hm : m < (cutChild M cutH).length) :
+    HasCol (cutChild M cutH) m c := by
+  have hmM : m < M.length := by
+    have := cutChild_length_le M cutH
+    omega
+  have hhs := height_le_self' S.tower.base S.tower.hpos c
+  have hrep := rep_top S M hM m hmM
+  have hlivec : 0 < (rows S.tower.base m).value c :=
+    (live_iff_le_height S.tower.base (S.tower.hpos c) m).mpr hlive
+  obtain ⟨x1, hx1, hcx1⟩ := hrep.cover c (by omega) (by omega) hlivec
+  obtain ⟨t, ht, het⟩ := getElem_of_mem _ hx1
+  rcases Nat.lt_or_ge m (cutH + 1) with hmc | hmc
+  · have hlast : 0 < (rows S.tower.base m).value (S.n - 1) :=
+      (live_iff_le_height S.tower.base (S.tower.hpos (S.n - 1)) m).mpr (by omega)
+    have hne : 0 < (rowAt M m).size := by omega
+    have hlt1 : (rowAt M m).size - 1 < (rowAt M m).size := by omega
+    have hlc : ((rowAt M m)[(rowAt M m).size - 1]'hlt1).pos + m = S.n - 1 := by
+      have h := (lastCol_eq_iff S M hM m hmM hn).mpr hlast
+      simp only [lastCol, dif_pos hne] at h
+      exact h
+    have htlt : t < (rowAt M m).size - 1 := by
+      rcases Nat.lt_or_ge t ((rowAt M m).size - 1) with h | h
+      · exact h
+      · exfalso
+        have hte : t = (rowAt M m).size - 1 := by omega
+        have hxx : x1 = (rowAt M m)[(rowAt M m).size - 1]'hlt1 := by
+          rw [← het]
+          exact getElem_congr_idx (rowAt M m) t ((rowAt M m).size - 1) ht hlt1 hte
+        rw [hxx] at hcx1
+        omega
+    have hrow := rowAt_cutChild M cutH m hm
+    rw [if_pos hmc] at hrow
+    refine ⟨t, x1, ?_, hcx1⟩
+    rw [hrow]
+    have htp : t < (rowAt M m).pop.size := by rw [Array.size_pop]; omega
+    rw [Array.getElem?_eq_getElem htp, Array.getElem_pop, het]
+  · have hrow := rowAt_cutChild M cutH m hm
+    rw [if_neg (by omega)] at hrow
+    refine ⟨t, x1, ?_, hcx1⟩
+    rw [hrow, Array.getElem?_eq_getElem ht, het]
+
 end Yukito
