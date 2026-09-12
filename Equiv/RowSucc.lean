@@ -100,4 +100,26 @@ theorem succ_value_le (base : Row) (r : Nat) {p root j t : Nat}
     (rows base (r+1)).value p ≤ (rows base (r+1)).value j :=
   difference_le_of_value_le (rows base r) hp ht hUt hUpj
 
+/-! ## 密表現側：行 `r` では列 `r` 未満は死んでいる -/
+
+/-- 行 `r` では列 `r` 未満の値は 0。列 `c` が行 `r+1` で生きるにはその親が行 `r` で
+生きていなければならず、親は左にあるから、生きた列は 1 行ごとに右へ 1 つ以上ずれる。 -/
+theorem rows_value_zero_of_lt (base : Row) :
+    ∀ r c, c < r → (rows base r).value c = 0 := by
+  intro r
+  induction r with
+  | zero => intro c h; exact absurd h (Nat.not_lt_zero c)
+  | succ r ih =>
+      intro c hc
+      show (rows base r).difference c = 0
+      cases hp : (rows base r).forest.parent c with
+      | none => simp only [Row.difference, hp]
+      | some p =>
+          exfalso
+          have hpv := ((rows base r).parent_values hp).1
+          have hlt := (rows base r).forest.parent_left hp
+          rw [ih p (by omega)] at hpv
+          omega
+
+
 end Yukito

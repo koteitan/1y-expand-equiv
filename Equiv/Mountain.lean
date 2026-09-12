@@ -1,5 +1,6 @@
 import Equiv.SibSucc
 import Equiv.RootCase
+import OneY.NumericGeometry
 
 /-!
 # 山の段の組み上げ
@@ -37,6 +38,25 @@ v = towerVal s (r+1) = (rows base (r+1)).value  次の行の値（= U の差分�
 namespace Yukito
 
 open OneY OneY.Numeric
+
+/-- Phyrion 版の山。 -/
+def mountainOf (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : RootGeometry.RowMountain :=
+  mountain (ofSequence s) (ofSequence_positive s hs)
+
+theorem mountainOf_height_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
+    (mountainOf s hs).height c = height (ofSequence s) c := rfl
+
+theorem mountainOf_rootAt_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r c : Nat) :
+    (mountainOf s hs).rootAt r c = (rows (ofSequence s) r).forest.root c := rfl
+
+/-- 山の頂の高さは列番号以下。生きた列は 1 行ごとに右へずれるからである。 -/
+theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
+    height (ofSequence s) c ≤ c := by
+  rcases Nat.lt_or_ge c (height (ofSequence s) c) with h | h
+  · have hl := height_live (ofSequence s) (ofSequence_positive s hs c)
+    rw [rows_value_zero_of_lt (ofSequence s) _ c h] at hl
+    omega
+  · exact h
 
 /-- `select (frameAt s r) (towerVal s r)` の差分は次の層の値そのもの。 -/
 theorem difference_eq_towerVal (s : List Nat) (r : Nat) :

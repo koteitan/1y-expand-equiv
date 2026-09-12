@@ -21,5 +21,6 @@ import Equiv.Tower
 import Equiv.Chain
 import Equiv.SibSucc
 import Equiv.Mountain
+import Equiv.TopFrame
 import Equiv.Extract
 import Equiv.Diagonal

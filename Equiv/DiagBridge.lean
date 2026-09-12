@@ -121,19 +121,6 @@ theorem diagEntry_value (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
 `Extract.lean` の `legStep` は密表現での脚 1 歩である。JS の `legStepJS` と
 1 対 1 に対応する。状態の読み替えは「（段, 添字）→（段, 列）」である。 -/
 
-/-- 山の頂の高さは列番号以下。生きた列は 1 行ごとに右へずれるからである。 -/
-theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
-    height (ofSequence s) c ≤ c := by
-  rcases Nat.lt_or_ge c (height (ofSequence s) c) with h | h
-  · have hl := height_live (ofSequence s) (ofSequence_positive s hs c)
-    rw [rows_value_zero_of_lt (ofSequence s) _ c h] at hl
-    omega
-  · exact h
-
-/-- Phyrion 版の山。 -/
-def mountainOf (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : RootGeometry.RowMountain :=
-  mountain (ofSequence s) (ofSequence_positive s hs)
-
 /-- 疎配列の状態（段, 添字）を列座標に読み替える。 -/
 def readState (M : List Rowj) (st : Nat × Nat) : Option (Nat × Nat) :=
   if hi : st.2 < (rowAt M st.1).size then

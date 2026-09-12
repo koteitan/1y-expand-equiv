@@ -48,6 +48,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/SibSucc.lean` | **右隣の兄弟の単調性と `RootChildAdjacent`。山の段の残り 2 本** |
 | `Equiv/Chain.lean` | 親鎖についての小補題 |
 | `Equiv/Mountain.lean` | **山の段の組み上げ。`FirstLiveNotSmaller`** |
+| `Equiv/TopFrame.lean` | 抽出後の行の下にある frame（`topForest`）についての底の義務 |
 | `Equiv/Extract.lean` | 抽出段。JS の脚歩行が Phyrion の `Pseudo.parent` に一致すること |
 | `Equiv/Diagonal.lean` | 抽出段。対角の親が `rawExtract` の親に一致すること |
 
@@ -682,8 +683,34 @@ sibSucc の実配置形   成り立つ（56,917 件、破れ 0）
 となった。山の段でも一般形は偽で実配置形だけが真だったので、同じ構図である。
 
 なお、抽出後の行を底にした山そのものは JS と密表現で一致している（同じ範囲で
-破れ 0）。つまり結果は成り立っており、**証明の道筋だけが底で効かない**。底の義務を
-実配置の形で立て直し、擬親森について示すのが次の課題である。
+破れ 0）。つまり結果は成り立っており、証明の道筋だけが底で効かない。
+
+### 擬親森ではなく `topForest` を使う
+
+Phyrion は `rawExtract` の親が `topForest` 上の `restrictedParent` に一致することを
+示している（`rawExtract_parent_eq_topForest`）。
+
+```
+topForest.parent c = if height c = 0 then none else some (rootAt (height c − 1) c)
+```
+
+「頂の 1 つ下の段での成分の根」である。擬親森より構造がはっきりしていて、山の段で
+作った道具がそのまま効く。**底の義務は 2 本とも `topForest` について証明できた**
+（`TopFrame.lean`）。
+
+```
+topForest_heights         topForest の親から段の関係を読む（H e = H root + 1）
+topForest_leftmost_child  最左の子は右隣
+topForest_sibSucc         root+1 と e について topValue e ≤ topValue (root+1)
+```
+
+2 本目の筋はこうである。`topForest` の親が `root` なら段はちょうど `H root + 1` な
+ので、両方の `topValue` はその段の値である。`e` はその段が頂なので次の段では親を
+持たず、`restrictedParent` の最大性から `root` の子 `a`（`e` へ至る道の上）について
+`V e ≤ V a`。あとは `sibSucc_rows` で `V a ≤ V (root+1)` を繋ぐ。
+
+残るのは、塔をこの底に対して立て直し（`frameAt 0` を `topForest` にする形へ
+一般化し）、山の段の各定理をその形で通すことである。
 
 ## 残っている課題
 
