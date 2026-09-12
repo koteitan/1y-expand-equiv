@@ -166,6 +166,38 @@ theorem fillRow_val (row up : Rowj)
         dsimp only
         rw [fillRow_prefix_val row up i p (Nat.le_of_lt hi) (hpar i hi p hcp)]
 
+theorem fillRow_get? (row up : Rowj) (i : Nat) :
+    (fillRow row up)[i]?
+      = (row[i]?).map (fillG up (pushFold (fillG up) #[] (row.toList.take i))) := by
+  rw [fillRow_eq, pushFold_get_nil]
+  simp
+
+theorem fillG_pos (up acc : Rowj) (c : Cell) : (fillG up acc c).pos = c.pos := by
+  unfold fillG
+  split
+  · rfl
+  · rfl
+
+theorem fillG_par (up acc : Rowj) (c : Cell) : (fillG up acc c).par = c.par := by
+  unfold fillG
+  split
+  · rfl
+  · rfl
+
+theorem fillRow_pos? (row up : Rowj) (i : Nat) :
+    ((fillRow row up)[i]?).map (·.pos) = ((row[i]?)).map (·.pos) := by
+  rw [fillRow_get?]
+  cases h : row[i]? with
+  | none => rfl
+  | some c => simp [fillG_pos]
+
+theorem fillRow_par? (row up : Rowj) (i : Nat) :
+    ((fillRow row up)[i]?).map (·.par) = ((row[i]?)).map (·.par) := by
+  rw [fillRow_get?]
+  cases h : row[i]? with
+  | none => rfl
+  | some c => simp [fillG_par]
+
 /-- `pos` は埋めても変わらない。 -/
 theorem fillRow_pos (row up : Rowj) (i : Nat) (hi : i < row.size)
     (hi' : i < (fillRow row up).size) : ((fillRow row up)[i]'hi').pos = (row[i]'hi).pos := by
@@ -189,5 +221,115 @@ theorem fillRow_par (row up : Rowj) (i : Nat) (hi : i < row.size)
   split
   · rfl
   · rfl
+
+/-! ## 行の並び -/
+
+theorem rowAt_cons_zero (x : Rowj) (L : List Rowj) : rowAt (x :: L) 0 = x := rfl
+
+theorem rowAt_cons_succ (x : Rowj) (L : List Rowj) (k : Nat) :
+    rowAt (x :: L) (k + 1) = rowAt L k := rfl
+
+theorem headD_eq_rowAt (L : List Rowj) : L.headD #[] = rowAt L 0 := by
+  cases L <;> rfl
+
+/-! ## `fillValues` -/
+
+theorem fillValues_cons (r a : Rowj) (t : List Rowj) :
+    fillValues (r :: a :: t)
+      = fillRow r (rowAt (fillValues (a :: t)) 0) :: fillValues (a :: t) := by
+  rw [show fillValues (r :: a :: t)
+        = fillRow r ((fillValues (a :: t)).headD #[]) :: fillValues (a :: t) from rfl,
+    headD_eq_rowAt]
+
+theorem fillValues_length (Rs : List Rowj) : (fillValues Rs).length = Rs.length := by
+  induction Rs with
+  | nil => rfl
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · rfl
+      · rw [fillValues_cons]
+        simp only [List.length_cons]
+        simp only [List.length_cons] at ih
+        omega
+
+/-- 段の大きさは変わらない。 -/
+theorem fillValues_size (Rs : List Rowj) (r : Nat) :
+    (rowAt (fillValues Rs) r).size = (rowAt Rs r).size := by
+  induction Rs generalizing r with
+  | nil => rfl
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · rfl
+      · rw [fillValues_cons]
+        cases r with
+        | zero => rw [rowAt_cons_zero, rowAt_cons_zero, fillRow_size]
+        | succ k => rw [rowAt_cons_succ, rowAt_cons_succ]; exact ih k
+
+/-- `pos` は変わらない。 -/
+theorem fillValues_pos? (Rs : List Rowj) (r i : Nat) :
+    ((rowAt (fillValues Rs) r)[i]?).map (·.pos) = ((rowAt Rs r)[i]?).map (·.pos) := by
+  induction Rs generalizing r with
+  | nil => rfl
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · rfl
+      · rw [fillValues_cons]
+        cases r with
+        | zero => rw [rowAt_cons_zero, rowAt_cons_zero, fillRow_pos?]
+        | succ k => rw [rowAt_cons_succ, rowAt_cons_succ]; exact ih k
+
+/-- `par` は変わらない。 -/
+theorem fillValues_par? (Rs : List Rowj) (r i : Nat) :
+    ((rowAt (fillValues Rs) r)[i]?).map (·.par) = ((rowAt Rs r)[i]?).map (·.par) := by
+  induction Rs generalizing r with
+  | nil => rfl
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · rfl
+      · rw [fillValues_cons]
+        cases r with
+        | zero => rw [rowAt_cons_zero, rowAt_cons_zero, fillRow_par?]
+        | succ k => rw [rowAt_cons_succ, rowAt_cons_succ]; exact ih k
+
+/-- 最上段はそのまま。 -/
+theorem fillValues_top (Rs : List Rowj) :
+    rowAt (fillValues Rs) (Rs.length - 1) = rowAt Rs (Rs.length - 1) := by
+  induction Rs with
+  | nil => rfl
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · rfl
+      · have hlen : (x :: a :: t).length - 1 = ((a :: t).length - 1) + 1 := by
+          simp only [List.length_cons]
+          omega
+        rw [hlen, fillValues_cons, rowAt_cons_succ, rowAt_cons_succ, ih]
+
+/-- **`fillValues` の値の決まり方。** 最上段より下の段では、値 0 のセルは
+「同じ段の親の値 + 1 つ上の段の 1 つ左の列の値」になる。 -/
+theorem fillValues_val : ∀ (Rs : List Rowj),
+    (∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
+      ((rowAt Rs r)[i]'h).par = some p → p < i) →
+    ∀ (r : Nat), r + 1 < Rs.length → ∀ (i : Nat) (hi : i < (rowAt Rs r).size),
+      valAtIdx (rowAt (fillValues Rs) r) i
+        = if ((rowAt Rs r)[i]'hi).val ≠ 0 then ((rowAt Rs r)[i]'hi).val
+          else (match ((rowAt Rs r)[i]'hi).par with
+                | none => 0
+                | some p => valAtIdx (rowAt (fillValues Rs) r) p)
+               + readValAt (rowAt (fillValues Rs) (r + 1)) (((rowAt Rs r)[i]'hi).pos - 1) := by
+  intro Rs
+  induction Rs with
+  | nil => intro _ r hr; exact absurd hr (by simp)
+  | cons x rest ih =>
+      rcases rest with _ | ⟨a, t⟩
+      · intro _ r hr; exact absurd hr (by simp)
+      · intro hpar r hr i hi
+        cases r with
+        | zero =>
+            rw [fillValues_cons, rowAt_cons_zero, rowAt_cons_succ]
+            exact fillRow_val x (rowAt (fillValues (a :: t)) 0)
+              (fun i h p hp => hpar 0 i h p hp) i hi
+        | succ k =>
+            exact ih (fun r i h p hp => hpar (r + 1) i h p hp) k
+              (by simp only [List.length_cons] at hr ⊢; omega) i hi
 
 end Yukito
