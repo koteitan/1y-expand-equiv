@@ -1,14 +1,25 @@
 # 1y-expand-equiv
 
-1-Y 数列の展開規則について、次の 2 つが同じ関数であることの Lean 4 による証明。
+1-Y 数列の展開規則について、次の 2 つが同じ関数であるかどうかの Lean 4 による検証。
 
-| | 定義 | 実装 |
+| | 何か | 場所 |
 |---|---|---|
 | Yukito 版 | Yukito 氏による 1-Y の展開規則 | [Naruyoko/YNySequence](https://github.com/Naruyoko/YNySequence) の `script.js` の `expand` |
-| Phyrion 版 | 同上を形式化したもの | [Phyrion1343/1Y-Well-Ordering-Lean](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean) の `OneY.Numeric.expandValues` |
+| Phyrion 版 | Phyrion 氏が独自に定めた祖先保存アルゴリズム | [Phyrion1343/1Y-Well-Ordering-Lean](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean) の `OneY.Numeric.expandValues` |
 
 Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列を Lean 4 で証明している。
-本リポジトリが扱うのは、**その形式化の対象が Yukito 版の定義と一致しているか**という別の問題である。
+
+ただし **Phyrion 版は Yukito 版の形式化であるとは主張していない**。論文はこう書いている。
+
+> The precise convention considered here is the ancestor-preserving algorithm below and in
+> the fixed source snapshot. No equivalence with every variant described elsewhere is assumed.
+
+つまり対象は論文とソーススナップショットで定義された規則そのものであり、他所で記述された
+変種との同値性は仮定されていない。
+
+そこで残るのが本リポジトリの問いである。**この 2 つは実際に同じ関数なのか。**
+同じであれば、Phyrion 版の整礎性・整列性の結果はそのまま Yukito 版の 1-Y についての
+結果になる。
 
 ## いま示せていること
 
