@@ -1585,4 +1585,49 @@ theorem yamaContext_eq (s : List Nat) (hs : ZeroY.Legal s) (K d x y : Nat)
     | omega
     | (congr 1 <;> omega)
 
+/-! ## 新しい対角の値は上の層の値
+
+JS の対角の行 0 は抽出段そのものなので、その添字 `s` の値は `topValue base s` である。 -/
+
+theorem size_rowAt_expDg (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) :
+    (rowAt (expDg M (f + 1)) 0).size = S.n := by
+  show (rowAt (calcMountainFrom (parseDiag (calcDiagonal M)) (f + 1)) 0).size = S.n
+  rw [rowAt_calcMountainFrom_zero, assignParents_size, parseDiag_size,
+    calcDiagonal_eq' S M hM]
+  simp
+
+theorem valAtIdx_expDg (S : Setting) (M : List Rowj) (hM : MtRep S M) (f s : Nat)
+    (hs : s < S.n) : valAtIdx (rowAt (expDg M (f + 1)) 0) s = topValue S.tower.base s := by
+  have hsize := size_rowAt_expDg S M hM f
+  have hrow : rowAt (expDg M (f + 1)) 0 = assignParents none (parseDiag (calcDiagonal M)) :=
+    rowAt_calcMountainFrom_zero _ f
+  have hss : s < (rowAt (expDg M (f + 1)) 0).size := by omega
+  have hrep : Rep (rowAt (expDg M (f + 1)) 0) 0 S.n (extractOf S).value := by
+    rw [hrow]
+    exact rep_extract S M hM
+  have hpos := pos_eq_index (rowAt (expDg M (f + 1)) 0) S.n _ hrep hsize s hss
+  have hval := hrep.val _ (mem_of_getElem _ s hss)
+  rw [hpos] at hval
+  show (if h : s < (rowAt (expDg M (f + 1)) 0).size then
+      ((rowAt (expDg M (f + 1)) 0)[s]'h).val else 0) = _
+  rw [dif_pos hss, hval]
+  rfl
+
+/-- **山崎噴火の枝の新しい対角は、上の層の値を `source0` で読んだもの。** -/
+theorem expNd_topValue (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat)
+    (hn : 1 < S.n) (hyama : expYama M (f + 1))
+    (C : OrdinaryCopy.Context) (hcy : C.coordinates.y = expSeam M (f + 1))
+    (hcx : C.coordinates.x = (rowAt M 0).size - 1)
+    (nrep efuel c : Nat) :
+    expNd nrep (f + 1) efuel M c = topValue S.tower.base (C.source0 c) := by
+  have hsizeM : (rowAt M 0).size = S.n := hM.size0
+  have hx : C.coordinates.x = S.n - 1 := by rw [hcx, hsizeM]
+  have hsrc : C.source0 c < C.coordinates.x := by
+    have := source0_lt C.coordinates.y C.coordinates.x c C.coordinates.root_lt_last
+    unfold OrdinaryCopy.Context.source0 CopyCoordinates.Context.length
+    exact this
+  rw [expNd_yama_source0 nrep (f + 1) efuel M hyama C hcy hcx
+    (by rw [hsizeM, size_rowAt_expDg S M hM f]; omega)]
+  exact valAtIdx_expDg S M hM f (C.source0 c) (by omega)
+
 end Yukito
