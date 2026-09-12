@@ -1225,4 +1225,90 @@ theorem kmaxAt_le_yama (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
     kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
   kmaxAt_le M P i j ach af hs (by omega)
 
+/-! ## 元のセルの添字
+
+`sourceIdx` は、`useLast` なら行の最後のセル、そうでなければ列 `j` のセルを指す。 -/
+
+theorem sourceIdx_false (M : List Rowj) (sy j : Nat) :
+    sourceIdx M sy j false = firstAtLeast (rowAt M sy) (j - sy) := rfl
+
+theorem sourceIdx_true (M : List Rowj) (sy j : Nat) :
+    sourceIdx M sy j true = (rowAt M sy).size - 1 := rfl
+
+/-- **列 `j` が段 `r` で生きていれば、`sourceIdx` はその列のセルを指す。** -/
+theorem sourceIdx_col (S : Setting) (M : List Rowj) (hM : MtRep S M) (r j : Nat)
+    (hr : r < M.length) (hrj : r ≤ j) (hj : j < S.n)
+    (hlive : 0 < (rows S.tower.base r).value j) :
+    ∃ h : sourceIdx M r j false < (rowAt M r).size,
+      ((rowAt M r)[sourceIdx M r j false]'h).pos + r = j := by
+  have hrep := rep_top S M hM r hr
+  obtain ⟨m, hm, _, hcm⟩ := lookupPos_some (rowAt M r) r S.n _ hrep j hrj hj hlive
+  have hs : sourceIdx M r j false = m := by
+    show firstAtLeast (rowAt M r) (j - r) = m
+    exact firstAtLeast_eq_of_mem (rowAt M r) hrep.posMono (j - r) m hm (by omega)
+  rw [hs]
+  exact ⟨hm, hcm⟩
+
+/-- **列 `n−1` が段 `r` で生きていれば、行の最後のセルはその列である。** -/
+theorem sourceIdx_last_col (S : Setting) (M : List Rowj) (hM : MtRep S M) (r j : Nat)
+    (hr : r < M.length) (hn : 1 < S.n)
+    (hlive : 0 < (rows S.tower.base r).value (S.n - 1)) :
+    ∃ h : sourceIdx M r j true < (rowAt M r).size,
+      ((rowAt M r)[sourceIdx M r j true]'h).pos + r = S.n - 1 := by
+  have hrep := rep_top S M hM r hr
+  have hrn : r ≤ S.n - 1 := by
+    rcases Nat.lt_or_ge (S.n - 1) r with hx | hx
+    · rw [rows_value_zero_of_lt S.tower.base r (S.n - 1) hx] at hlive
+      omega
+    · exact hx
+  obtain ⟨m, hm, _, _⟩ :=
+    lookupPos_some (rowAt M r) r S.n _ hrep (S.n - 1) hrn (by omega) hlive
+  have hne : 0 < (rowAt M r).size := by omega
+  have heq : lastCol (rowAt M r) r = S.n - 1 := (lastCol_eq_iff S M hM r hr hn).mpr hlive
+  refine ⟨by simp only [sourceIdx_true]; omega, ?_⟩
+  simp only [lastCol, dif_pos hne] at heq
+  exact heq
+
+/-! ## 元のセルの親を密表現で読む -/
+
+theorem parRep_some (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat) (hr : r < M.length)
+    (sx : Nat) (hsx : sx < (rowAt M r).size) (sp : Nat)
+    (hpar : ((rowAt M r)[sx]'hsx).par = some sp) :
+    ∃ hsp : sp < (rowAt M r).size,
+      (rows S.tower.base r).forest.parent (((rowAt M r)[sx]'hsx).pos + r)
+        = some (((rowAt M r)[sp]'hsp).pos + r) := by
+  have hP : ParRep (rowAt M r) r (rows S.tower.base r).forest := by
+    rw [rowAt_eq M r hr]
+    exact (hM.rowRep r hr).2
+  have h := hP _ (mem_of_getElem _ sx hsx)
+  rw [hpar] at h
+  exact h
+
+theorem parRep_none (S : Setting) (M : List Rowj) (hM : MtRep S M) (r : Nat) (hr : r < M.length)
+    (sx : Nat) (hsx : sx < (rowAt M r).size)
+    (hpar : ((rowAt M r)[sx]'hsx).par = none) :
+    (rows S.tower.base r).forest.parent (((rowAt M r)[sx]'hsx).pos + r) = none := by
+  have hP : ParRep (rowAt M r) r (rows S.tower.base r).forest := by
+    rw [rowAt_eq M r hr]
+    exact (hM.rowRep r hr).2
+  have h := hP _ (mem_of_getElem _ sx hsx)
+  rw [hpar] at h
+  exact h
+
+/-- **積むセルの親の列は `parentCopy`（元の親の列）である。** -/
+theorem fujiCell_par_parentCopy (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (P : FujiParams) (cur : Rowj) (sy sx k i j shifts topVal : Nat)
+    (hsy : sy ≤ k) (hry : sy < M.length) (C : CopyCoordinates.Context)
+    (hy : C.y = P.badRootSeam) (hL : C.length = P.len) (p : Nat)
+    (hp : (fujiCell M P cur sy sx k i j shifts topVal).par = some p) :
+    ∃ (hp' : p < cur.size) (hsx : sx < (rowAt M sy).size) (q : Nat),
+      (rows S.tower.base sy).forest.parent (((rowAt M sy)[sx]'hsx).pos + sy) = some q ∧
+        (cur[p]'hp').pos + k = C.parentCopy shifts q := by
+  obtain ⟨hp', hsx, sp, hspar, hsp, hcol⟩ :=
+    fujiCell_par_col M P cur sy sx k i j shifts topVal hsy p hp
+  obtain ⟨hsp', hF⟩ := parRep_some S M hM sy hry sx hsx sp hspar
+  refine ⟨hp', hsx, ((rowAt M sy)[sp]'hsp').pos + sy, hF, ?_⟩
+  rw [← js_shift_eq_parentCopy C shifts _, hy, hL]
+  exact hcol
+
 end Yukito
