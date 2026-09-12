@@ -220,7 +220,7 @@ expandOut_layers      上の 2 つを束ねた帰納
 `expand` の各段階と、分岐を一通り通す例、および上りでない列が `badRootHeight` より
 高くなる例を含む。
 
-行単位の対応は [correspondence.md](correspondence.md) にある。
+原本と写しを並べた対応は [correspondence.md](correspondence.md) にある。
 
 `badRootSeamHeight` と `afterCutMountain` は JS で計算されるがその後どこでも使われて
 いないので写していない。`newDiagonal` は `.value` しか読まれないので値の関数
