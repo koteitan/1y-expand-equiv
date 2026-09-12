@@ -224,4 +224,39 @@ theorem expYama_iff (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) (hn
   show lastVal (rowAt (expDg M (f + 1)) 0) = 1 ↔ _
   rw [lastVal_expDg S M hM f hn]
 
+/-! ## 山崎噴火の枝の bad root
+
+この枝では bad root はその層で見つかる。すなわち「頂の 1 つ下の段での、
+最後の列の親」である。 -/
+
+theorem getBadRoot_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (m : Nat)
+    (hbnd : S.bnd ≤ m) (hn : 1 < S.n) (hgt : 1 < S.tower.base.value (S.n - 1))
+    (hyama : topValue S.tower.base (S.n - 1) = 1) :
+    getBadRoot M (m + 1) (m + 1)
+      = (rows S.tower.base (height S.tower.base (S.n - 1) - 1)).forest.parent (S.n - 1) := by
+  rw [getBadRoot_eq m (m + 1) S M hM hbnd hn hgt]
+  show (if topValue S.tower.base (S.n - 1) = 1 then _ else _) = _
+  rw [if_pos hyama]
+
+/-- **山崎噴火の枝の継ぎ目は、山の最後の列の親である。** -/
+theorem expSeam_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (m : Nat)
+    (hbnd : S.bnd ≤ m) (hn : 1 < S.n) (hgt : 1 < S.tower.base.value (S.n - 1))
+    (hyama : topValue S.tower.base (S.n - 1) = 1) (y : Nat)
+    (hy : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1)
+      = some y) :
+    expSeam M (m + 1) = y := by
+  show (getBadRoot M (m + 1) (m + 1)).getD 0 = y
+  rw [getBadRoot_yama S M hM m hbnd hn hgt hyama]
+  have hy' : (rows S.tower.base (height S.tower.base (S.n - 1) - 1)).forest.parent (S.n - 1)
+      = some y := hy
+  rw [hy']
+  rfl
+
+/-- 山の高さと段。`TerminalCopy.Context` の `last_height` にあたる。 -/
+theorem mountainOf'_height (S : Setting) (c : Nat) :
+    (mountainOf' S).height c = height S.tower.base c := rfl
+
+theorem mountainOf'_row (S : Setting) (r : Nat) :
+    (mountainOf' S).row r = (rows S.tower.base r).forest := rfl
+
 end Yukito
