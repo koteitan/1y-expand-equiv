@@ -1455,9 +1455,25 @@ reconstructedValues (G :: rest) W = (List.range W).map (assemble (G :: rest) (fu
 assemble (G :: rest) top c = Reconstruction.value G (assemble rest top) 0 c
 ```
 
-なので**同じ式**である。この層について残るのは
-「`yamaContext` の山 = `expandedMountain a hbad K`」と
-「`expNd` = `assemble`（`K+1` 段目以上）`(fun _ => 1)`」の 2 つだけになった。
+なので**同じ式**である。
+
+さらに、こちらで組んだ `TerminalCopy.Context` が原文の `badAtTerminalContext`
+そのものであることも示した。
+
+```
+iterSet_n       列の上限は抽出で変わらない
+yamaContext_eq  BadAt (rootedSequence s hs) K d x y と s.length−1 = x のもとで
+                  yamaContext (iterSet (linearSetting s hs.1) K) y … 
+                    = badAtTerminalContext … hbad
+```
+
+3 つのデータ欄が一致する。`mountain` は `iterSet_base`（`k` 回抽出した設定の底は
+`layers` の `k` 段目）、`coordinates` は `iterSet_n` と `s.length−1 = x`、
+`level` は `badAt_height_and_top`（`height x = d+1`）から。証明欄は Prop なので
+証明無関係で一致する。
+
+この層について残るのは
+「`expNd` = `assemble`（`K+1` 段目以上）`(fun _ => 1)`」だけになった。
 
 ### 元からあるセルについての条件（済）
 
