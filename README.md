@@ -857,6 +857,56 @@ getBadRoot_eq_findBadRoot   JS の getBadRoot = findBadRoot の column
 **これで bad root が閉じた。** `expand` の `none` の枝と合わせて、残るのは `some` の
 枝、すなわちコピー層だけである。
 
+## コピー層（`some` の枝）
+
+Phyrion 側はこうなっている。
+
+```
+expandValues s hs N (some z の枝)
+  = reconstructedValues (expandedGraphs a hbad (sequenceBound s)) (x + N*(x − z.column))
+
+expandedGraphs a hbad bound = (range bound).map (expandedMountain a hbad)
+reconstructedValues graphs width = (range width).map (assemble graphs (fun _ => 1))
+
+assemble []          top = top
+assemble (M :: rest) top = Reconstruction.value M (assemble rest top) 0
+```
+
+`expandedMountain a hbad k` は層 `k` ごとに 3 通りに分かれる。
+
+```
+k < K   badAtLowerContext      下位のコピー
+k = K   badAtTerminalMountain  終端のコピー
+k > K   OrdinaryCopy           通常のコピー
+```
+
+値の復元は
+
+```
+Reconstruction.value M top r c
+  = if r ≤ height c then top c + Σ_{u=r}^{height c − 1}（行 u での c の親の値）else 0
+```
+
+である。JS 側は最後に
+
+```js
+result[i][j].value = result[i][result[i][j].parentIndex].value + result[i+1][k].value;
+```
+
+で `NaN` を埋める。これは `V_r(c) = V_r(親) + V_{r+1}(c)` で、上の閉じた式を
+展開したものにあたる。JS も `newDiagonal = expand(diagonal,n,false)` で層をまたいで
+再帰するので、`assemble` のリストと対応する。
+
+### 攻め方
+
+```
+1. 値の復元      差分の関係を満たす値は Reconstruction.value に一致する（森に依らない）
+2. 層の再帰      JS の expand の再帰 ↔ expandedGraphs のリスト
+3. 森のコピー    Mt.Fuji の枝 ↔ badAtLowerContext / badAtTerminalMountain / OrdinaryCopy
+```
+
+1 は森の形に依らないので先に片付けられる。3 が全体の大半である。
+
 ## 残っている課題
 
 ```
