@@ -1472,8 +1472,18 @@ yamaContext_eq  BadAt (rootedSequence s hs) K d x y と s.length−1 = x のも�
 `level` は `badAt_height_and_top`（`height x = d+1`）から。証明欄は Prop なので
 証明無関係で一致する。
 
-この層について残るのは
-「`expNd` = `assemble`（`K+1` 段目以上）`(fun _ => 1)`」だけになった。
+頂の値も原文と一致した。
+
+```
+size_rowAt_expDg / valAtIdx_expDg  対角の行 0 は抽出段そのもので、
+                                   添字 s の値は topValue base s
+expNd_topValue     expNd c = topValue base (source0 c)
+layers_succ_value  layers a (k+1) の値は layers a k の topValue
+assemble_above_eq  K+1 段目以上を畳むと topValue (layers a K).row (source0 c)
+expNd_eq_assemble  したがって expNd = assemble（K+1 段目以上）(fun _ => 1)
+```
+
+**これで山崎噴火の枝（原文の層 `k = K`）は、山の同定と頂の値の両方が片付いた。**
 
 ### 元からあるセルについての条件（済）
 
@@ -1588,15 +1598,16 @@ bad root    済
 分岐 none   済（expand_eq_no_bad）
 三重ループ  済（構造・座標・出力の幅）
 値の層      済（ShapeRep → expandOut_eq_value）
-森のコピー  山崎噴火の枝（原文の層 k = K）は済（shapeRep_yama）
+森のコピー  山崎噴火の枝（原文の層 k = K）は済
+            （shapeRep_yama / yamaContext_eq / expNd_eq_assemble）
             残りの枝（k < K の badAtLowerContext）は未
 層の再帰    未
 ```
 
-山崎噴火の枝については、JS の出力が
-`Reconstruction.value ((yamaContext …).toRowMountain) (expNd …) 0` の並びに
-一致するところまで来た。残るのは、その山が原文の `expandedMountain a hbad K` で
-あることと、`expNd` が上の層の `assemble` であること、および `k < K` の枝である。
+山崎噴火の枝については、JS の出力が原文の
+`Reconstruction.value (badAtTerminalMountain …) (assemble（K+1 段目以上）) 0`
+の並びに一致するところまで来た。残るのは `k < K` の枝（`badAtLowerContext`）と、
+JS の再帰がその枝を降りていくことの対応である。
 
 ## ビルド
 
