@@ -111,6 +111,19 @@ succ_lt_child        非祖先の場合は j < e
 one_of_lower_ancestor  j が一段下で e の祖先なら U e ≤ U j
 ```
 
+さらに `fparent_succ` は層をまたいで連鎖する。結論
+`F.parent (root+1) = some root` が、山ではそのまま一段下の仮定になるからである。
+`Compat` は `rows_parent_iff_next_live` が与えるので仮定も要らない。
+
+```
+compat_rows        山では値と frame の対応が成り立つ
+fparent_succ_step  1 段の連鎖
+fparent_succ_down  下まで回した形。行 k+m で成り立てば行 k でも成り立つ
+```
+
+したがって `j = root + 1` さえ言えれば、`j` の親が `root` であることが
+すべての層で従う。線形 frame まで降りると `root = j - 1` になり整合する。
+
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち
 

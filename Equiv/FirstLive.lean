@@ -203,4 +203,40 @@ theorem one_of_lower_ancestor {F' : ParentForest} {U' : Nat → Nat} {root e : N
   have he' : restrictedParent F' U' e = some root := by rw [← hF]; exact he
   exact one_of_ancestor root e (root + 1) he' hanc (by omega) hpos
 
+/-! ## 層をまたぐ連鎖
+
+`fparent_succ` は仮定 `restrictedParent F U (root+1) = some root` から
+結論 `F.parent (root+1) = some root` を出す。山では
+
+```
+restrictedParent (rows base k).forest (rows base (k+1)).value
+  = (rows base (k+1)).forest.parent
+```
+
+なので、結論がそのまま一段下の仮定になる。したがって連鎖する。
+`Compat` は `rows_parent_iff_next_live` がそのまま与えるので仮定も要らない。 -/
+
+/-- 山では値と frame の対応が成り立つ。 -/
+theorem compat_rows (base : Row) (k : Nat) :
+    Compat (rows base k).forest (rows base (k+1)).value := by
+  intro q
+  exact (rows_parent_iff_next_live base k q).symm
+
+/-- 1 段の連鎖。 -/
+theorem fparent_succ_step (base : Row) (k root : Nat)
+    (h : (rows base (k+1)).forest.parent (root + 1) = some root) :
+    (rows base k).forest.parent (root + 1) = some root :=
+  fparent_succ (compat_rows base k) h
+
+/-- 連鎖を下まで回した形。行 `k + m` で成り立てば行 `k` でも成り立つ。 -/
+theorem fparent_succ_down (base : Row) (root : Nat) :
+    ∀ m k, (rows base (k + m)).forest.parent (root + 1) = some root →
+      (rows base k).forest.parent (root + 1) = some root
+  | 0, _, h => h
+  | m+1, k, h => by
+      have h' : (rows base ((k+1) + m)).forest.parent (root + 1) = some root := by
+        have : (k+1) + m = k + (m+1) := by omega
+        rw [this]; exact h
+      exact fparent_succ_step base k root (fparent_succ_down base root m (k+1) h')
+
 end Yukito
