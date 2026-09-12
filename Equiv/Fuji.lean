@@ -65,6 +65,27 @@ theorem seamHeightOf_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
         hdead ((hasCol_iff S M hM h j (by omega) hj).mp hcon))]
       exact ih (by omega) hlt
 
+/-- **`topRowWithCol` は列 `j` を含む最上段。** -/
+theorem topRowWithCol_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
+    (hj : j < S.n) :
+    ∀ hi, hi ≤ M.length → height S.tower.base j < hi →
+      topRowWithCol M j hi = some (height S.tower.base j) := by
+  intro hi
+  induction hi with
+  | zero => intro _ h; omega
+  | succ h ih =>
+    intro hhM hjh
+    rcases Nat.eq_or_lt_of_le (Nat.lt_succ_iff.mp hjh) with heq | hlt
+    · rw [topRowWithCol, if_pos ((hasCol_iff S M hM h j (by omega) hj).mpr
+        ((live_iff_le_height S.tower.base (S.tower.hpos j) h).mpr (by omega))), heq]
+    · have hdead : ¬ (0 < (rows S.tower.base h).value j) := by
+        intro hcon
+        exact absurd ((live_iff_le_height S.tower.base (S.tower.hpos j) h).mp hcon)
+          (by omega)
+      rw [topRowWithCol, if_neg (fun hcon =>
+        hdead ((hasCol_iff S M hM h j (by omega) hj).mp hcon))]
+      exact ih (by omega) hlt
+
 /-! ## `isAscending`
 
 行 `bh` で列 `j` の親鎖が列 `seam` に届くか。密表現では「`seam` が `j` の祖先か

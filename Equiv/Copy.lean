@@ -2315,6 +2315,10 @@ def fujiSrcRow (P : FujiParams) (i k : Nat) (isRep : Bool) : Nat :=
   else if isRep && decide (k ≤ P.badRootHeight + d * i) then k - d * (i - 1)
   else k - d * i
 
+/-- 上りかどうかまで込めた元の段。上りでなければその段そのもの。 -/
+def fujiSrcRowAt (P : FujiParams) (i k : Nat) (isRep isAsc : Bool) : Nat :=
+  if isAsc then fujiSrcRow P i k isRep else k
+
 theorem fujiSource_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Nat)
     (isRep : Bool) : fujiSource P i k isRep = (fujiSrcRow P i k isRep, isRep) := by
   unfold fujiSource fujiSrcRow
@@ -2323,5 +2327,13 @@ theorem fujiSource_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Na
   simp only [Bool.not_false, Bool.true_and]
   repeat' split
   all_goals rfl
+
+theorem fujiSourceAt_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Nat)
+    (isRep isAsc : Bool) :
+    fujiSourceAt P i k isRep isAsc = (fujiSrcRowAt P i k isRep isAsc, isRep) := by
+  unfold fujiSourceAt fujiSrcRowAt
+  cases isAsc with
+  | true => simpa using fujiSource_notyama P hyk i k isRep
+  | false => simp
 
 end Yukito

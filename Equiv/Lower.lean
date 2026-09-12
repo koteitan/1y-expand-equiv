@@ -20,6 +20,42 @@ namespace Yukito
 
 open OneY OneY.Numeric OneY.RootGeometry
 
+/-! ## この枝の `FujiParams`
+
+`expYama` が偽のとき、JS のパラメータは次のようになる。
+
+```
+badRootSeam   = expSeam M mfuel     （= y）
+badRootHeight = height y            （列 y を含む最上段）
+cutHeight     = height (n−1)        （= expCutH M）
+yamakazi      = false
+```
+-/
+
+theorem expP_yamakazi_lower (M : List Rowj) (mfuel : Nat) (h : ¬ expYama M mfuel) :
+    (expP M mfuel).yamakazi = false := by
+  show decide (expYama M mfuel) = false
+  exact decide_eq_false h
+
+theorem expP_badRootSeam (M : List Rowj) (mfuel : Nat) :
+    (expP M mfuel).badRootSeam = expSeam M mfuel := rfl
+
+theorem expP_cutHeight_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (mfuel : Nat) (h : ¬ expYama M mfuel) :
+    (expP M mfuel).cutHeight = height S.tower.base (S.n - 1) := by
+  show (if expYama M mfuel then expCutH M - 1 else expCutH M) = _
+  rw [if_neg h]
+  exact expCutH_eq S M hM hn
+
+theorem expP_badRootHeight_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (mfuel : Nat) (h : ¬ expYama M mfuel) (hseam : expSeam M mfuel < S.n) :
+    (expP M mfuel).badRootHeight = height S.tower.base (expSeam M mfuel) := by
+  show (if expYama M mfuel then expCutH M - 1
+        else (topRowWithCol M (expSeam M mfuel) M.length).getD 0) = _
+  rw [if_neg h, topRowWithCol_eq S M hM _ hseam M.length (Nat.le_refl _)
+    (hM.tall _ hseam)]
+  rfl
+
 /-- `k < K` の枝で使う `LowerCopy.Context`。 -/
 def lowerContext (S : Setting) (y x : Nat) (hyx : y < x)
     (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
@@ -135,5 +171,174 @@ theorem kmaxAt_eq_height_lower (M : List Rowj) (hM : MtRep S M) (P : FujiParams)
 なので、そのまま対応する。親のセルが積んであることは原文側の
 `height_parentCopy_ge`（`M.height p ≤ height (parentCopy b p)`）と
 `parent_endpoint`（`r ≤ M.height p`）から出る。 -/
+
+/-! ## 原文の親をコピーの座標で開く
+
+`c = s + b*L`（`y < s ≤ x`、`0 < b`）は `x` より右なので、原文の `parent` は
+新しい列の枝に入る。 -/
+
+theorem lowerContext_row (hyx : y < x) (hroot) (hhigher) (r : Nat) :
+    (lowerContext S y x hyx hroot hhigher).mountain.row r
+      = (rows S.tower.base r).forest := rfl
+
+theorem lowerContext_parent_new (hyx : y < x) (hroot) (hhigher) (r s b : Nat)
+    (hs1 : y < s) (hs2 : s ≤ x) (hb : 0 < b) :
+    (lowerContext S y x hyx hroot hhigher).parent r (s + b * (x - y))
+      = if (lowerContext S y x hyx hroot hhigher).InCone s
+            ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ r then
+          (if r < (lowerContext S y x hyx hroot hhigher).floor
+                + b * (lowerContext S y x hyx hroot hhigher).rise then
+            ((lowerContext S y x hyx hroot hhigher).mountain.row
+              (lowerContext S y x hyx hroot hhigher).floor).parent s
+           else
+            ((lowerContext S y x hyx hroot hhigher).mountain.row
+              (r - b * (lowerContext S y x hyx hroot hhigher).rise)).parent s).map
+            (fun p => p + b * (lowerContext S y x hyx hroot hhigher).coordinates.length)
+        else (((lowerContext S y x hyx hroot hhigher).mountain.row r).parent s).map
+          ((lowerContext S y x hyx hroot hhigher).coordinates.parentCopy b) := by
+  have henc : s + b * (x - y)
+      = (lowerContext S y x hyx hroot hhigher).coordinates.encode s b := rfl
+  have hgt : (lowerContext S y x hyx hroot hhigher).coordinates.x
+      < (lowerContext S y x hyx hroot hhigher).coordinates.encode s b := by
+    obtain ⟨b', rfl⟩ : ∃ b', b = b' + 1 := ⟨b - 1, by omega⟩
+    exact (lowerContext S y x hyx hroot hhigher).encode_succ_gt_last hs1 b'
+  have hsrc : (lowerContext S y x hyx hroot hhigher).coordinates.source
+      ((lowerContext S y x hyx hroot hhigher).coordinates.encode s b) = s :=
+    (lowerContext S y x hyx hroot hhigher).coordinates.source_encode hs1 hs2 b
+  have hblk : (lowerContext S y x hyx hroot hhigher).coordinates.block
+      ((lowerContext S y x hyx hroot hhigher).coordinates.encode s b) = b :=
+    (lowerContext S y x hyx hroot hhigher).coordinates.block_encode hs1 hs2 b
+  rw [henc]
+  show (if (lowerContext S y x hyx hroot hhigher).coordinates.encode s b
+      ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x then _ else _) = _
+  rw [if_neg (Nat.not_le_of_gt hgt)]
+  dsimp only
+  rw [hsrc, hblk]
+  split
+  · split <;> rfl
+  · rfl
+
+/-! ## 元の段の一致
+
+原文は上りの列について `r < floor + b*rise` なら段 `floor`、そうでなければ
+`r − b*rise` を使う。これは `floor` で下から押さえた `max floor (r − b*rise)` に
+等しい。JS の `fujiSrcRow` も、段が `floor + rise*i` 以下であればこれに一致する。 -/
+
+theorem clamp_srcRow (f b R r : Nat) :
+    (if r < f + b * R then f else r - b * R) = max f (r - b * R) := by
+  simp only [Nat.max_def]
+  split <;> split <;> omega
+
+theorem fujiSrcRow_notrep (P : FujiParams) (i k : Nat) :
+    fujiSrcRow P i k false
+      = if k < P.badRootHeight then k
+        else if k ≤ P.badRootHeight + (P.cutHeight - P.badRootHeight) * i then P.badRootHeight
+        else k - (P.cutHeight - P.badRootHeight) * i := by
+  simp [fujiSrcRow]
+
+theorem fujiSrcRow_rep (P : FujiParams) (i k : Nat) :
+    fujiSrcRow P i k true
+      = if k < P.badRootHeight then k
+        else if k ≤ P.badRootHeight + (P.cutHeight - P.badRootHeight) * (i - 1) then
+          P.badRootHeight
+        else if k ≤ P.badRootHeight + (P.cutHeight - P.badRootHeight) * i then
+          k - (P.cutHeight - P.badRootHeight) * (i - 1)
+        else k - (P.cutHeight - P.badRootHeight) * i := by
+  simp [fujiSrcRow]
+
+/-- **JS の元の段は原文の元の段に一致する。** 段が `floor + rise*i` 以下であれば、
+上りの列では `max floor (k − b*rise)`、そうでなければ `k` そのものである。 -/
+theorem fujiSrcRowAt_eq (P : FujiParams)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x)
+    (i k : Nat) (isRep isAsc : Bool)
+    (hk : k ≤ height S.tower.base y
+      + (height S.tower.base x - height S.tower.base y) * i) :
+    fujiSrcRowAt P i k isRep isAsc
+      = if isAsc = true ∧ height S.tower.base y ≤ k then
+          max (height S.tower.base y)
+            (k - (i - (if isRep then 1 else 0))
+              * (height S.tower.base x - height S.tower.base y))
+        else k := by
+  unfold fujiSrcRowAt
+  have hc1 : (height S.tower.base x - height S.tower.base y) * i
+      = i * (height S.tower.base x - height S.tower.base y) := Nat.mul_comm _ _
+  have hc2 : (height S.tower.base x - height S.tower.base y) * (i - 1)
+      = (i - 1) * (height S.tower.base x - height S.tower.base y) := Nat.mul_comm _ _
+  cases isAsc with
+  | false => simp
+  | true =>
+      cases isRep with
+      | false =>
+          rw [if_pos rfl, fujiSrcRow_notrep, hbh, hcut]
+          simp only [Bool.false_eq_true, if_false, Nat.sub_zero, and_true, true_and,
+            Nat.max_def]
+          repeat' split
+          all_goals omega
+      | true =>
+          rw [if_pos rfl, fujiSrcRow_rep, hbh, hcut]
+          simp only [if_true, true_and, Nat.max_def]
+          repeat' split
+          all_goals omega
+
+/-! ## 原文の親から元の段・元の列・その親を取り出す -/
+
+theorem lowerContext_y_eq (hyx : y < x) (hroot) (hhigher) :
+    (lowerContext S y x hyx hroot hhigher).coordinates.y = y := rfl
+
+theorem lowerContext_length_eq (hyx : y < x) (hroot) (hhigher) :
+    (lowerContext S y x hyx hroot hhigher).coordinates.length = x - y := rfl
+
+/-- 継ぎ目でない列（`y < j < x`）。 -/
+theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j pc : Nat)
+    (hi : 0 < i) (hjy : y < j) (hjx : j < x)
+    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = some pc) :
+    ∃ q, (rows S.tower.base
+        (if (lowerContext S y x hyx hroot hhigher).InCone j ∧ height S.tower.base y ≤ k then
+          max (height S.tower.base y)
+            (k - i * (height S.tower.base x - height S.tower.base y))
+         else k)).forest.parent j = some q ∧
+      pc = q + (if y ≤ q then i * (x - y) else 0) := by
+  have hcol : j + (x - y) * i = j + i * (x - y) := by rw [Nat.mul_comm]
+  rw [hcol, lowerContext_parent_new hyx hroot hhigher k j i hjy (by omega) hi] at hpc
+  have hfl : (lowerContext S y x hyx hroot hhigher).floor = height S.tower.base y := rfl
+  have hri : (lowerContext S y x hyx hroot hhigher).rise
+      = height S.tower.base x - height S.tower.base y := rfl
+  rcases Decidable.em ((lowerContext S y x hyx hroot hhigher).InCone j
+      ∧ height S.tower.base y ≤ k) with hcase | hcase
+  · rw [if_pos hcase]
+    rw [if_pos (show (lowerContext S y x hyx hroot hhigher).InCone j
+      ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k from ⟨hcase.1, hcase.2⟩)] at hpc
+    rw [hfl, hri] at hpc
+    have hif : (if k < height S.tower.base y
+              + i * (height S.tower.base x - height S.tower.base y) then
+            ((lowerContext S y x hyx hroot hhigher).mountain.row
+              (height S.tower.base y)).parent j
+          else
+            ((lowerContext S y x hyx hroot hhigher).mountain.row
+              (k - i * (height S.tower.base x - height S.tower.base y))).parent j)
+        = ((lowerContext S y x hyx hroot hhigher).mountain.row
+            (max (height S.tower.base y)
+              (k - i * (height S.tower.base x - height S.tower.base y)))).parent j := by
+      rw [← clamp_srcRow (height S.tower.base y) i
+        (height S.tower.base x - height S.tower.base y) k]
+      split <;> rfl
+    rw [hif] at hpc
+    obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+    refine ⟨q, hq, ?_⟩
+    have hcone : (lowerContext S y x hyx hroot hhigher).InCone q :=
+      (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcase.1
+        (show (lowerContext S y x hyx hroot hhigher).floor
+          ≤ max (height S.tower.base y)
+              (k - i * (height S.tower.base x - height S.tower.base y)) by
+          rw [hfl]; exact Nat.le_max_left _ _) hq
+    have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hcone
+    rw [← hqe, if_pos hyq]
+    rfl
+  · rw [if_neg hcase]
+    rw [if_neg (fun h => hcase ⟨h.1, h.2⟩)] at hpc
+    obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+    refine ⟨q, hq, ?_⟩
+    rw [← hqe, parentCopy_eq, lowerContext_y_eq, lowerContext_length_eq]
 
 end Yukito
