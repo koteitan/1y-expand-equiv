@@ -2065,4 +2065,38 @@ theorem hasCol_pos (res : List Rowj) (k c : Nat) (h : HasCol res k c) :
   rw [hdt]
   exact hdc
 
+/-- 子を切ったあとに残るセルは、元の山で生きていて、列は `n−1` より小さい。 -/
+theorem cutChild_cell_live (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (cutH : Nat) (hcut : cutH = height S.tower.base (S.n - 1))
+    (m t : Nat) (d : Cell) (hd : (rowAt (cutChild M cutH) m)[t]? = some d) :
+    m ≤ height S.tower.base (d.pos + m) ∧ d.pos + m < S.n - 1 := by
+  have hts : t < (rowAt (cutChild M cutH) m).size := lt_size_of_getElem? hd
+  have hm : m < (cutChild M cutH).length := by
+    rcases Nat.lt_or_ge m (cutChild M cutH).length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge _ m h1] at hts
+      simp at hts
+  have hbound := colLt_cutChild S M hM cutH hn (by omega) m t d hd
+  rw [rowAt_cutChild_getElem? M cutH m t hm hts] at hd
+  have htM : t < (rowAt M m).size := lt_size_of_getElem? hd
+  have hdt : (rowAt M m)[t]'htM = d := by
+    rw [Array.getElem?_eq_getElem htM] at hd
+    exact Option.some.inj hd
+  have hmM : m < M.length := by
+    rcases Nat.lt_or_ge m M.length with h1 | h1
+    · exact h1
+    · exfalso
+      rw [rowAt_of_ge M m h1] at htM
+      simp at htM
+  have hrep := rep_top S M hM m hmM
+  have hmem : d ∈ (rowAt M m).toList := by
+    rw [← hdt]
+    exact mem_of_getElem _ t htM
+  have hv := hrep.val d hmem
+  have hl := hrep.live d hmem
+  refine ⟨?_, hbound⟩
+  refine (live_iff_le_height S.tower.base (S.tower.hpos (d.pos + m)) m).mp ?_
+  omega
+
 end Yukito

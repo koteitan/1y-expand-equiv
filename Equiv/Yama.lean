@@ -798,4 +798,44 @@ theorem cover_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     rw [hceq]
     exact hasCol_yama S M hM nrep mfuel nd hn hM2 hyama m i2 j2 hi2 hi2n (by omega) hj2x hkh h0
 
+/-! ## `ShapeRep` の `cellCol` -/
+
+/-- **段 `m` にあるセルの列は高さ `m` 以上。** -/
+theorem cellCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep m t : Nat) (d : Cell)
+    (hd : (rowAt (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)) m)[t]?
+      = some d) :
+    m ≤ (yamaContext S y hy hpar hh).height (d.pos + m) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1 :=
+    fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama)
+  rcases cell_fujiIters M (expP M mfuel) nd (expRes M).length mfuel hkm nrep (expRes M) m t d hd
+    with hold | ⟨i2, j2, hi2, _, hj2y, hj2x, hkmax, hceq⟩
+  · obtain ⟨hlive, hbound⟩ :=
+      cutChild_cell_live S M hM hn (expCutH M) hcut m t d hold
+    rw [yamaContext_height_orig S y hy hpar hh (d.pos + m) hbound]
+    exact hlive
+  · have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
+    have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
+        = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
+    have hj2x' : j2 < S.n - 1 := by omega
+    have hkh : m ≤ height S.tower.base j2 := by
+      have := kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama i2 j2 hj2x'
+      omega
+    have hc' : d.pos + m = j2 + (S.n - 1 - y) * i2 := by rw [hceq, hLp]
+    rcases Decidable.em (j2 = y) with hje | hjne
+    · rw [hc', hje, yamaContext_height_seam' S y hy hpar hh i2 hi2]
+      rw [hje] at hkh
+      exact hkh
+    · rw [hc', yamaContext_height_other' S y hy hpar hh j2 i2 (by omega) hj2x']
+      exact hkh
+
 end Yukito
