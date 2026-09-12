@@ -1590,12 +1590,23 @@ parent r c = … else if InCone s ∧ floor ≤ r then
 原文の第 3 枝に落ちるが `r − b*rise = floor` なので第 2 枝と同じ式になり、
 JS の `≤` と原文の `<` の食い違いは消える。
 
-**残る幾何的な義務**は、`y < j < x` で列 `j` が段 `floor` で生きているなら
-`InCone j`（段 `floor` での根が `y`）である、という主張である。これが無いと
-`¬InCone j` かつ `floor ≤ height j` の場合に JS の `sy = bh` と原文の `sy = r` が
-食い違う。`rootAt floor x = y` から「`x` の鎖が `j` を跨ぐ」形になり、
-森の非交差性から従うはずである（本リポジトリの `NoCross.lean` に非交差性の
-道具がある）。
+**残る幾何的な義務**を `RootInterval` として名前付きにした。
+
+```
+RootInterval S :=
+  ∀ r y j x, rootAt r x = y → y < j → j < x → r ≤ height j → rootAt r j = y
+inCone_of_between            区間性があれば y と x の間の生きた列は InCone
+height_lt_floor_of_not_inCone  したがって InCone でない列は段 floor より下で死ぬ
+```
+
+これが無いと `¬InCone j` かつ `floor ≤ height j` の場合に JS の `sy = bh` と
+原文の `sy = r` が食い違う。`rootAt floor x = y` から「`x` の鎖が `j` を跨ぐ」形に
+なるので、森の非交差性から従うはずである。
+
+原文の `RowMountain` の公理だけからは出ない。段 `r` で `x` の親が `y`、`j` が段 `r`
+で頂、という配置が公理と両立するからである。1-Y の山の非交差性が要る。本リポジトリ
+の `NoCross.lean` には線形森の場合と帰納段の主要な場合があるが、一般の段について
+まとめた形にはなっていない。
 
 ### 元からあるセルについての条件（済）
 
