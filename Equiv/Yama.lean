@@ -188,4 +188,40 @@ theorem hasCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
   rw [kmaxAt_expRes_eq S M hM mfuel hn hM2 hyama i j hjx]
   omega
 
+/-! ## 山崎噴火の枝の判定は「頂の値が 1」
+
+JS は対角の最後の値で分岐する。対角の値は `topValue` なので、これは
+原文の「bad root がこの層で見つかる」と同じ条件である。 -/
+
+/-- 行の最後の値は、最後の列の値。 -/
+theorem lastVal_of_rep (row : Rowj) (n : Nat) (V : Nat → Nat) (h : Rep row 0 n V)
+    (hn : 1 < n) (hlive : 0 < V (n - 1)) : lastVal row = V (n - 1) := by
+  obtain ⟨x, hx, hcx⟩ := h.cover (n - 1) (Nat.zero_le _) (by omega) hlive
+  obtain ⟨t, ht, het⟩ := getElem_of_mem _ hx
+  have hne : 0 < row.size := by omega
+  have hlt : row.size - 1 < row.size := by omega
+  have hmax := lastCol_max row 0 h.posMono hne t ht
+  simp only [lastCol, dif_pos hne] at hmax
+  rw [het] at hmax
+  have hb := h.bound _ (mem_of_getElem row (row.size - 1) hlt)
+  have hpe : (row[row.size - 1]'hlt).pos = n - 1 := by omega
+  simp only [lastVal, dif_pos hne]
+  rw [h.val _ (mem_of_getElem row (row.size - 1) hlt), hpe]
+  rfl
+
+/-- **対角の最後の値は最後の列の `topValue`。** -/
+theorem lastVal_expDg (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) (hn : 1 < S.n) :
+    lastVal (rowAt (expDg M (f + 1)) 0) = topValue S.tower.base (S.n - 1) := by
+  show lastVal (rowAt (calcMountainFrom (parseDiag (calcDiagonal M)) (f + 1)) 0) = _
+  rw [rowAt_calcMountainFrom_zero]
+  exact lastVal_of_rep _ S.n _ (rep_extract S M hM) hn
+    (topValue_pos S.tower.base (S.tower.hpos (S.n - 1)))
+
+/-- **JS の分岐条件は「頂の値が 1」。** 原文の `badRootOf` が
+その層で止まる条件と同じである。 -/
+theorem expYama_iff (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) (hn : 1 < S.n) :
+    expYama M (f + 1) ↔ topValue S.tower.base (S.n - 1) = 1 := by
+  show lastVal (rowAt (expDg M (f + 1)) 0) = 1 ↔ _
+  rw [lastVal_expDg S M hM f hn]
+
 end Yukito
