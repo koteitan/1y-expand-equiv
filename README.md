@@ -798,8 +798,31 @@ mtRep_extract      抽出後の行から作った山も設定に対応してい�
 上限は増えない（`topValue ≤ value`）ので、同じ `bnd` を引き継げる。
 
 **これで抽出を任意回繰り返せる。** 入力列から `mtRep_calcMountain` で始め、
-`mtRep_extract` を繰り返し適用すればよい。`getBadRoot` と `expand` の再帰が
-この上に乗る。
+`mtRep_extract` を繰り返し適用すればよい。
+
+## `expand` の分岐
+
+Phyrion の `expandValues` は最後の列の bad root で分岐する。
+
+```
+match findBadRoot s hs (s.length − 1) with
+| none   => s.take (s.length − 1)
+| some z => reconstructedValues … (x + N*(x − z.column))
+```
+
+JS の `expand` は「行 0 の最後のセルが親を持たない」で分岐し、持たなければ最後の列を
+落とす。この 2 つの分岐条件が同じであることを示した（`last_parent_none_iff`）。
+
+`getBadRoot` も写した（`Yukito.lean`）。出力は `script.js` の `getBadRoot` と
+`#guard` で突き合わせてある（7 列）。読みでは
+
+```
+JS の getBadRoot(s) = (findBadRoot s hs (n−1)).column
+```
+
+で、残るのはこれを証明することである。JS の再帰（対角の最後の値が 1 になるまで
+抽出）は Phyrion の `layers` にあたり、停止条件は `badAt_height_and_top` が
+`topValue = 1` を与えることに対応する。
 
 ## 残っている課題
 

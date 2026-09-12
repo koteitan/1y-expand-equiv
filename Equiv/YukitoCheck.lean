@@ -91,4 +91,16 @@ namespace Yukito
    { val := 1, forced := false, par := none },
    { val := 2, forced := true, par := some 0 }]
 
+/-! ## `getBadRoot`
+
+期待値は `script.js` の `getBadRoot` を実行して得たもの。 -/
+
+#guard getBadRoot (calcMountain [1, 3, 3] 8) 8 8 = some 0
+#guard getBadRoot (calcMountain [1, 2, 4, 8] 8) 8 8 = some 2
+#guard getBadRoot (calcMountain [1, 3, 2, 5] 8) 8 8 = some 2
+#guard getBadRoot (calcMountain [1, 1, 2, 3, 3] 8) 8 8 = some 2
+#guard getBadRoot (calcMountain [1, 2, 4, 8, 11, 8] 12) 12 12 = some 2
+#guard getBadRoot (calcMountain [1, 3, 4, 3] 8) 8 8 = some 0
+#guard getBadRoot (calcMountain [1, 4, 5, 3] 8) 8 8 = some 0
+
 end Yukito

@@ -263,4 +263,40 @@ def parseDiag (l : List DiagItem) : Rowj :=
     { pos := i, val := x.val,
       par := if x.forced then clampPar i x.par else none, forced := x.forced }
 
+/-! ## `getBadRoot`
+
+JS は対角の最後の値が 1 になるまで抽出を繰り返し、そこで最後の列を含む最上段を探し、
+その 1 つ下の段での最後のセルの親の列を返す。 -/
+
+/-- 行の最後のセルの列。 -/
+def lastCol (row : Rowj) (r : Nat) : Nat :=
+  if h : 0 < row.size then (row[row.size - 1]'(by omega)).pos + r else 0
+
+/-- 行の最後のセルの値。 -/
+def lastVal (row : Rowj) : Nat :=
+  if h : 0 < row.size then (row[row.size - 1]'(by omega)).val else 0
+
+/-- 列 `n-1` を含む最上段。JS の `for (i=mountain.length-1;i>=0;i--)`。 -/
+def topRowOfLast (M : List Rowj) (n : Nat) : Nat → Option Nat
+  | 0 => none
+  | i+1 => if lastCol (rowAt M i) i = n - 1 then some i else topRowOfLast M n i
+
+/-- JS の `getBadRoot`。`mfuel` は山を作る燃料、`fuel` は抽出の繰り返しの上限。 -/
+def getBadRoot (M : List Rowj) (mfuel : Nat) : Nat → Option Nat
+  | 0 => none
+  | fuel + 1 =>
+    let d := calcMountainFrom (parseDiag (calcDiagonal M)) mfuel
+    if lastVal (rowAt d 0) = 1 then
+      match topRowOfLast M (rowAt M 0).size M.length with
+      | none => none
+      | some i =>
+        let prev := rowAt M (i - 1)
+        if hp : 0 < prev.size then
+          match (prev[prev.size - 1]'(by omega)).par with
+          | none => none
+          | some p =>
+            if hq : p < prev.size then some ((prev[p]'hq).pos + (i - 1)) else none
+        else none
+    else getBadRoot d mfuel fuel
+
 end Yukito

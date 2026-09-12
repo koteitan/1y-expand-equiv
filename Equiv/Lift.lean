@@ -176,6 +176,17 @@ theorem rowAt_mountainGo_zero (cur : Rowj) (f : Nat) : rowAt (mountainGo cur f) 
       · rfl
       · rfl
 
+theorem mountainGo_length_pos (cur : Rowj) (f : Nat) : 0 < (mountainGo cur f).length := by
+  cases f with
+  | zero => simp [mountainGo]
+  | succ f =>
+      simp only [mountainGo]
+      split <;> simp
+
+theorem calcMountainFrom_length_pos (base : Rowj) (fuel : Nat) :
+    0 < (calcMountainFrom base (fuel + 1)).length :=
+  mountainGo_length_pos _ fuel
+
 /-- 山の行 0 は入力列から作った行。 -/
 theorem rowAt_calcMountainFrom_zero (base : Rowj) (fuel : Nat) :
     rowAt (calcMountainFrom base (fuel + 1)) 0 = assignParents none base :=
