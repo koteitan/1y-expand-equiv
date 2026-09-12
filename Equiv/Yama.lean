@@ -1296,4 +1296,59 @@ theorem parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
     · rw [← hde]
       exact hp
 
+/-! ## `ShapeRep` の `parCol`（`yamaRs` の形） -/
+
+theorem parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
+    (hd : (rowAt (yamaRs M mfuel nd nrep) m)[u]? = some d) (p : Nat) (hp : d.par = some p) :
+    ∃ hp' : p < (rowAt (yamaRs M mfuel nd nrep) m).size,
+      (yamaContext S y hy hpar hh).parent m (d.pos + m)
+        = some (((rowAt (yamaRs M mfuel nd nrep) m)[p]'hp').pos + m) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hne : 0 < (rowAt (yamaRs M mfuel nd nrep) m).size := by
+    have := lt_size_of_getElem? hd
+    omega
+  have hrow : rowAt (yamaRs M mfuel nd nrep) m = rowAt (yamaRaw M mfuel nd nrep) m := by
+    have hm : m < (dropEmptyTop (yamaRaw M mfuel nd nrep)).length := by
+      rcases Nat.lt_or_ge m (dropEmptyTop (yamaRaw M mfuel nd nrep)).length with h1 | h1
+      · exact h1
+      · exfalso
+        have hz : rowAt (yamaRs M mfuel nd nrep) m = #[] := rowAt_of_ge _ m h1
+        rw [hz] at hne
+        simp at hne
+    exact rowAt_dropEmptyTop (yamaRaw M mfuel nd nrep).length (yamaRaw M mfuel nd nrep) m
+      (Nat.le_refl _) hm
+  rcases yamaRs_cell S M hM mfuel y hseam nd nrep m u d hd
+    with hold | ⟨i', t', hi', ht', hk', hde⟩
+  · have hext : RowExt (rowAt (expRes M) m) (rowAt (yamaRs M mfuel nd nrep) m) := by
+      rw [hrow]
+      exact rowExt_fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M) m
+    exact parCol_orig_yama S M hM hn y hy hpar hh hcut (yamaRs M mfuel nd nrep) m u d hold
+      hext p hp
+  · obtain ⟨hjx, hmh, hmM, hmj, hlivej⟩ :=
+      push_side S M hM mfuel hn hM2 hyama y hy hseam i' t' m ht' hk'
+    have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+    have hcol : d.pos + m = (y + t') + (expP M mfuel).len * (i' + 1) := by
+      rw [hde]
+      exact fujiCellAt_col_yama M mfuel nd (i' + 1) (y + t') m _ _ hyama hk'
+    have hpst : (fujiCellAt M (expP M mfuel) nd (i' + 1) (y + t')
+        (isRepAt (expP M mfuel) (y + t'))
+        (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+          (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m).par
+        = some p := by
+      rw [← hde]
+      exact hp
+    obtain ⟨hp'', hcolp⟩ := fujiCellAt_parCol_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam
+      nd _ (i' + 1) (y + t') m (by omega) (by omega) hjx hmM hmj hlivej p hpst
+    obtain ⟨hp', hpeq⟩ :=
+      (rowExt_state_to_yamaRs M mfuel nd nrep m i' t' hi' (by omega) hne).getElem p hp''
+    refine ⟨hp', ?_⟩
+    rw [hcol, hLp, hcolp, hpeq]
+
 end Yukito
