@@ -1380,6 +1380,26 @@ hasCol_pos             そこから添字と位置を取り出す
 fujiCell_par_isSome    lookupPos がその添字を見つけるので par は some
 ```
 
+### `ShapeRep` の組み立て（進行中）
+
+```
+parLt_yama / rowsMono_yama  parLt と mono（切り・積み足し・空段落としを通す）
+tall_yama                   高さ height_G c の段は空でないので残る
+rows_diff                   元の山の差分の関係
+yamaRaw / yamaRs            埋めの前・埋めに渡す疎な山に名前を付けた
+cutChild_cell_val           残るセルの値は元の山の値で、正
+colVal_orig_yama            元からある列の値は元の山の値のまま
+step_orig_yama              **step の「元からある列」側**
+cell_fujiSeams' / cell_fujiIters'
+                            積んだセルの正体（fujiCellAt そのもの）と
+                            積んだ時点の状態を返す強い版
+```
+
+`step` の「元からある列」側は、3 つの列の値がいずれも元の山の値のままなので
+元の山の差分の関係に帰着する。「コピーで作った列」側は積んだセルの値が 0 なので
+値の埋めから出る。後者には積んだセルの正体が要るので `cell_fujiIters'` を作った。
+返る状態はちょうど `hasCol_state` が被覆を主張している状態である。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
