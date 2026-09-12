@@ -952,6 +952,26 @@ parentPosition = 元の親の position
 がこれにあたる。`(元の親の列 >= badRootSeam)` の掛け算が `parentCopy` の場合分けで
 ある。
 
+### Mt.Fuji シェルのセル 1 個ぶん
+
+3 つの枝（Bb / Br / Be）は `sy`（元の段）と `sx`（元の列の添字）の選び方だけが違い、
+積むセルの形は共通である。共通部分を写した。
+
+```
+FujiParams   badRootSeam / badRootHeight / cutHeight / afterCutLength / yamakazi
+len          コピー 1 つぶんの長さ（afterCutLength − badRootSeam）
+sourceIdx    元のセルの添字（isReplacingCut のときは行の最後）
+parentPos    親の position。JS で負になる場合は none（どのセルにも一致しない）
+fujiCell     積むセル 1 個
+```
+
+`parentPos` で自然数の切り捨て引き算に注意が要る。JS の `parentPosition` は負に
+なりうるが、そのときはどのセルにも一致しないので親なしになる。切り捨てて 0 に
+すると位置 0 のセルに誤って一致してしまうので、`none` で表す。
+
+値は、親が無いときだけ確定し、あるときは後で埋める。JS は後者を `NaN` にするが、
+ここでは値 0 を「未確定」の印にした。実際の値はつねに正なので混ざらない。
+
 残るのは 2（層の再帰）と 3（森のコピー）で、3 が全体の大半である。
 
 ## 残っている課題

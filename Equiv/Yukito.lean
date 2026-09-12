@@ -353,4 +353,71 @@ def isAscending (M : List Rowj) (bh seam j fuel : Nat) : Bool :=
       if ((rowAt M bh)[m]'h).pos + bh = j then ascendTo M bh seam fuel m else false
     else false
 
+/-! ## Mt.Fuji シェルのセル 1 個ぶん
+
+3 つの枝（Bb / Br / Be）は `sy`（元の段）と `sx`（元の列の添字）の選び方だけが違い、
+積むセルの形は共通である。
+
+```js
+var sourceParentIndex=mountain[sy][sx].parentIndex;
+var parentShifts=i-isReplacingCut;
+var parentPosition=mountain[sy][sourceParentIndex]
+  ? mountain[sy][sourceParentIndex].position
+      + parentShifts*(afterCutLength-badRootSeam)*(親の列>=badRootSeam) - (k-sy)
+  : -1;
+var parentIndex=0;
+while (result[k][parentIndex]&&result[k][parentIndex].position<parentPosition) parentIndex++;
+if (!result[k][parentIndex]||result[k][parentIndex].position!=parentPosition) parentIndex=-1;
+result[k].push({ value: …, position: j+(afterCutLength-badRootSeam)*i-k,
+                 parentIndex: parentIndex, forcedParent: mountain[sy][sx].forcedParent });
+```
+-/
+
+/-- 展開で使う定数。 -/
+structure FujiParams where
+  /-- bad root の列。 -/
+  badRootSeam : Nat
+  /-- bad root の段。 -/
+  badRootHeight : Nat
+  /-- 切る段。 -/
+  cutHeight : Nat
+  /-- 切ったあとの列数。 -/
+  afterCutLength : Nat
+  /-- 山崎噴火の双対で分かれる枝。 -/
+  yamakazi : Bool
+
+/-- コピー 1 つぶんの長さ。 -/
+def FujiParams.len (P : FujiParams) : Nat := P.afterCutLength - P.badRootSeam
+
+/-- 元のセルの添字。`useLast` のときは行の最後のセル。 -/
+def sourceIdx (M : List Rowj) (sy j : Nat) (useLast : Bool) : Nat :=
+  if useLast then (rowAt M sy).size - 1 else firstAtLeast (rowAt M sy) (j - sy)
+
+/-- 親の `position`。JS で負になる場合は `none`（どのセルにも一致しない）。 -/
+def parentPos (M : List Rowj) (P : FujiParams) (sy sx k shifts : Nat) : Option Nat :=
+  let row := rowAt M sy
+  if hx : sx < row.size then
+    match (row[sx]'hx).par with
+    | none => none
+    | some sp =>
+      if hp : sp < row.size then
+        let ppos := (row[sp]'hp).pos
+        let shift := if P.badRootSeam ≤ ppos + sy then shifts * P.len else 0
+        if k - sy ≤ ppos + shift then some (ppos + shift - (k - sy)) else none
+      else none
+  else none
+
+/-- 積むセル 1 個。`value` は親が無いときだけ確定し、あるときは後で埋める。
+JS は後者を `NaN` にするが、ここでは値 0 を「未確定」の印にする。実際の値は
+つねに正なので混ざらない。 -/
+def fujiCell (M : List Rowj) (P : FujiParams) (cur : Rowj) (sy sx k i j shifts : Nat)
+    (topVal : Nat) : Cell :=
+  let pp := parentPos M P sy sx k shifts
+  let pi := match pp with
+    | none => none
+    | some q => lookupPos cur q
+  let fp := if hx : sx < (rowAt M sy).size then ((rowAt M sy)[sx]'hx).forced else false
+  { pos := j + P.len * i - k, val := if pi.isNone then topVal else 0,
+    par := pi, forced := fp }
+
 end Yukito
