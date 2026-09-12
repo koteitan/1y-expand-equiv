@@ -24,24 +24,6 @@ namespace Yukito
 
 open OneY OneY.Numeric
 
-/-- 入力列の外の列は値 1 である。`ofSequence` がそう定めている。 -/
-theorem ofSequence_value_ge (s : List Nat) (c : Nat) (h : s.length ≤ c) :
-    (ofSequence s).value c = 1 := by
-  show s[c]?.getD 1 = 1
-  rw [List.getElem?_eq_none h]
-  rfl
-
-/-- 入力列の外の列は行 1 以降では死んでいる。値 1 の列は親を持てないからである。 -/
-theorem rows_value_zero_of_ge (s : List Nat) (r c : Nat) (hr : 0 < r)
-    (h : s.length ≤ c) : (rows (ofSequence s) r).value c = 0 := by
-  have h1 : (rows (ofSequence s) 1).value c = 0 := by
-    show (ofSequence s).difference c = 0
-    have hn := Row.parent_none_of_one (ofSequence s) (ofSequence_value_ge s c h)
-    simp only [Row.difference, hn]
-  have h2 : (rows (ofSequence s) r).value c ≤ (rows (ofSequence s) 1).value c :=
-    rows_value_antitone (ofSequence s) hr c
-  omega
-
 /-! ## 表現述語 -/
 
 /-- 配列の要素はリストの要素。 -/

@@ -1,5 +1,6 @@
 import Equiv.Lift
 import Equiv.Extract
+import Equiv.TopFrame
 
 /-!
 # 抽出段の疎配列との橋渡し
@@ -512,10 +513,6 @@ JS は対角を文字列にして `calcMountain` に渡す。`parseSequenceEleme
 `parseDiag` で、`"v"` 付きは `forced` を立てて親を固定し、素の数は行 0 の規則に
 任せる。素の数になるのは擬親森と線形森の `restrictedParent` が一致するときだけ
 なので、どちらの枝でも親は擬親森の `restrictedParent` になる。 -/
-
-/-- 抽出後の行（Phyrion 側）。 -/
-def extractRow (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Row :=
-  rawExtract (ofSequence s) (ofSequence_positive s hs)
 
 theorem parseDiag_size (l : List DiagItem) : (parseDiag l).size = l.length := by
   simp only [parseDiag, Array.size_mapIdx, List.size_toArray]

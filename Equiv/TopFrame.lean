@@ -1,4 +1,5 @@
 import Equiv.Mountain
+import OneY.PseudoSelection
 
 /-!
 # 抽出後の行の下にある frame
@@ -200,5 +201,50 @@ theorem topForest_sibSucc (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (root e : Nat
       rw [heqa]
       exact Nat.le_refl _
   omega
+
+/-! ## 抽出後の行の塔
+
+底の 2 つの義務が揃ったので、抽出後の行を底とする塔を組み立てられる。これで
+山の段の定理がそのまま抽出後の行にも効く。 -/
+
+/-- 抽出後の行（Phyrion 側）。 -/
+def extractRow (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Row :=
+  rawExtract (ofSequence s) (ofSequence_positive s hs)
+
+/-- 抽出後の行を底とする塔。底の frame は `topForest`。 -/
+def extractTower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Tower where
+  frame0 := (mountainOf s hs).topForest
+  base := extractRow s hs
+  hbase := fun c => rawExtract_parent_eq_topForest (ofSequence s)
+    (ofSequence_positive s hs) c
+  hpos := fun c => topValue_pos (ofSequence s) (ofSequence_positive s hs c)
+  A0 := topForest_leftmost_child s hs
+  B0 := topForest_sibSucc s hs
+
+/-- **抽出後の行についても山の段が閉じる。** -/
+theorem firstLiveNotSmaller_extract (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
+    FirstLiveNotSmaller (extractRow s hs) :=
+  firstLiveNotSmaller_tower (extractTower s hs)
+
+/-- 抽出後の行でも最左の子は右隣。 -/
+theorem leftmost_child_extract (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k root e : Nat)
+    (h : (rows (extractRow s hs) k).forest.parent e = some root) :
+    (rows (extractRow s hs) k).forest.parent (root + 1) = some root :=
+  leftmost_child_rows (extractTower s hs) k root e h
+
+/-- 入力列の外の列は抽出後も値 1。 -/
+theorem extractRow_tail_one (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat)
+    (hc : s.length ≤ c) : (extractRow s hs).value c = 1 := by
+  show topValue (ofSequence s) c = 1
+  have hz : height (ofSequence s) c = 0 := by
+    rcases Nat.eq_zero_or_pos (height (ofSequence s) c) with h | h
+    · exact h
+    · exfalso
+      have hlive := height_live (ofSequence s) (ofSequence_positive s hs c)
+      rw [rows_value_zero_of_ge s (height (ofSequence s) c) c h hc] at hlive
+      omega
+  show (rows (ofSequence s) (height (ofSequence s) c)).value c = 1
+  rw [hz]
+  exact ofSequence_value_ge s c hc
 
 end Yukito

@@ -738,8 +738,23 @@ linearTower s hs   入力列から作る塔。底は線形森で、A0 と B0 は
 （`leftmost_child_seq`、`sibSucc_seq`、`root_step_le_seq`、
 `firstLiveNotSmaller_ofSequence`）。
 
-残るのは、抽出後の行の塔を実際に組み立てて（`Tower` の 6 つの成分を埋めて）、
-橋渡しの側（`Rep` / `Lift` / `Search` / `DiagBridge`）も一般の底へ広げることである。
+抽出後の行の塔も組み立てた（`extractTower`）。
+
+```
+frame0  (mountainOf s hs).topForest
+base    extractRow s hs = rawExtract
+hbase   rawExtract_parent_eq_topForest（Phyrion 側の定理）
+hpos    topValue_pos
+A0      topForest_leftmost_child
+B0      topForest_sibSucc
+```
+
+これで**抽出後の行についても山の段が閉じた**（`firstLiveNotSmaller_extract`）。
+
+残るのは、橋渡しの側（`Rep` / `Lift` / `Search` / `DiagBridge`）も一般の底へ
+広げることである。`ofSequence s` を塔の `base`、`s.length` を列の上限 `n` に
+置き換える作業になる。上限については `extractRow_tail_one`（入力列の外の列は
+抽出後も値 1）が要る条件を与える。
 
 ## 残っている課題
 
