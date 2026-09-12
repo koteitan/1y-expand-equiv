@@ -1903,4 +1903,44 @@ theorem hasCol_cutChild (S : Setting) (M : List Rowj) (hM : MtRep S M)
     refine ⟨t, x1, ?_, hcx1⟩
     rw [hrow, Array.getElem?_eq_getElem ht, het]
 
+/-! ## 列の分解と辞書式順
+
+コピーの列 `j + L*i`（`y ≤ j < x`、`L = x − y`）は `(i, j)` の辞書式順で
+真に増える。逆に `x` 以上の列はこの形に一意に分解できる。 -/
+
+theorem col_decomp (y x L n c : Nat) (hL : L = x - y) (hLp : 0 < L) (hyx : y < x)
+    (hc1 : x ≤ c) (hc2 : c < x + L * n) :
+    ∃ i j, 0 < i ∧ i ≤ n ∧ y ≤ j ∧ j < x ∧ c = j + L * i := by
+  obtain ⟨e, hev⟩ : ∃ e, c - x = e := ⟨_, rfl⟩
+  have helt : e < L * n := by omega
+  obtain ⟨q, hqv⟩ : ∃ q, e / L = q := ⟨_, rfl⟩
+  obtain ⟨r, hrv⟩ : ∃ r, e % L = r := ⟨_, rfl⟩
+  have hdm : L * q + r = e := by
+    rw [← hqv, ← hrv]
+    exact Nat.div_add_mod e L
+  have hmod : r < L := by
+    rw [← hrv]
+    exact Nat.mod_lt e hLp
+  have hq : q < n := by
+    rcases Nat.lt_or_ge q n with hx | hx
+    · exact hx
+    · exfalso
+      have h2 : L * n ≤ L * q := Nat.mul_le_mul_left L hx
+      omega
+  have hmul : L * (q + 1) = L * q + L := Nat.mul_succ _ _
+  exact ⟨q + 1, y + r, by omega, by omega, by omega, by omega, by omega⟩
+
+theorem col_lt_lex (y x L : Nat) (hL : L = x - y) (hyx : y < x)
+    (j1 i1 j2 i2 : Nat) (h1 : y ≤ j1) (h1' : j1 < x) (h2 : y ≤ j2) (h2' : j2 < x)
+    (hlt : j1 + L * i1 < j2 + L * i2) : i1 < i2 ∨ (i1 = i2 ∧ j1 < j2) := by
+  rcases Nat.lt_or_ge i1 i2 with h | h
+  · exact Or.inl h
+  · rcases Nat.eq_or_lt_of_le h with he | hgt
+    · subst he
+      exact Or.inr ⟨rfl, by omega⟩
+    · exfalso
+      have hmul : L * (i2 + 1) ≤ L * i1 := Nat.mul_le_mul_left L hgt
+      have hexp : L * (i2 + 1) = L * i2 + L := Nat.mul_succ _ _
+      omega
+
 end Yukito
