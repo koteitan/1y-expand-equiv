@@ -1734,4 +1734,14 @@ theorem isAscending_iff_root (S : Setting) (M : List Rowj) (hM : MtRep S M)
     · exact Or.inr ((ancestor_conv (rows S.tower.base bh).forest seam j).mpr h)
     · exact Or.inl h.symm
 
+/-- 列 `y` はその高さの段では根（頂には親が無い）。 -/
+theorem parent_none_at_top (base : Row) (hpos : ∀ c, 0 < base.value c) (y : Nat) :
+    (rows base (height base y)).forest.parent y = none := by
+  cases hp : (rows base (height base y)).forest.parent y with
+  | none => rfl
+  | some p =>
+      exfalso
+      have := (parent_exists_iff_lt_height base (hpos y) (height base y)).mp ⟨p, hp⟩
+      omega
+
 end Yukito
