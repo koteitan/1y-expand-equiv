@@ -1070,6 +1070,18 @@ def yamaRaw (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List
 def yamaRs (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (nrep : Nat) : List Rowj :=
   dropEmptyTop (yamaRaw M mfuel nd nrep)
 
+/-- `tall_yama` を `yamaRs` の形で。 -/
+theorem tall_yama' (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep c : Nat)
+    (hc : c < (S.n - 1) + (expP M mfuel).len * nrep) :
+    (yamaContext S y hy hpar hh).height c < (yamaRs M mfuel nd nrep).length :=
+  tall_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c hc
+
 /-- **元からある列の値は元の山の値のまま。** JS の `fillRow` は値が 0 でない
 セルを触らないからである。 -/
 theorem colVal_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
@@ -1350,5 +1362,61 @@ theorem parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
       (rowExt_state_to_yamaRs M mfuel nd nrep m i' t' hi' (by omega) hne).getElem p hp''
     refine ⟨hp', ?_⟩
     rw [hcol, hLp, hcolp, hpeq]
+
+/-! ## `ShapeRep` の `step`（コピーで作った列） -/
+
+theorem step_push_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep r c p : Nat)
+    (hc : c < (S.n - 1) + (expP M mfuel).len * nrep) (hcx : S.n - 1 ≤ c)
+    (hp : (yamaContext S y hy hpar hh).parent r c = some p) :
+    colVal (yamaRs M mfuel nd nrep) r c
+      = colVal (yamaRs M mfuel nd nrep) r p
+        + colVal (yamaRs M mfuel nd nrep) (r + 1) c := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcut : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hrh : r < (yamaContext S y hy hpar hh).height c :=
+    ((yamaContext S y hy hpar hh).toRowMountain).parent_source hp
+  have hhc : (yamaContext S y hy hpar hh).height c ≤ c :=
+    rowMountain_height_le ((yamaContext S y hy hpar hh).toRowMountain) c
+  have htall := tall_yama' S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep c hc
+  have hcov : HasCol (yamaRs M mfuel nd nrep) r c :=
+    hasCol_dropEmptyTop _ r c
+      (cover_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c hc (by omega))
+  obtain ⟨i, hi, hposi⟩ := hasCol_pos _ r c hcov
+  have hd : (rowAt (yamaRs M mfuel nd nrep) r)[i]?
+      = some ((rowAt (yamaRs M mfuel nd nrep) r)[i]'hi) := Array.getElem?_eq_getElem hi
+  -- 親を持つ
+  have hpn : ((rowAt (yamaRs M mfuel nd nrep) r)[i]'hi).par ≠ none := by
+    intro hnone
+    have := parNone_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r i _ hd hnone
+    rw [hposi, hp] at this
+    exact absurd this (by simp)
+  cases hq : ((rowAt (yamaRs M mfuel nd nrep) r)[i]'hi).par with
+  | none => exact absurd hq hpn
+  | some q =>
+      obtain ⟨hq', hcolq⟩ := parCol_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep
+        r i _ hd q hq
+      rw [hposi, hp] at hcolq
+      have hpq : ((rowAt (yamaRs M mfuel nd nrep) r)[q]'hq').pos + r = p :=
+        (Option.some.inj hcolq).symm
+      -- 値は 0
+      have hval : ((rowAt (yamaRs M mfuel nd nrep) r)[i]'hi).val = 0 := by
+        rcases yamaRs_cell S M hM mfuel y hseam nd nrep r i _ hd
+          with hold | ⟨i', t', _, _, _, hde⟩
+        · exfalso
+          obtain ⟨_, hbound⟩ := cutChild_cell_live S M hM hn (expCutH M) hcut r i _ hold
+          omega
+        · rw [hde]
+          exact fujiCellAt_val_of_par_some M (expP M mfuel) nd (i' + 1) (y + t')
+            (isRepAt (expP M mfuel) (y + t')) _ r q (by rw [← hde]; exact hq)
+      exact colVal_step_col (yamaRs M mfuel nd nrep)
+        (parLt_yama S M hM mfuel nd nrep).dep r (by omega) i hi
+        (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hposi (by omega) hval
+        q hq hq' p hpq
 
 end Yukito
