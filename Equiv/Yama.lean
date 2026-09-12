@@ -1548,4 +1548,41 @@ theorem expandJS_out_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel 
   exact expandOut_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam
     (expNd nrep mfuel efuel M) hnd hndpos nrep
 
+/-! ## 原文の `badAtTerminalContext` との同定 -/
+
+theorem iterSet_n (s : List Nat) (hs : ∀ v ∈ s, 0 < v) (k : Nat) :
+    (iterSet (linearSetting s hs) k).n = s.length := by
+  induction k with
+  | zero => rfl
+  | succ k ih => exact ih
+
+/-- **こちらで組んだ `TerminalCopy.Context` は原文の `badAtTerminalContext`。** -/
+theorem yamaContext_eq (s : List Nat) (hs : ZeroY.Legal s) (K d x y : Nat)
+    (hbad : BadAt (rootedSequence s hs) K d x y)
+    (hx : s.length - 1 = x)
+    (hy : y < (iterSet (linearSetting s hs.1) K).n - 1)
+    (hpar : ((mountainOf' (iterSet (linearSetting s hs.1) K)).row
+        (height (iterSet (linearSetting s hs.1) K).tower.base
+          ((iterSet (linearSetting s hs.1) K).n - 1) - 1)).parent
+        ((iterSet (linearSetting s hs.1) K).n - 1) = some y)
+    (hh : 0 < height (iterSet (linearSetting s hs.1) K).tower.base
+      ((iterSet (linearSetting s hs.1) K).n - 1)) :
+    yamaContext (iterSet (linearSetting s hs.1) K) y hy hpar hh
+      = badAtTerminalContext (rootedSequence s hs) hbad := by
+  have hb : (iterSet (linearSetting s hs.1) K).tower.base
+      = (layers (rootedSequence s hs) K).row := iterSet_base s hs K
+  have hn : (iterSet (linearSetting s hs.1) K).n = s.length := iterSet_n s hs.1 K
+  obtain ⟨hh1, _⟩ := badAt_height_and_top hbad
+  have hlev : height (iterSet (linearSetting s hs.1) K).tower.base
+      ((iterSet (linearSetting s hs.1) K).n - 1) - 1 = d := by
+    rw [hb, hn, hx, hh1]
+    omega
+  unfold yamaContext badAtTerminalContext
+  congr 1
+  · unfold mountainOf'
+    congr 1
+  all_goals first
+    | omega
+    | (congr 1 <;> omega)
+
 end Yukito
