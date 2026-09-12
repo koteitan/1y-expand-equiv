@@ -28,6 +28,8 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | ファイル | 内容 |
 |---|---|
 | `Equiv/Yukito.lean` | `script.js` の `calcMountain` を Lean へ書き起こしたもの。疎配列・添字演算・`break` の位置まで写す |
+| `Equiv/YukitoCheck.lean` | 書き起こしが `script.js` の出力と一致することの検査 |
+| `Equiv/Sparse.lean` | 疎配列の走査（`firstAtLeast`）の性質 |
 | `Equiv/Bridge.lean` | 疎表現（生きたセルだけを並べる）と密表現（値 0 が不在）の読み替え |
 | `Equiv/Row0.lean` | **行 0 の親写像が一致する**（`restrictedParent_linear`） |
 | `Equiv/Row0Spec.lean` | 行 0 の親の初等的な特徴づけ |
@@ -394,6 +396,25 @@ JS は対角を文字列にしてから `calcMountain` に渡す。素の数と�
 であり丸めは効かない。親が無い場合は `"値v-1"` と書かれ、読み直しでも `-1` に戻る。
 
 抽出段に残るのは、疎配列と密表現の橋渡し（`Bridge.lean` の続き）である。
+
+## 疎配列との橋渡し
+
+JS は行を「生きたセルだけを `position` 昇順に並べた配列」で持つ。列番号で引くには
+`while (row[j].position < target) j++` で走査する。この走査の性質を証明した
+（`Sparse.lean`）。
+
+```
+firstAtLeast_before     それより手前のセルは position が target 未満
+firstAtLeast_at         止まった所のセルは position が target 以上
+firstAtLeast_eq_of_mem  position がちょうど target のセルがあれば、そこで止まる
+firstAtLeast_gt_of_not_mem  無ければ、指すセルは target より右にある
+```
+
+3 つ目が「疎配列を列番号で引く」の正しさである。4 つ目が山の段で唯一の食い違いに
+なる箇所で、`firstLiveNotSmaller_ofSequence` がそこを埋める。
+
+書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
+突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。
 
 ## 残っている課題
 

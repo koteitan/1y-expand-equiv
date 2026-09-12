@@ -32,14 +32,15 @@ abbrev Rowj := Array Cell
 /-- JS: `while (lastLayer[j].position < target) j++` で得る最初の添字。
 配列を走り切ったら `row.size` を返す（JS では `lastLayer[j]` が
 `undefined` になる位置）。 -/
-def firstAtLeast (row : Rowj) (target : Nat) : Nat :=
-  let rec go (j : Nat) : Nat :=
-    if h : j < row.size then
-      if row[j].pos < target then go (j+1) else j
-    else j
-  termination_by row.size - j
-  decreasing_by simp_wf; omega
-  go 0
+def scanFrom (row : Rowj) (target : Nat) (j : Nat) : Nat :=
+  if h : j < row.size then
+    if row[j].pos < target then scanFrom row target (j+1) else j
+  else j
+termination_by row.size - j
+decreasing_by simp_wf; omega
+
+/-- `j = 0` から始めた形。JS の `var j=0; while (…) j++` にあたる。 -/
+def firstAtLeast (row : Rowj) (target : Nat) : Nat := scanFrom row target 0
 
 /-- JS の
 `if (j<0 || j<lastLayer.length-1 && lastLayer[j].position+1!=lastLayer[j+1].position) break;`
