@@ -1112,4 +1112,27 @@ theorem colVal_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel :
   · rw [colVal, colVal_top_last (yamaRs M mfuel nd nrep) r (by omega) t ht
       (rowsMono_yama S M hM mfuel hn hM2 hyama y hy hseam nd nrep r) c hpos, hval]
 
+/-- **`ShapeRep` の `step`（元からある列）。** -/
+theorem step_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep r c p : Nat) (hc : c < S.n - 1)
+    (hp : (yamaContext S y hy hpar hh).parent r c = some p) :
+    colVal (yamaRs M mfuel nd nrep) r c
+      = colVal (yamaRs M mfuel nd nrep) r p
+        + colVal (yamaRs M mfuel nd nrep) (r + 1) c := by
+  rw [yamaContext_parent_orig S y hy hpar hh r c hc] at hp
+  have hpc : p < c := (rows S.tower.base r).forest.parent_left hp
+  have hfp : ((mountainOf' S).row r).parent c = some p := hp
+  have hrc : r < height S.tower.base c := (mountainOf' S).parent_source hfp
+  have hrp : r ≤ height S.tower.base p := (mountainOf' S).parent_endpoint hfp
+  rw [colVal_orig_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c hc (by omega),
+    colVal_orig_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r p (by omega) hrp,
+    colVal_orig_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep (r + 1) c hc
+      (by omega)]
+  exact rows_diff S.tower.base r c p hp
+
 end Yukito
