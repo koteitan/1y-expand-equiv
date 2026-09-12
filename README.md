@@ -1313,6 +1313,28 @@ fujiCellAt_parCol_yama:
 `i−1` を掛けるが、根 `y` の親は `y` より左なので `parentCopy` は恒等になる
 （`parentCopy_of_parent_y`）。`j ≠ y` なら元の列は `j` で桁上げ `i`。
 
+### 残っているところ
+
+`ShapeRep` の条件のうち `parNone`（JS が親を見つけないなら原文も親なし）は、
+対偶「原文に親があれば JS も見つける」を示すのが本筋である。そこで要るのが
+
+- 親の列 `pc` が、積む時点の段 `k` に**既に載っている**こと
+
+である。積む列は `(i, j)` の辞書式順で真に増えるので、`pc < j + L*i` なら
+`pc` はより早い `(i', j')` で積まれているか、元からある列である。そのための
+道具は揃えた。
+
+```
+hasCol_cutChild  子を切ったあとも、列 n−1 より左の生きた列は残る
+col_decomp       x ≤ c < x + L*n なら c = j + L*i（0 < i ≤ n、y ≤ j < x）
+col_lt_lex       j1 + L*i1 < j2 + L*i2 なら (i1,j1) は辞書式で小さい
+hasCol_fujiSeams / hasCol_fujiIters  途中の状態での被覆
+rowExt_fujiSeams / rowExt_fujiIters  段は後ろに伸びるだけ
+```
+
+値の側は `fujiCell` の定義から直ちに出る。親を持たないセルの値は `topVal
+= nd（その列）`、親を持つセルの値は 0 である。
+
 空段落としを通す運搬補題も揃えた。
 
 ```
