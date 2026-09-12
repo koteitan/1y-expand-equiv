@@ -1185,4 +1185,44 @@ theorem expNd_not_yama (nrep mfuel efuel : Nat) (M : List Rowj) (h : ¬ expYama 
   unfold expNd
   rw [if_neg h]
 
+/-! ## 山崎噴火の枝での枝の選び方
+
+`yamakazi` かつ落差 `d = 0` のとき、`fujiSource` は極めて単純になる。
+元の段はつねに行き先の段そのもので、「行の最後から取る」のは
+置き換えの継ぎ目かつ `badRootHeight` より下の段のときだけである。 -/
+
+theorem fujiSource_yama (P : FujiParams) (hy : P.yamakazi = true)
+    (hd : P.cutHeight = P.badRootHeight) (i k : Nat) (isRep : Bool) :
+    fujiSource P i k isRep = (k, isRep && decide (k < P.badRootHeight)) := by
+  have hdz : P.cutHeight - P.badRootHeight = 0 := by omega
+  unfold fujiSource
+  dsimp only
+  rw [hdz, hy]
+  simp only [Nat.zero_mul, Nat.add_zero, Bool.not_true, Bool.false_and]
+  rcases Nat.lt_or_ge k P.badRootHeight with h1 | h1
+  · rw [if_pos h1]
+    simp [h1]
+  · rw [if_neg (Nat.not_lt.mpr h1)]
+    rcases Nat.eq_or_lt_of_le h1 with h2 | h2
+    · rw [if_pos (by omega)]
+      simp [show ¬ (k < P.badRootHeight) by omega, h2]
+    · rw [if_neg (by omega), if_neg (by simp [show ¬ (k ≤ P.badRootHeight) by omega])]
+      simp [show ¬ (k < P.badRootHeight) by omega]
+
+/-- 落差が 0 なら、積む段の数は継ぎ目の高さそのもの（上りの判定によらない）。 -/
+theorem kmaxAt_yama (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hd : P.cutHeight = P.badRootHeight) :
+    kmaxAt M P i j ach af = seamHeightOf M j ach := by
+  have hdz : P.cutHeight - P.badRootHeight = 0 := by omega
+  unfold kmaxAt
+  dsimp only
+  rw [hdz, Nat.zero_mul, Nat.add_zero]
+  split <;> rfl
+
+/-- 山崎噴火の枝では `d ≤ len` が自明に成り立つ。 -/
+theorem kmaxAt_le_yama (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
+    (hd : P.cutHeight = P.badRootHeight) (hs : seamHeightOf M j ach ≤ j + 1) :
+    kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
+  kmaxAt_le M P i j ach af hs (by omega)
+
 end Yukito
