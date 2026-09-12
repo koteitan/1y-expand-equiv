@@ -1608,6 +1608,19 @@ height_lt_floor_of_not_inCone  したがって InCone でない列は段 floor �
 の `NoCross.lean` には線形森の場合と帰納段の主要な場合があるが、一般の段について
 まとめた形にはなっていない。
 
+さらにこれを**根の単調性**へ還元した。
+
+```
+RootMono S :=
+  ∀ r c1 c2, c1 ≤ c2 → 段 r で両方生きている → rootAt r c1 ≤ rootAt r c2
+rootInterval_of_rootMono : RootMono S → RootInterval S
+```
+
+還元は `rootAt r y = y ≤ rootAt r j ≤ rootAt r x = y` による（`rootAt r y = y` は
+`height y = r` と `top_root` から、`height y = r` は `root_height` から）。
+単調性のほうが素直な主張で、森の非交差性そのものである。**この 1 本が
+`k < K` の枝に残る唯一の義務である。**
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
