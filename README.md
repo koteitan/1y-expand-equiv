@@ -178,7 +178,17 @@ tower_case_meet      合流点の直上 z で q2 側を押さえて連鎖する
 通る（`sib_mono_of_resolves`）。層 0 では兄弟が存在しないので、`Resolves` は
 必ず場合 1 を与えて止まる。
 
-したがって山の段について残るのは `Resolves` の証明だけである。すなわち各層で
+`Resolves` は無条件には成り立たない。降下で保たれる不変量を条件に付ける。
+
+```
+CommonBelow k q1 q2 :  q1 と q2 は層 k の frame で共通の祖先を q1 より左に持つ
+```
+
+層 `k+1` で兄弟なら、その親 `t` は層 `k` の frame で両者の祖先で `t < q1` なので
+`CommonBelow` が従う（`commonBelow_of_siblings`）。したがって降下で保たれる。
+
+山の段について残るのは、`CommonBelow` のもとで `Resolves` が成り立つことである。
+すなわち各層で
 
 * `q1` が `q2` の祖先であって、`q2` の親より右にある
 * または `q1` と `q2` が兄弟である

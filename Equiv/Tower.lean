@@ -110,10 +110,29 @@ theorem tower_case_meet (s : List Nat) {k t z q1 q2 : Nat}
 
 /-! ## 帰納の組み立て
 
-層 `k` で「場合 1 が成り立つ」か「場合 2 が成り立つ」かのどちらかであることを
-`Resolves` として切り出す。これがあれば層に関する帰納で結論まで通る。
+前の版では `Resolves` をすべての `q1 < q2` に課していたが、その仮定は一般に偽で
+定理が空虚になっていた。降下で実際に保たれるのは次の不変量である。
 
-層 0 では兄弟が存在しないので、`Resolves` は必ず場合 1 を与える。 -/
+```
+CommonBelow k q1 q2 :  q1 と q2 は層 k の frame で共通の祖先を q1 より左に持つ
+```
+
+層 `k+1` で兄弟なら、その親 `t` は層 `k` の frame で両者の祖先であり `t < q1` を
+満たすので、`CommonBelow k q1 q2` が従う。したがって降下で保たれる。 -/
+
+/-- `q1` と `q2` が層 `k` の frame で共通の祖先を `q1` より左に持つ。 -/
+def CommonBelow (s : List Nat) (k q1 q2 : Nat) : Prop :=
+  ∃ t, t < q1 ∧ ZeroY.Forest.Ancestor (frameAt s k).parent q1 t ∧
+       ZeroY.Forest.Ancestor (frameAt s k).parent q2 t
+
+/-- 層 `k+1` で兄弟なら、層 `k` で共通の祖先を持つ。 -/
+theorem commonBelow_of_siblings (s : List Nat) {k t q1 q2 : Nat}
+    (h1 : (frameAt s (k+1)).parent q1 = some t)
+    (h2 : (frameAt s (k+1)).parent q2 = some t) : CommonBelow s k q1 q2 := by
+  rw [frameAt_step] at h1 h2
+  obtain ⟨ha1, _, _, _⟩ := (restrictedParent_some_iff _ _ q1 t).mp h1
+  obtain ⟨ha2, _, _, _⟩ := (restrictedParent_some_iff _ _ q2 t).mp h2
+  exact ⟨t, ZeroY.Forest.ancestor_lt (frameAt s k).parent_left ha1, ha1, ha2⟩
 
 /-- 層 `k` で 3 択が場合 1 か場合 2 に落ちること。 -/
 def Resolves (s : List Nat) (k q1 q2 : Nat) : Prop :=
@@ -123,20 +142,23 @@ def Resolves (s : List Nat) (k q1 q2 : Nat) : Prop :=
 
 /-- 組み立て。`Resolves` があれば、生きている左の列について単調性が出る。 -/
 theorem sib_mono_of_resolves (s : List Nat)
-    (hres : ∀ k q1 q2, q1 < q2 → Resolves s k q1 q2) :
-    ∀ k q1 q2, q1 < q2 → (∀ m, m ≤ k → 0 < towerVal s m q1) →
+    (hres : ∀ k q1 q2, q1 < q2 → CommonBelow s k q1 q2 → Resolves s k q1 q2) :
+    ∀ k q1 q2, q1 < q2 → CommonBelow s k q1 q2 →
+      (∀ m, m ≤ k → 0 < towerVal s m q1) →
       towerVal s k q2 ≤ towerVal s k q1 := by
   intro k
   induction k with
   | zero =>
-      intro q1 q2 hlt hpos
-      rcases hres 0 q1 q2 hlt with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
+      intro q1 q2 hlt hcb hpos
+      rcases hres 0 q1 q2 hlt hcb with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
       · exact tower_case_ancestor s h2 hanc ht (hpos 0 (Nat.le_refl _))
       · exact absurd (no_siblings_zero s h1 h2) (by omega)
   | succ k ih =>
-      intro q1 q2 hlt hpos
-      rcases hres (k+1) q1 q2 hlt with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
+      intro q1 q2 hlt hcb hpos
+      rcases hres (k+1) q1 q2 hlt hcb with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
       · exact tower_case_ancestor s h2 hanc ht (hpos (k+1) (Nat.le_refl _))
-      · exact tower_case_descent s h1 h2 (ih q1 q2 hlt (fun m hm => hpos m (by omega)))
+      · exact tower_case_descent s h1 h2
+          (ih q1 q2 hlt (commonBelow_of_siblings s h1 h2)
+            (fun m hm => hpos m (by omega)))
 
 end Yukito
