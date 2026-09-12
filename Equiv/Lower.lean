@@ -148,6 +148,56 @@ def RootMono (S : Setting) : Prop :=
   ∀ (r c1 c2 : Nat), c1 ≤ c2 → r ≤ height S.tower.base c1 → r ≤ height S.tower.base c2 →
     (mountainOf' S).rootAt r c1 ≤ (mountainOf' S).rootAt r c2
 
+/-- **辺の内側に根は無い。** 段 `r` で `c` の親が `p` なら、`p` と `c` の間の
+生きた列は根でない。森の非交差性の核心である。 -/
+def NoRootInside (S : Setting) : Prop :=
+  ∀ (r c p w : Nat), ((mountainOf' S).row r).parent c = some p → p < w → w < c →
+    r ≤ height S.tower.base w → ((mountainOf' S).row r).parent w ≠ none
+
+/-- **「辺の内側に根は無い」から根の単調性が出る。** -/
+theorem rootMono_of_noRootInside (S : Setting) (h : NoRootInside S) : RootMono S := by
+  intro r
+  have key : ∀ c2 c1, c1 ≤ c2 → r ≤ height S.tower.base c1 → r ≤ height S.tower.base c2 →
+      (mountainOf' S).rootAt r c1 ≤ (mountainOf' S).rootAt r c2 := by
+    intro c2
+    induction c2 using Nat.strongRecOn with
+    | ind c2 ih2 =>
+      intro c1
+      induction c1 using Nat.strongRecOn with
+      | ind c1 ih1 =>
+        intro hle hl1 hl2
+        cases hp : ((mountainOf' S).row r).parent c2 with
+        | none =>
+            have hr2 : (mountainOf' S).rootAt r c2 = c2 :=
+              ParentForest.root_of_parent_none _ hp
+            have hr1 : (mountainOf' S).rootAt r c1 ≤ c1 := (mountainOf' S).rootAt_le r c1
+            omega
+        | some p =>
+            have hpc : p < c2 := ((mountainOf' S).row r).parent_left hp
+            have hrp : (mountainOf' S).rootAt r c2 = (mountainOf' S).rootAt r p :=
+              (mountainOf' S).rootAt_of_parent hp
+            have hlp : r ≤ height S.tower.base p := (mountainOf' S).parent_endpoint hp
+            rcases Nat.lt_or_ge p c1 with hpc1 | hc1p
+            · rcases Nat.eq_or_lt_of_le hle with heq | hlt
+              · subst heq
+                omega
+              · cases hq : ((mountainOf' S).row r).parent c1 with
+                | none => exact absurd hq (h r c2 p c1 hp hpc1 hlt hl1)
+                | some q =>
+                    have hqc : q < c1 := ((mountainOf' S).row r).parent_left hq
+                    have hlq : r ≤ height S.tower.base q := (mountainOf' S).parent_endpoint hq
+                    have hrq : (mountainOf' S).rootAt r c1 = (mountainOf' S).rootAt r q :=
+                      (mountainOf' S).rootAt_of_parent hq
+                    rcases Nat.lt_or_ge p q with hpq | hqp
+                    · have h1 := ih1 q hqc (by omega) hlq hl2
+                      omega
+                    · have h1 := ih2 p hpc q hqp hlq hlp
+                      omega
+            · have h1 := ih2 p hpc c1 hc1p hl1 hlp
+              omega
+  intro c1 c2 hle hl1 hl2
+  exact key c2 c1 hle hl1 hl2
+
 /-- **単調性から区間性が出る。** `rootAt r y = y ≤ rootAt r j ≤ rootAt r x = y`。 -/
 theorem rootInterval_of_rootMono (S : Setting) (h : RootMono S) : RootInterval S := by
   intro r y j x hx hyj hjx hj
