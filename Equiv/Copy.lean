@@ -623,4 +623,64 @@ theorem hasCol_fujiIters_old (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
     HasCol (fujiIters M P nd ach af n res) m c :=
   HasCol.ext (rowExt_fujiIters _ _ _ _ _ _ _ _) h
 
+/-! ## 余分な列は載らない
+
+逆向き。最終形のセルは、元からあったものか、`(i,j)` のどれかで積んだものである。 -/
+
+theorem cell_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m t : Nat) (d : Cell)
+    (h : (rowAt (fujiRows M P nd i j isRep kmax res) m)[t]? = some d) :
+    (rowAt res m)[t]? = some d ∨ (m < kmax ∧ d = fujiCellAt M P nd i j isRep res m) := by
+  rw [rowAt_fujiRows] at h
+  split at h
+  · next hm =>
+      rw [Array.getElem?_push] at h
+      split at h
+      · exact Or.inr ⟨hm, (Option.some.inj h).symm⟩
+      · exact Or.inl h
+  · exact Or.inl h
+
+theorem cell_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (t : Nat) (res : List Rowj) (m u : Nat) (d : Cell),
+      (rowAt (fujiSeams M P nd i ach af t res) m)[u]? = some d →
+        (rowAt res m)[u]? = some d ∨
+          ∃ j, P.badRootSeam ≤ j ∧ j < P.badRootSeam + t ∧ m < kmaxAt M P i j ach af ∧
+            d.pos + m = j + P.len * i := by
+  intro t
+  induction t with
+  | zero => intro res m u d h; exact Or.inl h
+  | succ t ih =>
+      intro res m u d h
+      rw [fujiSeams_succ] at h
+      rcases cell_fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+        (kmaxAt M P i (P.badRootSeam + t) ach af) _ m u d h with h1 | ⟨hm, hd⟩
+      · rcases ih res m u d h1 with h2 | ⟨j, hj1, hj2, hj3, hj4⟩
+        · exact Or.inl h2
+        · exact Or.inr ⟨j, hj1, by omega, hj3, hj4⟩
+      · refine Or.inr ⟨P.badRootSeam + t, by omega, by omega, hm, ?_⟩
+        rw [hd]
+        exact fujiCellAt_col M P nd i (P.badRootSeam + t) _ _ m
+          (by have := hkm i (P.badRootSeam + t); omega)
+
+theorem cell_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat)
+    (hkm : ∀ i' j', kmaxAt M P i' j' ach af ≤ j' + P.len * i' + 1) :
+    ∀ (n : Nat) (res : List Rowj) (m u : Nat) (d : Cell),
+      (rowAt (fujiIters M P nd ach af n res) m)[u]? = some d →
+        (rowAt res m)[u]? = some d ∨
+          ∃ i j, 0 < i ∧ i ≤ n ∧ P.badRootSeam ≤ j ∧ j < P.badRootSeam + P.len ∧
+            m < kmaxAt M P i j ach af ∧ d.pos + m = j + P.len * i := by
+  intro n
+  induction n with
+  | zero => intro res m u d h; exact Or.inl h
+  | succ n ih =>
+      intro res m u d h
+      rw [fujiIters_succ] at h
+      rcases cell_fujiSeams M P nd (n + 1) ach af hkm P.len _ m u d h with h1 | ⟨j, hj⟩
+      · rcases ih res m u d h1 with h2 | ⟨i, j, hi⟩
+        · exact Or.inl h2
+        · exact Or.inr ⟨i, j, hi.1, by omega, hi.2.2.1, hi.2.2.2.1, hi.2.2.2.2.1,
+            hi.2.2.2.2.2⟩
+      · exact Or.inr ⟨n + 1, j, by omega, Nat.le_refl _, hj.1, hj.2.1, hj.2.2.1, hj.2.2.2⟩
+
 end Yukito
