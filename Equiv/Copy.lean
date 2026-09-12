@@ -889,4 +889,25 @@ theorem row0_dense_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
       hasCol0_fujiIters M P nd ach af hkm hkpos hlenpos hlen n res hd0 c hc
     exact ⟨t, d, hd, by omega⟩
 
+/-- **JS の出力の形。** 行 0 の大きさが `W` なら、出力は列 `0 … W−1` の値を
+並べたものである。Phyrion の `reconstructedValues` と同じ形になる。 -/
+theorem expandOut_eq_range (Mf : List Rowj) (W : Nat) (hsize : (rowAt Mf 0).size = W) :
+    expandOut Mf = (List.range W).map (fun c => valAtIdx (rowAt Mf 0) c) := by
+  refine List.ext_getElem ?_ ?_
+  · simp only [expandOut, List.length_map, Array.length_toList, List.length_range, hsize]
+  · intro t h1 h2
+    have hts : t < (rowAt Mf 0).size := by
+      simp only [expandOut, List.length_map, Array.length_toList] at h1
+      exact h1
+    simp only [expandOut, List.getElem_map, Array.getElem_toList, List.getElem_range]
+    show ((rowAt Mf 0)[t]'hts).val = valAtIdx (rowAt Mf 0) t
+    unfold valAtIdx
+    rw [dif_pos hts]
+
+/-- 継ぎ目が切ったあとの列数より小さければ、`badRootSeam + len = afterCutLength`。 -/
+theorem badRootSeam_add_len (P : FujiParams) (h : P.badRootSeam ≤ P.afterCutLength) :
+    P.badRootSeam + P.len = P.afterCutLength := by
+  show P.badRootSeam + (P.afterCutLength - P.badRootSeam) = P.afterCutLength
+  omega
+
 end Yukito
