@@ -2264,4 +2264,27 @@ theorem rowExt_state_to_final (M : List Rowj) (P : FujiParams) (nd : Nat → Nat
   rw [fujiIters_succ] at h2
   exact RowExt.trans h1 h2
 
+/-! ## 山崎噴火でない枝の枝の選び方
+
+`yamakazi = false` のとき、「行の最後から取るか」はつねに `isRep` に等しい。
+元の段の選び方だけが 4 通りに分かれる。 -/
+
+/-- 元の段の選び方（`yamakazi = false` のとき）。 -/
+def fujiSrcRow (P : FujiParams) (i k : Nat) (isRep : Bool) : Nat :=
+  let d := P.cutHeight - P.badRootHeight
+  let ir := if isRep then 1 else 0
+  if k < P.badRootHeight then k
+  else if k ≤ P.badRootHeight + d * (i - ir) then P.badRootHeight
+  else if isRep && decide (k ≤ P.badRootHeight + d * i) then k - d * (i - 1)
+  else k - d * i
+
+theorem fujiSource_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Nat)
+    (isRep : Bool) : fujiSource P i k isRep = (fujiSrcRow P i k isRep, isRep) := by
+  unfold fujiSource fujiSrcRow
+  dsimp only
+  rw [hyk]
+  simp only [Bool.not_false, Bool.true_and]
+  repeat' split
+  all_goals rfl
+
 end Yukito
