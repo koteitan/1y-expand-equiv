@@ -54,4 +54,41 @@ namespace Yukito
      { pos := 2, val := 1, par := none }, { pos := 3, val := 2, par := some 0 }],
    #[{ pos := 0, val := 1, par := none }, { pos := 2, val := 1, par := none }]]
 
+/-! ## `calcDiagonal`
+
+期待値は `script.js` の `calcDiagonal` の出力文字列を、`"値"` → `forced := false`、
+`"値v親"` → `forced := true`（`-1` は `none`）に読み替えたものである。 -/
+
+#guard calcDiagonal (calcMountain [1, 3, 3] 8) =
+  [{ val := 1, forced := false, par := none },
+   { val := 2, forced := false, par := none },
+   { val := 2, forced := false, par := none }]
+
+#guard calcDiagonal (calcMountain [1, 3, 2, 5] 8) =
+  [{ val := 1, forced := false, par := none },
+   { val := 2, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 2, forced := false, par := none }]
+
+#guard calcDiagonal (calcMountain [1, 2, 4, 8, 11, 8] 8) =
+  [{ val := 1, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 1, forced := false, par := none }]
+
+-- `"v"` が出る例
+#guard calcDiagonal (calcMountain [1, 3, 4, 3] 8) =
+  [{ val := 1, forced := false, par := none },
+   { val := 2, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 2, forced := true, par := some 0 }]
+
+#guard calcDiagonal (calcMountain [1, 4, 5, 3] 8) =
+  [{ val := 1, forced := false, par := none },
+   { val := 3, forced := false, par := none },
+   { val := 1, forced := false, par := none },
+   { val := 2, forced := true, par := some 0 }]
+
 end Yukito

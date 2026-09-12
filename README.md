@@ -398,7 +398,33 @@ JS は対角を文字列にしてから `calcMountain` に渡す。素の数と�
 `Math.max(Math.min(i-1,p),-1)` で丸められるが、`p` は `i` の祖先なので `p < i`
 であり丸めは効かない。親が無い場合は `"値v-1"` と書かれ、読み直しでも `-1` に戻る。
 
-抽出段に残るのは、疎配列と密表現の橋渡し（`Bridge.lean` の続き）である。
+### 疎配列側の書き起こし
+
+`calcDiagonal` を写した（`Yukito.lean`）。
+
+```
+topAt        列 i を含む最上段とその添字
+legStepJS    脚 1 歩（疎配列版）
+legWalkJS    脚歩行。着いた列を返す（none が JS の -1）
+diagEntry    列 i についての値と歩行結果
+diagList     JS の diagonal と diagonalTree
+pwScan       JS の pw
+treeScan     diagonalTree 上の探索
+calcDiagonal 出力（文字列にする前）。forced が JS の `"v"` 付き
+clampPar     JS の Math.max(Math.min(i-1,p),-1)
+parseDiag    parseSequenceElement 相当
+```
+
+写すときに 1 か所つまずいた。JS の脚は `position - 1` を目標にするが、
+`position = 0` のとき目標は `-1` になり、どのセルにも一致しないので必ず段が下がる。
+自然数の切り捨て引き算では `0` になってしまい、同じ場所に留まる。そこだけ場合分け
+した。`searchUpper` の `position - 1` は等号判定に使われず `firstAtLeast` に渡る
+だけなので、`-1` と `0` で結果が変わらず、この問題は起きない。
+
+出力とその読み直しも `#guard` で JS と突き合わせてある（`"v"` が出る例を含む 5 列）。
+
+抽出段に残るのは、この書き起こしが密表現側の `rawExtract` に一致することの証明で
+ある。
 
 ## 疎配列との橋渡し
 

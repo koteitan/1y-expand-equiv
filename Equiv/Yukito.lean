@@ -124,4 +124,139 @@ def calcMountain (s : List Nat) : Nat → List Rowj
   | 0 => []
   | fuel+1 => mountainGo (assignParents none (row0 s)) fuel
 
+/-! ## `calcDiagonal`
+
+JS の後半。列ごとに頂から脚をたどり、着いた列を `diagonalTree` に記録する。
+
+`while (mountain[height-1][l].position != … + 1) l++` のような完全一致の走査は、
+`firstAtLeast` で書く。探している列は必ず在る（同じ列の 1 段下は生きている）ので
+挙動は同じである。在らなければ JS は配列の外を触って落ちるが、そこは
+`none` を返す形にしてある。
+-/
+
+/-- 列 `i` を含む最上段とその添字。JS は `j` を上から下へ走らせる。 -/
+def topAt (M : List Rowj) (i : Nat) : Nat → Option (Nat × Nat)
+  | 0 => none
+  | j+1 =>
+    match M[j]? with
+    | none => topAt M i j
+    | some row =>
+      let k := firstAtLeast row (i - j)
+      if hk : k < row.size then
+        if (row[k]'hk).pos + j = i then some (j, k) else topAt M i j
+      else topAt M i j
+
+/-- JS の脚 1 歩（疎配列版）。状態は `(段, その段での添字)`。 -/
+def legStepJS (M : List Rowj) (h idx : Nat) : Option (Nat × Nat) :=
+  match M[h]? with
+  | none => none
+  | some row =>
+    if hi : idx < row.size then
+      match h with
+      | 0 =>
+        match (row[idx]'hi).par with
+        | none => none
+        | some p => some (0, p)
+      | h'+1 =>
+        match M[h']? with
+        | none => none
+        | some below =>
+          let l0 := firstAtLeast below ((row[idx]'hi).pos + 1)
+          if hl0 : l0 < below.size then
+            match (below[l0]'hl0).par with
+            | none => none
+            | some l =>
+              if hl : l < below.size then
+                -- JS の目標は `position - 1`。`position = 0` なら `-1` になり、
+                -- どのセルにも一致しないので必ず段を下げる。自然数の切り捨て
+                -- 引き算では `0` になってしまうので、ここだけ場合分けする。
+                if (below[l]'hl).pos = 0 then some (h', l)
+                else
+                  let t := (below[l]'hl).pos - 1
+                  let m := firstAtLeast row t
+                  if hm : m < row.size then
+                    if (row[m]'hm).pos = t then some (h'+1, m) else some (h', l)
+                  else some (h', l)
+              else none
+          else none
+    else none
+
+/-- JS の脚歩行（疎配列版）。着いた列を返す。`none` は JS の `-1`。 -/
+def legWalkJS (M : List Rowj) : Nat → Nat → Nat → Option Nat
+  | 0, _, _ => none
+  | fuel+1, h, idx =>
+    match legStepJS M h idx with
+    | none => none
+    | some (h', idx') =>
+      match M[h']? with
+      | none => none
+      | some row =>
+        if hi : idx' < row.size then
+          match (row[idx']'hi).par with
+          | none => some ((row[idx']'hi).pos + h')
+          | some _ => legWalkJS M fuel h' idx'
+        else none
+
+/-- 列 `i` についての対角の 1 要素。値と歩行結果。 -/
+def diagEntry (M : List Rowj) (i : Nat) : Option (Nat × Option Nat) :=
+  match topAt M i M.length with
+  | none => none
+  | some (j, k) =>
+    match M[j]? with
+    | none => none
+    | some row =>
+      if hk : k < row.size then
+        some ((row[k]'hk).val, legWalkJS M (i + 1) j k)
+      else none
+
+/-- 対角の値と歩行結果の並び。JS の `diagonal` と `diagonalTree`。 -/
+def diagList (M : List Rowj) : List (Nat × Option Nat) :=
+  (List.range (M.headD #[]).size).filterMap (diagEntry M)
+
+/-- JS の `pw`：左へ走って最初に値が小さい添字。 -/
+def pwScan (d : List Nat) (target : Nat) : Nat → Option Nat
+  | 0 => none
+  | j+1 => if d.getD j 0 < target then some j else pwScan d target j
+
+/-- JS の後半のループ：`diagonalTree` を辿って最初に値が小さい所で止まる。 -/
+def treeScan (d : List Nat) (tree : List (Option Nat)) (target : Nat) :
+    Nat → Nat → Option Nat
+  | 0, _ => none
+  | fuel+1, p =>
+    match tree.getD p none with
+    | none => none
+    | some q => if d.getD q 0 < target then some q else treeScan d tree target fuel q
+
+/-- 出力の 1 要素。`forced` が JS の `"v"` 付きにあたる。 -/
+structure DiagItem where
+  val : Nat
+  forced : Bool
+  par : Option Nat
+  deriving Repr, DecidableEq
+
+/-- JS の `calcDiagonal` の出力（文字列にする前）。 -/
+def calcDiagonal (M : List Rowj) : List DiagItem :=
+  let e := diagList M
+  let d := e.map Prod.fst
+  let tree := e.map Prod.snd
+  (List.range d.length).map fun i =>
+    let target := d.getD i 0
+    let p := treeScan d tree target (i + 1) i
+    let w := pwScan d target i
+    if p = w then { val := target, forced := false, par := none }
+    else { val := target, forced := true, par := p }
+
+/-- JS の `Math.max(Math.min(i-1,p),-1)`。`p` は `i` の祖先なので実際には効かない。 -/
+def clampPar (i : Nat) (p : Option Nat) : Option Nat :=
+  match i, p with
+  | 0, _ => none
+  | _+1, none => none
+  | i'+1, some q => some (min i' q)
+
+/-- JS の `parseSequenceElement` 相当。`"v"` 付きは `forced` を立てて親を固定する。 -/
+def parseDiag (l : List DiagItem) : Rowj :=
+  l.toArray.mapIdx fun i x =>
+    { pos := i, val := x.val,
+      par := if x.forced then clampPar i x.par else none, forced := x.forced }
+
 end Yukito
