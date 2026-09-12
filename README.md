@@ -1376,6 +1376,24 @@ hasCol_pos             そこから添字と位置を取り出す
 fujiCell_par_isSome    lookupPos がその添字を見つけるので par は some
 ```
 
+### 元からあるセルについての条件（済）
+
+コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
+条件が要る。こちらは元の山の `ParRep` と `yamaContext_parent_orig`
+（列 `c < x` では原文の親は元の山の親そのもの）から出る。
+
+```
+cell_orig_of_col_lt  列が n−1 より小さいセルは元からあるセルに限る
+parNone_orig_yama    親を持たないなら原文の山でも根
+parCol_orig_yama     親を持つならその添字が指すセルの列が原文の親
+valTop_orig_yama     親を持たないセルの値は topValue base（その列）
+```
+
+`valTop_orig_yama` は「親を持たない ⇒ m = height（その列）」を経由する
+（`m < height` なら `parent_exists_iff_lt_height` で親が存在してしまう）。
+山崎噴火の枝の新しい対角は `expNd c = topValue base (source0 c)` で、
+`c < n−1` では `source0 c = c` なのでこの値と一致する。
+
 ### `cover` と `cellCol`（済）
 
 ```
