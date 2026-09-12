@@ -142,6 +142,36 @@ def RootInterval (S : Setting) : Prop :=
   ∀ (r y j x : Nat), (mountainOf' S).rootAt r x = y → y < j → j < x →
     r ≤ height S.tower.base j → (mountainOf' S).rootAt r j = y
 
+/-- **根の単調性。** 段 `r` で生きている 2 つの列について、根は列の順を保つ。
+これが森の非交差性の言い換えで、区間性はここから出る。 -/
+def RootMono (S : Setting) : Prop :=
+  ∀ (r c1 c2 : Nat), c1 ≤ c2 → r ≤ height S.tower.base c1 → r ≤ height S.tower.base c2 →
+    (mountainOf' S).rootAt r c1 ≤ (mountainOf' S).rootAt r c2
+
+/-- **単調性から区間性が出る。** `rootAt r y = y ≤ rootAt r j ≤ rootAt r x = y`。 -/
+theorem rootInterval_of_rootMono (S : Setting) (h : RootMono S) : RootInterval S := by
+  intro r y j x hx hyj hjx hj
+  have hxlive : r ≤ height S.tower.base x := by
+    rcases Nat.lt_or_ge (height S.tower.base x) r with hlt | hge
+    · exfalso
+      have hself : (mountainOf' S).rootAt r x = x :=
+        ParentForest.root_of_parent_none _
+          (((mountainOf' S).parent_none_iff r x).mpr (Nat.le_of_lt hlt))
+      omega
+    · exact hge
+  have hh : (mountainOf' S).height y = r := by
+    rw [← hx]
+    exact (mountainOf' S).root_height hxlive
+  have hylive : r ≤ height S.tower.base y := by
+    show r ≤ (mountainOf' S).height y
+    omega
+  have hry : (mountainOf' S).rootAt r y = y := by
+    rw [← hh]
+    exact (mountainOf' S).top_root y
+  have h1 := h r y j (by omega) hylive hj
+  have h2 := h r j x (by omega) hj hxlive
+  omega
+
 /-- 区間性があれば、`y` と `x` の間の生きた列は `InCone`。 -/
 theorem inCone_of_between (hri : RootInterval S) (hyx : y < x) (hroot) (hhigher) (j : Nat)
     (hj1 : y < j) (hj2 : j < x)
