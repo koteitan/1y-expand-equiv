@@ -1574,6 +1574,29 @@ parent r c = … else if InCone s ∧ floor ≤ r then
 
 の真ん中の 2 つが JS の Br replace / Br extend にあたる。
 
+枝ごとに読み合わせると次のように対応する（`b` は `block c`、`r` は段）。
+
+| 列 | 段 | 原文 | JS（`fujiSrcRow`） |
+|---|---|---|---|
+| `y + L*i`（`source = x`, `b = i−1`） | `r < floor` | `((M.row r).parent x).map (parentCopy b)` | `sy = k`、元の列は行の最後（= `x`） |
+| 同上 | `floor ≤ r ≤ floor + b*rise` | `((M.row floor).parent x).map (·+b*L)` | `sy = bh` |
+| 同上 | `floor + b*rise < r` | `((M.row (r−b*rise)).parent x).map (·+b*L)` | `sy = k − d*(i−1)` |
+| `j + L*i`（`y < j < x`, `b = i`） | `r < floor` | `((M.row r).parent j).map (parentCopy b)` | `sy = k` |
+| 同上 | `floor ≤ r ≤ floor + b*rise` | `((M.row floor).parent j).map (·+b*L)` | `sy = bh` |
+
+原文が真ん中の枝で `parentCopy` ではなく無条件の `(·+b*L)` を使うのは、
+そこでの親が `y` 以上だから（鎖が `y` に届く＝ `InCone`）で、
+`parentCopy` は `y` 以上では無条件の加算に一致する。境目（`r = floor + b*rise`）は
+原文の第 3 枝に落ちるが `r − b*rise = floor` なので第 2 枝と同じ式になり、
+JS の `≤` と原文の `<` の食い違いは消える。
+
+**残る幾何的な義務**は、`y < j < x` で列 `j` が段 `floor` で生きているなら
+`InCone j`（段 `floor` での根が `y`）である、という主張である。これが無いと
+`¬InCone j` かつ `floor ≤ height j` の場合に JS の `sy = bh` と原文の `sy = r` が
+食い違う。`rootAt floor x = y` から「`x` の鎖が `j` を跨ぐ」形になり、
+森の非交差性から従うはずである（本リポジトリの `NoCross.lean` に非交差性の
+道具がある）。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
