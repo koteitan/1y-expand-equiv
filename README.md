@@ -1419,6 +1419,46 @@ fujiCellAt_col_yama    kmax の範囲から積むセルの列が定まる
 valTop_push_yama       積んだセルが親を持たないなら val = nd（その列）
 ```
 
+### **`ShapeRep` が構成できた（山崎噴火の枝）**
+
+```
+shapeRep_yama:
+  nd が「c < n−1 では topValue base c」かつ正であれば
+    ShapeRep (yamaRs M mfuel nd nrep)
+             ((yamaContext S y …).toRowMountain) nd ((n−1) + len*nrep)
+```
+
+10 条件の埋め方は次のとおり。
+
+```
+mono     rowsMono_yama       parLt   parLt_yama
+cellCol  cellCol_yama        cover   cover_yama
+parCol   parCol_yama         parNone parNone_yama
+step     step_orig_yama（c < n−1）/ step_push_yama（c ≥ n−1）
+valTop   valTop_yama         topPos  仮定      tall  tall_yama'
+```
+
+`shapeRep_value` と合わせると出力が出る。
+
+```
+expandJS_out_yama:
+  expandOut (expandJS nrep mfuel (efuel+1) M)
+    = (List.range ((n−1) + len*nrep)).map
+        (Reconstruction.value ((yamaContext S y …).toRowMountain)
+          (expNd nrep mfuel efuel M) 0)
+```
+
+原文は
+
+```
+reconstructedValues (G :: rest) W = (List.range W).map (assemble (G :: rest) (fun _ => 1))
+assemble (G :: rest) top c = Reconstruction.value G (assemble rest top) 0 c
+```
+
+なので**同じ式**である。この層について残るのは
+「`yamaContext` の山 = `expandedMountain a hbad K`」と
+「`expNd` = `assemble`（`K+1` 段目以上）`(fun _ => 1)`」の 2 つだけになった。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
@@ -1532,12 +1572,15 @@ bad root    済
 分岐 none   済（expand_eq_no_bad）
 三重ループ  済（構造・座標・出力の幅）
 値の層      済（ShapeRep → expandOut_eq_value）
-森のコピー  未（ShapeRep を作る部分）
+森のコピー  山崎噴火の枝（原文の層 k = K）は済（shapeRep_yama）
+            残りの枝（k < K の badAtLowerContext）は未
 層の再帰    未
 ```
 
-残るのは `ShapeRep` を作ること、すなわち `fujiSource` の 4 枝が
-`expandedMountain` の親写像を与えることの確認である。
+山崎噴火の枝については、JS の出力が
+`Reconstruction.value ((yamaContext …).toRowMountain) (expNd …) 0` の並びに
+一致するところまで来た。残るのは、その山が原文の `expandedMountain a hbad K` で
+あることと、`expNd` が上の層の `assemble` であること、および `k < K` の枝である。
 
 ## ビルド
 
