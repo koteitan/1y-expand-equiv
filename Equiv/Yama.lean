@@ -1,4 +1,5 @@
 import Equiv.Shape
+import OneY.TowerCopyAssembly
 
 /-!
 # 山崎噴火の枝の組み立て
@@ -1629,5 +1630,30 @@ theorem expNd_topValue (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat)
   rw [expNd_yama_source0 nrep (f + 1) efuel M hyama C hcy hcx
     (by rw [hsizeM, size_rowAt_expDg S M hM f]; omega)]
   exact valAtIdx_expDg S M hM f (C.source0 c) (by omega)
+
+/-! ## 原文の `assemble` との一致 -/
+
+theorem layers_succ_value (a : RootedRow) (k c : Nat) :
+    (layers a (k + 1)).row.value c = topValue (layers a k).row c := rfl
+
+/-- **`K+1` 段目以上を畳んだ値は、`layers a K` の頂の値を `source0` で読んだもの。** -/
+theorem assemble_above_eq (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hK : K < sequenceBound s) (c : Nat) :
+    TowerReconstruction.assemble
+        ((List.range' (K + 1) (sequenceBound s - (K + 1))).map
+          (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c
+      = topValue (layers (rootedSequence s hs) K).row
+          ((badAtTerminalContext (rootedSequence s hs) hbad).ordinaryContext.source0 c) := by
+  have h := assemble_expanded_above (rootedSequence s hs) hbad (K + 1)
+    (sequenceBound s - (K + 1)) (Nat.lt_succ_self K)
+  have hend : (K + 1) + (sequenceBound s - (K + 1)) = sequenceBound s := by omega
+  rw [hend] at h
+  have hone : (badAtTerminalContext (rootedSequence s hs) hbad).ordinaryContext.copyValue
+      (layers (rootedSequence s hs) (sequenceBound s)).row.value = (fun _ => 1) := by
+    funext c'
+    exact sequence_layers_all_one s hs (by omega) _
+  rw [hone] at h
+  rw [h]
+  rfl
 
 end Yukito
