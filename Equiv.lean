@@ -32,3 +32,4 @@ import Equiv.NoBad
 import Equiv.Copy
 import Equiv.Shape
 import Equiv.Yama
+import Equiv.Lower
