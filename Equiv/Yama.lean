@@ -663,4 +663,68 @@ theorem yamaContext_parent_src (S : Setting) (y : Nat) (hy hpar hh) (k i j pc : 
     refine ⟨q, hq, ?_⟩
     rw [← hqe, parentCopy_eq, hcy, hcl, Nat.sub_zero]
 
+/-! ## **原文に親があれば JS も親を持つ** -/
+
+theorem fujiCellAt_par_some_of_parent (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (mfuel : Nat) (hn : 1 < S.n) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (h0 : 0 < (expRes M).length)
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (st : List Rowj) (i t k pc : Nat)
+    (hi : 0 < i) (ht : t < (expP M mfuel).len)
+    (hk : k < M.length) (hkj : k ≤ y + t)
+    (hlivej : 0 < (rows S.tower.base k).value (y + t))
+    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
+    (hmono : PosMono (rowAt st k))
+    (hpc : (yamaContext S y hy hpar hh).parent k ((y + t) + (expP M mfuel).len * i) = some pc)
+    (hcov : HasCol st k pc) :
+    ∃ u, (fujiCellAt M (expP M mfuel) nd i (y + t) (isRepAt (expP M mfuel) (y + t)) st k).par
+      = some u := by
+  have hLp : (expP M mfuel).len = S.n - 1 - y := expP_len_yama S M hM mfuel h0 y hseam
+  have hpc' : (yamaContext S y hy hpar hh).parent k ((y + t) + (S.n - 1 - y) * i) = some pc := by
+    rwa [hLp] at hpc
+  obtain ⟨q, hq, hpceq⟩ :=
+    yamaContext_parent_src S y hy hpar hh k i (y + t) pc hi (by omega) (by omega) hpc'
+  -- 親の新しい列は段より右
+  have hpcge : k ≤ pc := by
+    have h1 : k ≤ ((yamaContext S y hy hpar hh).toRowMountain).height pc :=
+      ((yamaContext S y hy hpar hh).toRowMountain).parent_endpoint hpc'
+    have h2 := rowMountain_height_le ((yamaContext S y hy hpar hh).toRowMountain) pc
+    omega
+  -- 元のセルの列
+  obtain ⟨hsx, hcolsrc⟩ :=
+    sourceIdx_yama_col S M hM (expP M mfuel) (y + t) k (isRepAt (expP M mfuel) (y + t))
+      hk hn hkj (by omega) hlivej hlast
+  rw [srcColYama_eq S M hM hn mfuel hyama y hseam (y + t) k] at hcolsrc
+  have hF : (rows S.tower.base k).forest.parent
+      (((rowAt M k)[sourceIdx M k (y + t)
+        (isRepAt (expP M mfuel) (y + t) && decide (k < (expP M mfuel).badRootHeight))]'hsx).pos
+        + k) = some q := by
+    rw [hcolsrc]
+    exact hq
+  -- 桁上げの形を揃える
+  have hir : (i - (if isRepAt (expP M mfuel) (y + t) then 1 else 0))
+      = (i - (if (y + t) = y then 1 else 0)) := by
+    show (i - (if (decide ((y + t) = (expP M mfuel).badRootSeam)) = true then 1 else 0)) = _
+    rw [hseam]
+    simp
+  have hge : k ≤ q + (if (expP M mfuel).badRootSeam ≤ q then
+      (i - (if isRepAt (expP M mfuel) (y + t) then 1 else 0)) * (expP M mfuel).len else 0) := by
+    rw [hseam, hir, hLp]
+    omega
+  have hpp := parentPos_some S M hM (expP M mfuel) k _ k
+    (i - (if isRepAt (expP M mfuel) (y + t) then 1 else 0)) q hk hsx (Nat.le_refl _) hF hge
+  rw [← hir] at hpceq
+  rw [hseam, hLp, ← hpceq] at hpp
+  -- 親の列は今の段にある
+  obtain ⟨u, hu, hupos⟩ := hasCol_pos st k pc hcov
+  refine ⟨u, ?_⟩
+  refine fujiCellAt_par_isSome M (expP M mfuel) nd i (y + t)
+    (isRepAt (expP M mfuel) (y + t)) st k (pc - k) hmono ?_ u hu (by omega)
+  rw [fujiSource_yama (expP M mfuel) (expP_yamakazi M mfuel hyama)
+    (expP_yama_cut M mfuel hyama) i k (isRepAt (expP M mfuel) (y + t))]
+  exact hpp
+
 end Yukito
