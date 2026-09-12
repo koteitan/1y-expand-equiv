@@ -2195,4 +2195,63 @@ theorem cell_fujiIters' (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach
         · exact Or.inr ⟨i2, t2, by omega, ht2, hk2, hd2⟩
       · exact Or.inr ⟨n, t', by omega, ht', hk', hd'⟩
 
+/-! ## 途中の状態から最終形への伸び -/
+
+theorem rowExt_fujiSeams_mono (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i ach af : Nat) (res : List Rowj) (m : Nat) :
+    ∀ t2 t1, t1 ≤ t2 → RowExt (rowAt (fujiSeams M P nd i ach af t1 res) m)
+      (rowAt (fujiSeams M P nd i ach af t2 res) m) := by
+  intro t2
+  induction t2 with
+  | zero =>
+      intro t1 h
+      have : t1 = 0 := by omega
+      subst this
+      exact RowExt.rfl' _
+  | succ t ih =>
+      intro t1 h
+      rcases Nat.lt_or_ge t1 (t + 1) with h1 | h1
+      · rw [fujiSeams_succ]
+        exact RowExt.trans (ih t1 (by omega)) (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+      · have : t1 = t + 1 := by omega
+        subst this
+        exact RowExt.rfl' _
+
+theorem rowExt_fujiIters_mono (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (ach af : Nat) (res : List Rowj) (m : Nat) :
+    ∀ n2 n1, n1 ≤ n2 → RowExt (rowAt (fujiIters M P nd ach af n1 res) m)
+      (rowAt (fujiIters M P nd ach af n2 res) m) := by
+  intro n2
+  induction n2 with
+  | zero =>
+      intro n1 h
+      have : n1 = 0 := by omega
+      subst this
+      exact RowExt.rfl' _
+  | succ n ih =>
+      intro n1 h
+      rcases Nat.lt_or_ge n1 (n + 1) with h1 | h1
+      · rw [fujiIters_succ]
+        exact RowExt.trans (ih n1 (by omega)) (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+      · have : n1 = n + 1 := by omega
+        subst this
+        exact RowExt.rfl' _
+
+/-- 途中の状態から最終形へ。 -/
+theorem rowExt_state_to_final (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (ach af : Nat) (res : List Rowj) (m i' t' nrep : Nat)
+    (hi : i' < nrep) (ht : t' ≤ P.len) :
+    RowExt (rowAt (fujiSeams M P nd (i' + 1) ach af t' (fujiIters M P nd ach af i' res)) m)
+      (rowAt (fujiIters M P nd ach af nrep res) m) := by
+  have h1 : RowExt (rowAt (fujiSeams M P nd (i' + 1) ach af t'
+      (fujiIters M P nd ach af i' res)) m)
+      (rowAt (fujiSeams M P nd (i' + 1) ach af P.len
+        (fujiIters M P nd ach af i' res)) m) :=
+    rowExt_fujiSeams_mono M P nd (i' + 1) ach af _ m P.len t' ht
+  have h2 : RowExt (rowAt (fujiIters M P nd ach af (i' + 1) res) m)
+      (rowAt (fujiIters M P nd ach af nrep res) m) :=
+    rowExt_fujiIters_mono M P nd ach af res m nrep (i' + 1) (by omega)
+  rw [fujiIters_succ] at h2
+  exact RowExt.trans h1 h2
+
 end Yukito
