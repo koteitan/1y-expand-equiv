@@ -259,4 +259,41 @@ theorem mountainOf'_height (S : Setting) (c : Nat) :
 theorem mountainOf'_row (S : Setting) (r : Nat) :
     (mountainOf' S).row r = (rows S.tower.base r).forest := rfl
 
+/-! ## 山崎噴火の枝のコピー先の山
+
+原文の `TerminalCopy.Context` を、こちらの `Setting` から組み立てる。
+これが `badAtTerminalMountain` にあたる山である。 -/
+
+/-- 山崎噴火の枝で使う `TerminalCopy.Context`。 -/
+def yamaContext (S : Setting) (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1)) : TerminalCopy.Context where
+  mountain := mountainOf' S
+  coordinates := ⟨y, S.n - 1, hy⟩
+  level := height S.tower.base (S.n - 1) - 1
+  last_parent := hpar
+  last_height := by
+    show height S.tower.base (S.n - 1) = height S.tower.base (S.n - 1) - 1 + 1
+    omega
+
+theorem yamaContext_height (S : Setting) (y : Nat) (hy hpar hh) (c : Nat) :
+    ((yamaContext S y hy hpar hh).toRowMountain).height c
+      = (yamaContext S y hy hpar hh).height c := rfl
+
+theorem yamaContext_row (S : Setting) (y : Nat) (hy hpar hh) (r c : Nat) :
+    (((yamaContext S y hy hpar hh).toRowMountain).row r).parent c
+      = (yamaContext S y hy hpar hh).parent r c := rfl
+
+theorem yamaContext_y (S : Setting) (y : Nat) (hy hpar hh) :
+    (yamaContext S y hy hpar hh).coordinates.y = y := rfl
+
+theorem yamaContext_x (S : Setting) (y : Nat) (hy hpar hh) :
+    (yamaContext S y hy hpar hh).coordinates.x = S.n - 1 := rfl
+
+theorem yamaContext_level (S : Setting) (y : Nat) (hy hpar hh) :
+    (yamaContext S y hy hpar hh).level = height S.tower.base (S.n - 1) - 1 := rfl
+
+theorem yamaContext_length (S : Setting) (y : Nat) (hy hpar hh) :
+    (yamaContext S y hy hpar hh).coordinates.length = S.n - 1 - y := rfl
+
 end Yukito
