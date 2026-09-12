@@ -1400,6 +1400,16 @@ cell_fujiSeams' / cell_fujiIters'
 値の埋めから出る。後者には積んだセルの正体が要るので `cell_fujiIters'` を作った。
 返る状態はちょうど `hasCol_state` が被覆を主張している状態である。
 
+セルの正体を `yamaRs` の言葉に持ち上げる道具も揃えた。
+
+```
+rowExt_fujiSeams_mono / rowExt_fujiIters_mono  ループの回数について単調
+rowExt_state_to_final / rowExt_state_to_yamaRs 積んだ時点の状態から最終形へ
+yamaRs_cell            埋めに渡す疎な山のセルは 元からあるセルか 積んだセル
+fujiCellAt_col_yama    kmax の範囲から積むセルの列が定まる
+valTop_push_yama       積んだセルが親を持たないなら val = nd（その列）
+```
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
