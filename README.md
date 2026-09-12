@@ -814,15 +814,36 @@ JS の `expand` は「行 0 の最後のセルが親を持たない」で分岐�
 落とす。この 2 つの分岐条件が同じであることを示した（`last_parent_none_iff`）。
 
 `getBadRoot` も写した（`Yukito.lean`）。出力は `script.js` の `getBadRoot` と
-`#guard` で突き合わせてある（7 列）。読みでは
+`#guard` で突き合わせてある（7 列）。
+
+### JS の `getBadRoot` は密表現側の探索である
+
+密表現側の探索を `badRootOf` として書き、両者が一致することを示した
+（`getBadRoot_eq`）。
 
 ```
-JS の getBadRoot(s) = (findBadRoot s hs (n−1)).column
+badRootOf S c (fuel+1) =
+  if topValue S.base c = 1 then (rows S.base (height S.base c − 1)).forest.parent c
+  else badRootOf (extractSet S) c fuel
 ```
 
-で、残るのはこれを証明することである。JS の再帰（対角の最後の値が 1 になるまで
-抽出）は Phyrion の `layers` にあたり、停止条件は `badAt_height_and_top` が
-`topValue = 1` を与えることに対応する。
+要る部品は 3 つだった。
+
+```
+lastCol_eq_iff    行の最後のセルが列 n−1 ⟺ その列がその行で生きている
+topRowOfLast_eq   JS の段の探索は height (n−1) を返す
+badRoot_found     見つけた段の 1 つ下で最後のセルの親を読むと密表現の親になる
+lastVal_eq        行 0 の最後のセルの値は列 n−1 の値（停止条件の対応）
+```
+
+再帰は `mtRep_extract` に乗る。担ぐ不変量は `1 < base.value (n−1)`（列 n−1 の値が
+1 より大きい）で、停止しなかった層では `topValue > 1` なので次の層でも保たれる。
+これがあると停止した層で `height (n−1) ≥ 1` が言え、JS が `mountain[i-1]` を
+触るのが安全になる。
+
+残るのは `badRootOf` が Phyrion の `findBadRoot` に一致することである。こちらは
+密表現だけの話で、`badAt_height_and_top`（bad root の層では `topValue = 1`）と
+`badAt_unique`（bad root は唯一）が効く。
 
 ## 残っている課題
 
