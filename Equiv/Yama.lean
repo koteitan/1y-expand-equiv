@@ -1509,4 +1509,43 @@ theorem row0_yamaRs (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
   rw [getElem_congr_arr _ _ hrow0 t ht' ht'']
   exact hposd t ht''
 
+/-! ## **山崎噴火の枝の出力** -/
+
+/-- **JS の出力は原文の復元値そのもの（山崎噴火の枝）。** -/
+theorem expandOut_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < nd c) (nrep : Nat) :
+    expandOut (fillValues (yamaRs M mfuel nd nrep))
+      = (List.range ((S.n - 1) + (expP M mfuel).len * nrep)).map
+          (Reconstruction.value ((yamaContext S y hy hpar hh).toRowMountain) nd 0) := by
+  obtain ⟨hsz, hpos⟩ := row0_yamaRs S M hM mfuel hn hM2 hyama y hy hseam nd nrep
+  exact expandOut_eq_value (yamaRs M mfuel nd nrep)
+    ((yamaContext S y hy hpar hh).toRowMountain) nd _
+    (shapeRep_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd hnd hndpos nrep) hsz hpos
+
+/-- JS の `expand` の枝そのもので書いた形。 -/
+theorem expandJS_out_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nrep efuel : Nat)
+    (hnd : ∀ c, c < S.n - 1 → expNd nrep mfuel efuel M c = topValue S.tower.base c)
+    (hndpos : ∀ c, 0 < expNd nrep mfuel efuel M c)
+    (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
+          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
+    expandOut (expandJS nrep mfuel (efuel + 1) M)
+      = (List.range ((S.n - 1) + (expP M mfuel).len * nrep)).map
+          (Reconstruction.value ((yamaContext S y hy hpar hh).toRowMountain)
+            (expNd nrep mfuel efuel M) 0) := by
+  rw [expandJS_some nrep mfuel efuel M hhas]
+  exact expandOut_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam
+    (expNd nrep mfuel efuel M) hnd hndpos nrep
+
 end Yukito
