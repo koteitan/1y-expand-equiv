@@ -1017,6 +1017,33 @@ expandOut      行 0 の値の列（JS の出力）
 
 残るのは 2（層の再帰）と 3（森のコピー）の証明で、3 が全体の大半である。
 
+### 三重ループの構造（済）
+
+コピーの中身に踏み込む前に、ループが段をどう変えるかだけを取り出した（`Copy.lean`）。
+
+```
+pushAt_length / rowAt_pushAt   段への積み足し。k ≤ res.length のもとで
+                                 rowAt (pushAt res k c) m
+                                   = if m = k then (rowAt res k).push c else rowAt res m
+fujiRows_length / rowAt_fujiRows  段のループ。段 m < kmax に 1 個ずつ積む
+RowExt / rowExt_fujiIters      段は後ろに伸びるだけ。既にある添字のセルは変わらない
+popFold / rowAt_cutChild       子を切る。残る段は cutH 以下なら pop されたもの
+```
+
+`fujiCell` に渡る「今の段」がループに入る前の段そのものであることは、段のループが
+`k = 0, 1, 2, …` の順に積むことから出る（段 `k` を触るとき上の段はまだ未着手）。
+`RowExt` はそれを繰り返しループ全体へ広げたもので、`fujiCell` が `lookupPos` で
+引く親の添字が最終形でも同じ添字であることに使う。
+
+座標の対応も取れている。
+
+```
+fujiCell_col          積むセルの列は段によらず j + len*i（= encode j i）
+parentPos_eq          親の新しい列 = 元の親の列 + （継ぎ目以上なら shifts*len）
+js_shift_eq_parentCopy  その桁上げは Phyrion の parentCopy そのもの
+yamaVal_eq_source0    山崎噴火の枝の周期的コピーは OrdinaryCopy の source0
+```
+
 ### 値の埋め
 
 `fillRow` は「直前までに積んだ結果を見ながら 1 つずつ積む折り畳み」である。この形を
