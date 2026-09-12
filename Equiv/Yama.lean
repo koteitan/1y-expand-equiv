@@ -727,4 +727,36 @@ theorem fujiCellAt_par_some_of_parent (S : Setting) (M : List Rowj) (hM : MtRep 
     (expP_yama_cut M mfuel hyama) i k (isRepAt (expP M mfuel) (y + t))]
   exact hpp
 
+/-- **`ShapeRep` の `parNone`（対偶を取った形）。** -/
+theorem fujiCellAt_parNone_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (mfuel : Nat) (hn : 1 < S.n) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (h0 : 0 < (expRes M).length)
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (st : List Rowj) (i t k : Nat)
+    (hi : 0 < i) (ht : t < (expP M mfuel).len)
+    (hk : k < M.length) (hkj : k ≤ y + t)
+    (hlivej : 0 < (rows S.tower.base k).value (y + t))
+    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
+    (hmono : PosMono (rowAt st k))
+    (hcov : ∀ pc, pc < (y + t) + (expP M mfuel).len * i →
+      k ≤ (yamaContext S y hy hpar hh).height pc → HasCol st k pc)
+    (hnone : (fujiCellAt M (expP M mfuel) nd i (y + t) (isRepAt (expP M mfuel) (y + t)) st k).par
+      = none) :
+    (yamaContext S y hy hpar hh).parent k ((y + t) + (expP M mfuel).len * i) = none := by
+  cases hp : (yamaContext S y hy hpar hh).parent k ((y + t) + (expP M mfuel).len * i) with
+  | none => rfl
+  | some pc =>
+      exfalso
+      have hlt : pc < (y + t) + (expP M mfuel).len * i :=
+        (((yamaContext S y hy hpar hh).toRowMountain).row k).parent_left hp
+      have hge : k ≤ (yamaContext S y hy hpar hh).height pc :=
+        ((yamaContext S y hy hpar hh).toRowMountain).parent_endpoint hp
+      obtain ⟨u, hu⟩ := fujiCellAt_par_some_of_parent S M hM mfuel hn hyama y hy hpar hh h0
+        hseam nd st i t k pc hi ht hk hkj hlivej hlast hmono hp (hcov pc hlt hge)
+      rw [hu] at hnone
+      exact absurd hnone (by simp)
+
 end Yukito
