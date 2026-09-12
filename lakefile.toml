@@ -1,0 +1,14 @@
+name = "Y1Equiv"
+version = "0.1.0"
+defaultTargets = ["Equiv"]
+
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+
+[[require]]
+name = "ZeroYBMS"
+path = "../1Y-Well-Ordering-Lean/formalization"
+
+[[lean_lib]]
+name = "Equiv"
