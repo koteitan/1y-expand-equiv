@@ -2328,6 +2328,27 @@ theorem fujiSource_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Na
   repeat' split
   all_goals rfl
 
+theorem fujiSourceAt_le (P : FujiParams) (i k : Nat) (isRep isAsc : Bool) :
+    (fujiSourceAt P i k isRep isAsc).1 ≤ k := by
+  unfold fujiSourceAt
+  cases isAsc with
+  | true => simpa using fujiSource_le P i k isRep
+  | false => simp
+
+theorem fujiSrcRow_le (P : FujiParams) (i k : Nat) (isRep : Bool) :
+    fujiSrcRow P i k isRep ≤ k := by
+  unfold fujiSrcRow
+  dsimp only
+  repeat' split
+  all_goals omega
+
+theorem fujiSrcRowAt_le (P : FujiParams) (i k : Nat) (isRep isAsc : Bool) :
+    fujiSrcRowAt P i k isRep isAsc ≤ k := by
+  unfold fujiSrcRowAt
+  cases isAsc with
+  | true => simpa using fujiSrcRow_le P i k isRep
+  | false => simp
+
 theorem fujiSourceAt_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Nat)
     (isRep isAsc : Bool) :
     fujiSourceAt P i k isRep isAsc = (fujiSrcRowAt P i k isRep isAsc, isRep) := by
