@@ -1403,4 +1403,44 @@ theorem rowAt_cutChild_getElem? (M : List Rowj) (cutH m t : Nat)
   · rw [if_neg (by omega)] at hrow
     rw [hrow]
 
+/-! ## 継ぎ目の列と原文の座標
+
+JS の継ぎ目 `j`（`y ≤ j < x`）は列 `j + L*i` に写る。原文の `source` / `block` は
+`j > y` なら `(j, i)`、`j = y` なら `(x, i−1)` を返す。`j = y` が
+「retained seam」（`source = x`）にあたる。 -/
+
+theorem coord_source_block (C : CopyCoordinates.Context) (j i : Nat)
+    (hj1 : C.y < j) (hj2 : j < C.x) :
+    C.source (j + C.length * i) = j ∧ C.block (j + C.length * i) = i := by
+  have hL := C.root_add_length
+  have hLp := C.length_pos
+  have he : j + C.length * i - C.y - 1 = (j - C.y - 1) + C.length * i := by omega
+  have hlt : j - C.y - 1 < C.length := by omega
+  constructor
+  · unfold CopyCoordinates.Context.source
+    rw [he, Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hlt]
+    omega
+  · unfold CopyCoordinates.Context.block
+    rw [he, Nat.add_mul_div_left _ _ hLp, Nat.div_eq_of_lt hlt]
+    omega
+
+theorem coord_source_block_seam (C : CopyCoordinates.Context) (i : Nat) (hi : 0 < i) :
+    C.source (C.y + C.length * i) = C.x ∧ C.block (C.y + C.length * i) = i - 1 := by
+  have hL := C.root_add_length
+  have hLp := C.length_pos
+  have he : C.y + C.length * i - C.y - 1 = (C.length - 1) + C.length * (i - 1) := by
+    obtain ⟨m, hm⟩ : ∃ m, i = m + 1 := ⟨i - 1, by omega⟩
+    subst hm
+    have hms : C.length * (m + 1) = C.length * m + C.length := Nat.mul_succ _ _
+    simp only [Nat.add_sub_cancel]
+    omega
+  have hlt : C.length - 1 < C.length := by omega
+  constructor
+  · unfold CopyCoordinates.Context.source
+    rw [he, Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt hlt]
+    omega
+  · unfold CopyCoordinates.Context.block
+    rw [he, Nat.add_mul_div_left _ _ hLp, Nat.div_eq_of_lt hlt]
+    omega
+
 end Yukito
