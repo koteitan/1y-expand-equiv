@@ -1284,4 +1284,106 @@ theorem tall_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
   exact lt_dropEmptyTop_length (fujiRaw M mfuel nd nrep).length (fujiRaw M mfuel nd nrep)
     ((lowerContext S y x hyx hroot hhigher).height c) (Nat.le_refl _) hlen (by omega)
 
+/-! ## `ShapeRep` の `parNone` と `parCol`（`fujiRs` の形） -/
+
+theorem parNone_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
+    (hd : (rowAt (fujiRs M mfuel nd nrep) m)[u]? = some d) (hp : d.par = none) :
+    (lowerContext S y x hyx hroot hhigher).parent m (d.pos + m) = none := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  rcases fujiRs_cell S M hM mfuel y hsm nd nrep m u d hd with hold | ⟨i', t', hi', ht', hk', hde⟩
+  · exact parNone_orig_lower S M hM hn y x hx hyx hroot hhigher hcuth m u d hold hp
+  · obtain ⟨hjx, hmh, hmM, hlive, hlast, hseamk⟩ :=
+      push_side_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+        i' t' m ht' hk'
+    have hcol : d.pos + m = (y + t') + (x - y) * (i' + 1) := by
+      rw [hde, fujiCellAt_col_exp M mfuel nd (i' + 1) (y + t') m _ _ _
+        (kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher _ _ _ _) hk', hlen]
+    rw [hcol]
+    refine fujiCellAt_parNone_lower S M hM (expP M mfuel) hyk hbh hcut hsm hlen hx hyx hroot
+      hhigher nd _ (i' + 1) (y + t') m _
+      (hasc_lower S M hM mfuel (expP M mfuel) y x hbh hsm hyx hroot hhigher hfuel (by omega)
+        (y + t') (by omega))
+      (by omega) (by omega) hjx hseamk hmM hn hlive hlast
+      (rowsMono_state_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher nd i' t' m)
+      ?_ ?_
+    · intro pc hlt hge
+      exact hasCol_state_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+        nd i' t' m pc ht' (by rw [hlen]; exact hlt) hge
+    · rw [← hde]
+      exact hp
+
+theorem parCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (y x : Nat)
+    (hbh : (expP M mfuel).badRootHeight = height S.tower.base y)
+    (hsm : (expP M mfuel).badRootSeam = y)
+    (hcut : (expP M mfuel).cutHeight = height S.tower.base x)
+    (hx : x = S.n - 1) (hyx : y < x)
+    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
+    (hhigher : height S.tower.base y < height S.tower.base x)
+    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
+    (hyk : (expP M mfuel).yamakazi = false)
+    (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
+    (hd : (rowAt (fujiRs M mfuel nd nrep) m)[u]? = some d) (p : Nat) (hp : d.par = some p) :
+    ∃ hp' : p < (rowAt (fujiRs M mfuel nd nrep) m).size,
+      (lowerContext S y x hyx hroot hhigher).parent m (d.pos + m)
+        = some (((rowAt (fujiRs M mfuel nd nrep) m)[p]'hp').pos + m) := by
+  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  have hcuth : expCutH M = height S.tower.base (S.n - 1) := expCutH_eq S M hM hn
+  have hlen : (expP M mfuel).len = x - y := expP_len_lower S M hM mfuel h0 y x hsm hx
+  have hne : 0 < (rowAt (fujiRs M mfuel nd nrep) m).size := by
+    have := lt_size_of_getElem? hd
+    omega
+  have hrow : rowAt (fujiRs M mfuel nd nrep) m = rowAt (fujiRaw M mfuel nd nrep) m := by
+    have hm : m < (dropEmptyTop (fujiRaw M mfuel nd nrep)).length := by
+      rcases Nat.lt_or_ge m (dropEmptyTop (fujiRaw M mfuel nd nrep)).length with h1 | h1
+      · exact h1
+      · exfalso
+        have hz : rowAt (fujiRs M mfuel nd nrep) m = #[] := rowAt_of_ge _ m h1
+        rw [hz] at hne
+        simp at hne
+    exact rowAt_dropEmptyTop (fujiRaw M mfuel nd nrep).length (fujiRaw M mfuel nd nrep) m
+      (Nat.le_refl _) hm
+  rcases fujiRs_cell S M hM mfuel y hsm nd nrep m u d hd with hold | ⟨i', t', hi', ht', hk', hde⟩
+  · have hext : RowExt (rowAt (expRes M) m) (rowAt (fujiRs M mfuel nd nrep) m) := by
+      rw [hrow]
+      exact rowExt_fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M) m
+    exact parCol_orig_lower S M hM hn y x hx hyx hroot hhigher hcuth
+      (fujiRs M mfuel nd nrep) m u d hold hext p hp
+  · obtain ⟨hjx, hmh, hmM, hlive, hlast, hseamk⟩ :=
+      push_side_lower S M hM mfuel hn hM2 y x hbh hsm hcut hx hyx hroot hhigher hfuel
+        i' t' m ht' hk'
+    have hcol : d.pos + m = (y + t') + (x - y) * (i' + 1) := by
+      rw [hde, fujiCellAt_col_exp M mfuel nd (i' + 1) (y + t') m _ _ _
+        (kmaxAt_le_lower' S M (expP M mfuel) y x hbh hcut hlen hroot hhigher _ _ _ _) hk', hlen]
+    have hpst : (fujiCellAt M (expP M mfuel) nd (i' + 1) (y + t')
+        (isRepAt (expP M mfuel) (y + t')) (isAscAt M (expP M mfuel) (y + t') mfuel)
+        (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+          (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m).par
+        = some p := by
+      rw [← hde]
+      exact hp
+    obtain ⟨hp'', hcolp⟩ :=
+      fujiCellAt_parCol_lower S M hM (expP M mfuel) hyk hbh hcut hsm hlen hx hyx hroot hhigher
+        nd _ (i' + 1) (y + t') m p _
+        (hasc_lower S M hM mfuel (expP M mfuel) y x hbh hsm hyx hroot hhigher hfuel (by omega)
+          (y + t') (by omega))
+        (by omega) (by omega) hjx hseamk hmM hn hlive hlast hpst
+    obtain ⟨hp', hpeq⟩ :=
+      (rowExt_state_to_fujiRs M mfuel nd nrep m i' t' hi' (by omega) hne).getElem p hp''
+    refine ⟨hp', ?_⟩
+    rw [hcol, hcolp]
+    rw [hpeq]
+
 end Yukito

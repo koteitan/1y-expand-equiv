@@ -1217,8 +1217,10 @@ theorem valTop_push_exp (M : List Rowj) (mfuel : Nat) (nd : Nat → Nat) (i j m 
 
 /-! ## `ShapeRep` の `valTop`（`fujiRs` の形） -/
 
-theorem valTop_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
-    (hn : 1 < S.n) (hyama : expYama M mfuel)
+theorem valTop_exp (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n)
+    (hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
+      ≤ j2 + (expP M mfuel).len * i2 + 1)
     (y : Nat) (hseam : (expP M mfuel).badRootSeam = y)
     (hcut : expCutH M = height S.tower.base (S.n - 1))
     (nd : Nat → Nat) (hnd : ∀ c, c < S.n - 1 → nd c = topValue S.tower.base c)
@@ -1231,8 +1233,7 @@ theorem valTop_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     exact valTop_orig_yama S M hM hn hcut m u d hold hp
   · rw [hde]
     refine valTop_push_exp M mfuel nd (i' + 1) (y + t') m
-      (isRepAt (expP M mfuel) (y + t')) _ _
-      (kmaxAt_le_yama' M (expP M mfuel) _ _ _ _ (expP_yama_cut M mfuel hyama)) hk' ?_
+      (isRepAt (expP M mfuel) (y + t')) _ _ (hkm _ _) hk' ?_
     rw [← hde]
     exact hp
 
@@ -1466,7 +1467,9 @@ theorem shapeRep_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Na
     · exact step_orig_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep r c p h hp
     · exact step_push_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam hasc nd nrep r c p hc h hp
   valTop := fun r i h hp =>
-    valTop_yama S M hM mfuel hn hyama y hseam (expCutH_eq S M hM hn) nd hnd nrep r i _
+    valTop_exp S M hM mfuel hn
+      (fun i2 j2 => kmaxAt_le_yama' M (expP M mfuel) i2 j2 _ _ (expP_yama_cut M mfuel hyama))
+      y hseam (expCutH_eq S M hM hn) nd hnd nrep r i _
       (Array.getElem?_eq_getElem h) hp
   topPos := hndpos
   tall := fun c hc =>
