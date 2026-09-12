@@ -923,8 +923,14 @@ value_of_diff  差分の関係を満たす値は Reconstruction.value に一致�
 ```
 hasCol         行 r に列 j があるか        ⟺ 0 < (rows base r).value j
 seamHeightOf   列 j を含む最上段の 1 つ上  = height j + 1
-isAscending    行 bh で列 j の親鎖が列 seam に届くか（翻訳は未）
+isAscending    行 bh で列 j の親鎖が列 seam に届くか
+                 ⟺ 列 j がその行で生きていて、seam が j 自身かその祖先
 ```
+
+`isAscending` の翻訳では、鎖が列について真に減ることを使う。JS は「`seam` より左に
+出たら false」で打ち切るが、密表現ではそれが「祖先でない」に対応する
+（`ascendTo_iff`）。親の添字が子の添字より小さいこと（`par_index_lt`）が燃料の
+減少を与える。
 
 Phyrion 側の `OrdinaryCopy`（層 `k > K`）は次の形である。
 
