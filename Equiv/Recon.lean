@@ -81,4 +81,32 @@ theorem value_of_diff (M : RowMountain) (top : Nat → Nat) (V : Nat → Nat →
           rw [hnext]
           simp only [Reconstruction.parentValue, hp]
 
+/-- **前半だけでの版。** 列 `W` 未満についてだけ仮定があれば、そこでの値は一致する。
+親は真に左へ動くので、帰納の中で使う列はすべて `W` 未満に留まる。 -/
+theorem value_of_diff_prefix (M : RowMountain) (top : Nat → Nat) (V : Nat → Nat → Nat)
+    (W : Nat)
+    (hstep : ∀ r c p, c < W → (M.row r).parent c = some p → V r c = V r p + V (r + 1) c)
+    (htop : ∀ c, c < W → V (M.height c) c = top c)
+    (hzero : ∀ r c, c < W → M.height c < r → V r c = 0) :
+    ∀ c, c < W → ∀ r, V r c = Reconstruction.value M top r c := by
+  intro c
+  induction c using Nat.strongRecOn with
+  | ind c ih =>
+    intro hcW r
+    rcases Nat.lt_or_ge (M.height c) r with hgt | hle
+    · rw [hzero r c hcW hgt, recon_above M top r c hgt]
+    · obtain ⟨d, hd⟩ : ∃ d, M.height c - r = d := ⟨_, rfl⟩
+      induction d generalizing r with
+      | zero =>
+          have hre : r = M.height c := by omega
+          rw [hre, htop c hcW, recon_top]
+      | succ d ihd =>
+          have hlt : r < M.height c := by omega
+          obtain ⟨p, hp⟩ := M.parent_exists r c hlt
+          have hpc : p < c := (M.row r).parent_left hp
+          rw [hstep r c p hcW hp, ih p hpc (by omega) r, recon_step M top r c hlt]
+          have hnext := ihd (r + 1) (by omega) (by omega)
+          rw [hnext]
+          simp only [Reconstruction.parentValue, hp]
+
 end Yukito

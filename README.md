@@ -56,6 +56,8 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Fuji.lean` | Mt.Fuji シェルの補助走査（列の有無・継ぎ目の高さ・上りの判定） |
 | `Equiv/Fill.lean` | **値の埋めの構造**。`fillRow` / `fillValues` が満たす差分の関係 |
 | `Equiv/NoBad.lean` | **bad root が無いときの一致**（`expand_eq_no_bad`） |
+| `Equiv/Copy.lean` | Mt.Fuji シェルの三重ループの構造・座標・出力の幅 |
+| `Equiv/Shape.lean` | **`ShapeRep` と値の層の結論**（`expandOut_eq_value`） |
 
 ## 座標の対応
 
@@ -1145,10 +1147,14 @@ row0Vals          行 0 の値の列は s そのもの
 bad root    済
 値の埋め    済（差分の関係 → Reconstruction.value）
 分岐 none   済（expand_eq_no_bad）
-コピー層    未（分岐 some）
+三重ループ  済（構造・座標・出力の幅）
+値の層      済（ShapeRep → expandOut_eq_value）
+森のコピー  未（ShapeRep を作る部分）
+層の再帰    未
 ```
 
-コピー層が全体の大半である。
+残るのは `ShapeRep` を作ること、すなわち `fujiSource` の 4 枝が
+`expandedMountain` の親写像を与えることの確認である。
 
 ## ビルド
 

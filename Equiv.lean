@@ -30,3 +30,4 @@ import Equiv.Fuji
 import Equiv.Fill
 import Equiv.NoBad
 import Equiv.Copy
+import Equiv.Shape
