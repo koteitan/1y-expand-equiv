@@ -1101,11 +1101,19 @@ cellCol  段 r にあるセルの列は高さ r 以上
 cover    高さ r 以上の列は段 r にある
 parCol   親を持つセルの親の列は密な山の親
 parNone  親を持たないセルは密な山でも根
-valZero  親を持つセルの値は未確定（0）
+step     差分の関係 V r c = V r（親の列）+ V (r+1) c
 valTop   親を持たないセルの値は頂の値
 topPos   頂の値は正
 tall     段が足りている
 ```
+
+`step` はもともと「親を持つセルの値は 0」としていたが、それは誤りだった。
+JS の `fillRow` は値が 0 でないセルを触らないので、**元からある列のセルは
+元の値をそのまま残す**。そこで条件を差分の関係そのものに変えた。値 0 のセルでは
+値の埋めから、値が入っているセルでは元の山の差分の関係から出る。
+
+値の整合性は保たれている。列 `c < x` では原文の復元値も元の値に一致する
+（`top c = topValue base c`、`source0 c = c` のため）。
 
 `ShapeRep Rs G top W` から、`value_of_diff_prefix`（`value_of_diff` の前半だけ版）を
 使って
@@ -1367,6 +1375,17 @@ hasCol_state           その列は積む時点の段 k に載っている
 hasCol_pos             そこから添字と位置を取り出す
 fujiCell_par_isSome    lookupPos がその添字を見つけるので par は some
 ```
+
+### `cover` と `cellCol`（済）
+
+```
+cover_yama         c < (n−1) + len*nrep で m ≤ height_G c なら段 m に列 c が載る
+cutChild_cell_live 子を切ったあとに残るセルは元の山で生きていて列は n−1 未満
+cellCol_yama       段 m にあるセルの列 c は m ≤ height_G c を満たす
+```
+
+`cell_fujiIters` で「元からあるセル」と「積んだセル」に分け、前者は
+`cutChild_cell_live`、後者は `kmaxAt_expRes_eq`（`kmax = height j + 1`）で片付く。
 
 この鎖を実際に繋いだ。
 
