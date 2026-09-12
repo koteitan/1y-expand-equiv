@@ -1656,4 +1656,26 @@ theorem assemble_above_eq (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
   rw [h]
   rfl
 
+/-- **JS の新しい対角は原文の `assemble`（`K+1` 段目以上）である。** -/
+theorem expNd_eq_assemble (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
+    (hbad : BadAt (rootedSequence s hs) K d x y) (hK : K < sequenceBound s)
+    (M : List Rowj) (hM : MtRep (iterSet (linearSetting s hs.1) K) M) (f : Nat)
+    (hn : 1 < (iterSet (linearSetting s hs.1) K).n)
+    (hyama : expYama M (f + 1)) (hseam : expSeam M (f + 1) = y) (hx : s.length - 1 = x)
+    (nrep efuel c : Nat) :
+    expNd nrep (f + 1) efuel M c
+      = TowerReconstruction.assemble
+          ((List.range' (K + 1) (sequenceBound s - (K + 1))).map
+            (expandedMountain (rootedSequence s hs) hbad)) (fun _ => 1) c := by
+  have hb : (iterSet (linearSetting s hs.1) K).tower.base
+      = (layers (rootedSequence s hs) K).row := iterSet_base s hs K
+  have hnn : (iterSet (linearSetting s hs.1) K).n = s.length := iterSet_n s hs.1 K
+  rw [assemble_above_eq s hs hbad hK c, ← hb]
+  refine expNd_topValue (iterSet (linearSetting s hs.1) K) M hM f hn hyama
+    ((badAtTerminalContext (rootedSequence s hs) hbad).ordinaryContext) ?_ ?_ nrep efuel c
+  · show y = expSeam M (f + 1)
+    rw [hseam]
+  · show x = (rowAt M 0).size - 1
+    rw [hM.size0, hnn, hx]
+
 end Yukito
