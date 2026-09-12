@@ -1720,4 +1720,101 @@ theorem kmaxAt_pos' (S : Setting) (M : List Rowj) (hM : MtRep S M) (h0 : 0 < M.l
   kmaxAt_pos M P i j ach af
     (seamHeightOf_pos_of_hasCol M j 0 ach hach (hasCol_zero S M hM h0 j hj))
 
+/-! ## 末尾の空段を落とす
+
+`dropEmptyTop` は末尾の空段だけを落とすので、残った段は元のままである。 -/
+
+theorem take_len_cons (a : Rowj) (t : List Rowj) :
+    ((a :: t).take t.length).length = t.length := by
+  simp only [List.length_take, List.length_cons, Nat.min_def]
+  split <;> omega
+
+theorem dropEmptyTop_length_le (n : Nat) : ∀ (L : List Rowj), L.length ≤ n →
+    (dropEmptyTop L).length ≤ L.length := by
+  induction n with
+  | zero =>
+      intro L hL
+      rcases L with _ | ⟨a, t⟩
+      · rw [dropEmptyTop_nil]
+        exact Nat.le_refl _
+      · exact absurd hL (by simp)
+  | succ n ih =>
+      intro L hL
+      rcases L with _ | ⟨a, t⟩
+      · rw [dropEmptyTop_nil]
+        exact Nat.le_refl _
+      · rcases Decidable.em (((a :: t).getD t.length #[]).size = 0) with hc | hc
+        · have hd : dropEmptyTop (a :: t) = dropEmptyTop ((a :: t).take t.length) := by
+            rw [dropEmptyTop, if_pos hc]
+          have hlen := take_len_cons a t
+          have h1 := ih ((a :: t).take t.length) (by simp only [List.length_cons] at hL; omega)
+          rw [hd]
+          simp only [List.length_cons]
+          omega
+        · have hd : dropEmptyTop (a :: t) = a :: t := by
+            rw [dropEmptyTop, if_neg hc]
+          rw [hd]
+          exact Nat.le_refl _
+
+theorem rowAt_dropEmptyTop (n : Nat) : ∀ (L : List Rowj) (m : Nat), L.length ≤ n →
+    m < (dropEmptyTop L).length → rowAt (dropEmptyTop L) m = rowAt L m := by
+  induction n with
+  | zero =>
+      intro L m hL _
+      rcases L with _ | ⟨a, t⟩
+      · rw [dropEmptyTop_nil]
+      · exact absurd hL (by simp)
+  | succ n ih =>
+      intro L m hL hm
+      rcases L with _ | ⟨a, t⟩
+      · rw [dropEmptyTop_nil]
+      · rcases Decidable.em (((a :: t).getD t.length #[]).size = 0) with hc | hc
+        · have hd : dropEmptyTop (a :: t) = dropEmptyTop ((a :: t).take t.length) := by
+            rw [dropEmptyTop, if_pos hc]
+          have hlen := take_len_cons a t
+          have hle := dropEmptyTop_length_le n ((a :: t).take t.length)
+            (by simp only [List.length_cons] at hL; omega)
+          rw [hd] at hm ⊢
+          have hmt : m < t.length := by omega
+          rw [ih ((a :: t).take t.length) m (by simp only [List.length_cons] at hL; omega) hm,
+            rowAt_take_lt _ _ _ hmt]
+        · have hd : dropEmptyTop (a :: t) = a :: t := by
+            rw [dropEmptyTop, if_neg hc]
+          rw [hd]
+
+/-- **空でない段は残る。** -/
+theorem lt_dropEmptyTop_length (n : Nat) : ∀ (L : List Rowj) (m : Nat), L.length ≤ n →
+    m < L.length → 0 < (rowAt L m).size → m < (dropEmptyTop L).length := by
+  induction n with
+  | zero =>
+      intro L m hL hm _
+      rcases L with _ | ⟨a, t⟩
+      · simp at hm
+      · exact absurd hL (by simp)
+  | succ n ih =>
+      intro L m hL hm hs
+      rcases L with _ | ⟨a, t⟩
+      · simp at hm
+      · rcases Decidable.em (((a :: t).getD t.length #[]).size = 0) with hc | hc
+        · have hd : dropEmptyTop (a :: t) = dropEmptyTop ((a :: t).take t.length) := by
+            rw [dropEmptyTop, if_pos hc]
+          have hlen := take_len_cons a t
+          have hz : (rowAt (a :: t) t.length).size = 0 := hc
+          have hmt : m < t.length := by
+            rcases Nat.lt_or_ge m t.length with h | h
+            · exact h
+            · exfalso
+              have hme : m = t.length := by simp only [List.length_cons] at hm; omega
+              rw [hme] at hs
+              omega
+          rw [hd]
+          refine ih ((a :: t).take t.length) m
+            (by simp only [List.length_cons] at hL; omega) (by omega) ?_
+          rw [rowAt_take_lt _ _ _ hmt]
+          exact hs
+        · have hd : dropEmptyTop (a :: t) = a :: t := by
+            rw [dropEmptyTop, if_neg hc]
+          rw [hd]
+          exact hm
+
 end Yukito
