@@ -1607,6 +1607,30 @@ height_parentCopy_ge   M.height p ≤ height (parentCopy b p)
 
 から出る。したがってこの枝に幾何的な追加の義務は無い。
 
+原文の 3 つの枝は 1 つにまとめられる。上りの列では `r < floor + b*rise` なら
+`floor`、そうでなければ `r − b*rise` を使うが、これは `floor` で下から押さえた
+
+```
+max floor (r − b*rise)
+```
+
+に等しい（`clamp_srcRow`）。JS の `fujiSrcRow` も、段が `floor + rise*i` 以下で
+あればこれに一致する。継ぎ目の列では `b = i−1`、そうでない列では `b = i` で、
+どちらも 4 番目の枝（`k − d*i`）には落ちない。
+
+```
+fujiSrcRowAt            上りかどうかまで込めた元の段（上りでなければ k）
+fujiSrcRowAt_eq         **JS の元の段 = if 上り ∧ floor ≤ k then max floor (k − b*rise) else k**
+lowerContext_parent_new c = s + b*L（0 < b）での原文の親を開く
+lowerContext_parent_other  y < j < x の列
+lowerContext_parent_seam   継ぎ目の列（元の列は x、block は i−1）
+lowerContext_parent_src **原文の親 → 元の段・元の列・その親**
+sourceIdx_lower_col     JS の元のセルの列（継ぎ目なら n−1、そうでなければ j）
+```
+
+`lowerContext_parent_src` が山崎噴火の枝の `yamaContext_parent_src` にあたる。
+残るのは JS 側のセルとの突き合わせと `ShapeRep` の組み立てである。
+
 ### 元からあるセルについての条件（済）
 
 コピーで積んだセルとは別に、`cutChild` から残った列 `c < n−1` のセルについても
@@ -1722,8 +1746,10 @@ bad root    済
 値の層      済（ShapeRep → expandOut_eq_value）
 森のコピー  山崎噴火の枝（原文の層 k = K）は済
             （shapeRep_yama / yamaContext_eq / expNd_eq_assemble）
-            k < K の枝（badAtLowerContext）は山の高さまで済
-            （lowerContext / kmaxAt_eq_height_lower）、親と ShapeRep は未
+            k < K の枝（badAtLowerContext）は山の高さと、原文側の親を
+            元の段・元の列に開くところまで済（lowerContext /
+            kmaxAt_eq_height_lower / lowerContext_parent_src）。
+            JS 側のセルとの突き合わせと ShapeRep は未
 層の再帰    未
 ```
 

@@ -341,4 +341,144 @@ theorem lowerContext_parent_other (hyx : y < x) (hroot) (hhigher) (k i j pc : Na
     refine ⟨q, hq, ?_⟩
     rw [← hqe, parentCopy_eq, lowerContext_y_eq, lowerContext_length_eq]
 
+/-- 継ぎ目の列（`j = y`）。この列の元の列は `x` で、繰り返し `i` のコピーは
+`x` の block `i−1` にあたる。 -/
+theorem lowerContext_parent_seam (hyx : y < x) (hroot) (hhigher) (k i pc : Nat)
+    (hi : 0 < i)
+    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (y + (x - y) * i) = some pc) :
+    ∃ q, (rows S.tower.base
+        (if height S.tower.base y ≤ k then
+          max (height S.tower.base y)
+            (k - (i - 1) * (height S.tower.base x - height S.tower.base y))
+         else k)).forest.parent x = some q ∧
+      pc = q + (if y ≤ q then (i - 1) * (x - y) else 0) := by
+  obtain ⟨m, rfl⟩ : ∃ m, i = m + 1 := ⟨i - 1, by omega⟩
+  have hcol : y + (x - y) * (m + 1) = x + m * (x - y) := by
+    have h1 : (x - y) * (m + 1) = (x - y) * m + (x - y) := Nat.mul_succ _ _
+    have h2 : (x - y) * m = m * (x - y) := Nat.mul_comm _ _
+    omega
+  have hm1 : m + 1 - 1 = m := by omega
+  rw [hcol] at hpc
+  rw [hm1]
+  have hfl : (lowerContext S y x hyx hroot hhigher).floor = height S.tower.base y := rfl
+  have hri : (lowerContext S y x hyx hroot hhigher).rise
+      = height S.tower.base x - height S.tower.base y := rfl
+  have hcone : (lowerContext S y x hyx hroot hhigher).InCone x :=
+    (lowerContext S y x hyx hroot hhigher).last_inCone
+  cases m with
+  | zero =>
+      have hx0 : x + 0 * (x - y) = x := by omega
+      rw [hx0, (lowerContext S y x hyx hroot hhigher).parent_original
+        (show x ≤ (lowerContext S y x hyx hroot hhigher).coordinates.x from Nat.le_refl _)] at hpc
+      refine ⟨pc, ?_, by simp⟩
+      rcases Nat.lt_or_ge k (height S.tower.base y) with hk | hk
+      · rw [if_neg (by omega)]
+        exact hpc
+      · rw [if_pos hk]
+        have hmx : max (height S.tower.base y)
+            (k - 0 * (height S.tower.base x - height S.tower.base y)) = k := by
+          simp only [Nat.max_def]
+          split <;> omega
+        rw [hmx]
+        exact hpc
+  | succ m' =>
+      rw [lowerContext_parent_new hyx hroot hhigher k x (m' + 1) hyx (Nat.le_refl _)
+        (by omega)] at hpc
+      rcases Nat.lt_or_ge k (height S.tower.base y) with hk | hk
+      · rw [if_neg (by omega)]
+        rw [if_neg (fun h => absurd h.2 (by rw [hfl]; omega))] at hpc
+        obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+        refine ⟨q, hq, ?_⟩
+        rw [← hqe, parentCopy_eq, lowerContext_y_eq, lowerContext_length_eq]
+      · rw [if_pos hk]
+        rw [if_pos (show (lowerContext S y x hyx hroot hhigher).InCone x
+          ∧ (lowerContext S y x hyx hroot hhigher).floor ≤ k from ⟨hcone, by rw [hfl]; exact hk⟩),
+          hfl, hri] at hpc
+        have hif : (if k < height S.tower.base y
+                  + (m' + 1) * (height S.tower.base x - height S.tower.base y) then
+                ((lowerContext S y x hyx hroot hhigher).mountain.row
+                  (height S.tower.base y)).parent x
+              else
+                ((lowerContext S y x hyx hroot hhigher).mountain.row
+                  (k - (m' + 1)
+                    * (height S.tower.base x - height S.tower.base y))).parent x)
+            = ((lowerContext S y x hyx hroot hhigher).mountain.row
+                (max (height S.tower.base y)
+                  (k - (m' + 1)
+                    * (height S.tower.base x - height S.tower.base y)))).parent x := by
+          rw [← clamp_srcRow (height S.tower.base y) (m' + 1)
+            (height S.tower.base x - height S.tower.base y) k]
+          split <;> rfl
+        rw [hif] at hpc
+        obtain ⟨q, hq, hqe⟩ := Option.map_eq_some_iff.mp hpc
+        refine ⟨q, hq, ?_⟩
+        have hconeq : (lowerContext S y x hyx hroot hhigher).InCone q :=
+          (lowerContext S y x hyx hroot hhigher).high_parent_inCone hcone
+            (show (lowerContext S y x hyx hroot hhigher).floor
+              ≤ max (height S.tower.base y)
+                  (k - (m' + 1)
+                    * (height S.tower.base x - height S.tower.base y)) by
+              rw [hfl]; exact Nat.le_max_left _ _) hq
+        have hyq : y ≤ q := (lowerContext S y x hyx hroot hhigher).root_le_of_inCone hconeq
+        rw [← hqe, if_pos hyq]
+        rfl
+
+/-- **原文の親から、JS が使う元の段・元の列とその親を取り出す。** -/
+theorem lowerContext_parent_src (hyx : y < x) (hroot) (hhigher) (P : FujiParams)
+    (hbh : P.badRootHeight = height S.tower.base y)
+    (hcut : P.cutHeight = height S.tower.base x)
+    (hsm : P.badRootSeam = y)
+    (k i j pc : Nat) (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x) (isAsc : Bool)
+    (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
+    (hk : k ≤ height S.tower.base y
+      + (height S.tower.base x - height S.tower.base y) * i)
+    (hpc : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = some pc) :
+    ∃ q, (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).forest.parent
+          (if j = y then x else j) = some q ∧
+      pc = q + (if y ≤ q then (i - (if j = y then 1 else 0)) * (x - y) else 0) := by
+  rw [fujiSrcRowAt_eq P hbh hcut i k (isRepAt P j) isAsc hk]
+  rcases Decidable.em (j = y) with hje | hjne
+  · subst hje
+    have hrep : isRepAt P j = true := by
+      show decide (j = P.badRootSeam) = true
+      rw [hsm]
+      simp
+    have hasct : isAsc = true := hasc.mpr (inCone_seam hyx hroot hhigher)
+    rw [hrep, hasct, if_pos rfl, if_pos rfl]
+    simp only [true_and]
+    exact lowerContext_parent_seam hyx hroot hhigher k i pc hi hpc
+  · have hrep : isRepAt P j = false := by
+      show decide (j = P.badRootSeam) = false
+      rw [hsm]
+      simp [hjne]
+    rw [hrep]
+    simp only [if_neg hjne, Bool.false_eq_true, if_false, Nat.sub_zero]
+    have h := lowerContext_parent_other hyx hroot hhigher k i j pc hi (by omega) hjx hpc
+    rcases Decidable.em ((lowerContext S y x hyx hroot hhigher).InCone j
+        ∧ height S.tower.base y ≤ k) with hc | hc
+    · rw [if_pos (show isAsc = true ∧ height S.tower.base y ≤ k from ⟨hasc.mpr hc.1, hc.2⟩)]
+      rw [if_pos hc] at h
+      exact h
+    · rw [if_neg (fun hcon => hc ⟨hasc.mp hcon.1, hcon.2⟩)]
+      rw [if_neg hc] at h
+      exact h
+
+/-- **JS の元のセルの列。** 置き換えの継ぎ目では行の最後（= `n−1`）、
+そうでなければ列 `j` そのもの。 -/
+theorem sourceIdx_lower_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (P : FujiParams) (sy j : Nat) (hsy : sy < M.length) (hn : 1 < S.n)
+    (hsyj : sy ≤ j) (hj : j < S.n)
+    (hlive : 0 < (rows S.tower.base sy).value j)
+    (hlast : 0 < (rows S.tower.base sy).value (S.n - 1)) :
+    ∃ h : sourceIdx M sy j (isRepAt P j) < (rowAt M sy).size,
+      ((rowAt M sy)[sourceIdx M sy j (isRepAt P j)]'h).pos + sy
+        = if j = P.badRootSeam then S.n - 1 else j := by
+  cases hb : isRepAt P j with
+  | true =>
+      rw [if_pos (of_decide_eq_true hb)]
+      exact sourceIdx_last_col S M hM sy j hsy hn hlast
+  | false =>
+      rw [if_neg (of_decide_eq_false hb)]
+      exact sourceIdx_col S M hM sy j hsy hsyj hj hlive
+
 end Yukito
