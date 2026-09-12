@@ -103,6 +103,14 @@ U root < U j ≤ U w ≤ U root
 これは大きな簡約で、`root` と `j` の間に列が無いため「間の列はすべて死んでいる」
 という仮定が自明になる。`firstLive_eq_succ` に入れた。
 
+`j = root + 1` により次が仮定なしで出る。
+
+```
+fparent_succ         j の F 親は root（「間の列が死んでいる」が自明になる）
+succ_lt_child        非祖先の場合は j < e
+one_of_lower_ancestor  j が一段下で e の祖先なら U e ≤ U j
+```
+
 これにより `j` と、`root` の `F` 子で `p` の鎖にある列 `e` が `F` 兄弟になる。
 `U e ≥ U p` は最大性から出るので、残るのは `U j ≥ U e` だけである。すなわち
 

@@ -175,4 +175,32 @@ theorem firstLive_eq_succ (hadj : RootChildAdjacent F U) {root p j : Nat}
   · omega
   · exact absurd (hfirst (root + 1) (by omega) (by omega)) (hadj root p hp)
 
+/-- `j = root + 1` のときは「間の列が死んでいる」という仮定が自明に満たされる。
+したがって `F` 親が `root` であることが仮定なしで出る。 -/
+theorem fparent_succ (hc : Compat F U) {root : Nat}
+    (hj : restrictedParent F U (root + 1) = some root) :
+    F.parent (root + 1) = some root :=
+  fparent_eq_root hc hj (fun _ h1 h2 => absurd h2 (by omega))
+
+/-- `e` を `root` の `F` 子とすると、`root + 1 ≤ e` である。 -/
+theorem succ_le_child {root e : Nat} (he : F.parent e = some root) : root + 1 ≤ e := by
+  have := F.parent_left he
+  omega
+
+/-- 非祖先の場合、すなわち `j = root + 1` が `e` と異なるときは `j < e` である。 -/
+theorem succ_lt_child {root e : Nat} (he : F.parent e = some root)
+    (hne : root + 1 ≠ e) : root + 1 < e := by
+  have := succ_le_child he
+  omega
+
+/-- 場合 1 の形。`j = root + 1` が `e` の `F'` 祖先なら、一段下の最大性で
+`U e ≤ U j` が出る。ここで `F'` は `F` の frame、`U'` はその上の値である。 -/
+theorem one_of_lower_ancestor {F' : ParentForest} {U' : Nat → Nat} {root e : Nat}
+    (hF : F.parent = restrictedParent F' U')
+    (he : F.parent e = some root)
+    (hanc : ZeroY.Forest.Ancestor F'.parent e (root + 1))
+    (hpos : 0 < U' (root + 1)) : U' e ≤ U' (root + 1) := by
+  have he' : restrictedParent F' U' e = some root := by rw [← hF]; exact he
+  exact one_of_ancestor root e (root + 1) he' hanc (by omega) hpos
+
 end Yukito
