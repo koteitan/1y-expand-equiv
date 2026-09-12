@@ -296,4 +296,51 @@ theorem yamaContext_level (S : Setting) (y : Nat) (hy hpar hh) :
 theorem yamaContext_length (S : Setting) (y : Nat) (hy hpar hh) :
     (yamaContext S y hy hpar hh).coordinates.length = S.n - 1 - y := rfl
 
+/-! ## コピー先の山の高さ
+
+原文の `TerminalCopy.height` は 3 つに分かれるが、コピーで作る列
+`j + L*i`（`y ≤ j < x`）についてはどれも「元の列 `j` の高さ」になる。 -/
+
+theorem yamaContext_height_orig (S : Setting) (y : Nat) (hy hpar hh) (c : Nat)
+    (hc : c < S.n - 1) :
+    (yamaContext S y hy hpar hh).height c = height S.tower.base c :=
+  (yamaContext S y hy hpar hh).height_original hc
+
+theorem yamaContext_height_seam (S : Setting) (y : Nat) (hy hpar hh) (i : Nat) (hi : 0 < i) :
+    (yamaContext S y hy hpar hh).height
+        ((yamaContext S y hy hpar hh).coordinates.y
+          + (yamaContext S y hy hpar hh).coordinates.length * i)
+      = height S.tower.base y := by
+  obtain ⟨hsrc, _⟩ := coord_source_block_seam (yamaContext S y hy hpar hh).coordinates i hi
+  have hL := (yamaContext S y hy hpar hh).coordinates.root_add_length
+  have hmul : (yamaContext S y hy hpar hh).coordinates.length * 1
+      ≤ (yamaContext S y hy hpar hh).coordinates.length * i := Nat.mul_le_mul_left _ hi
+  have hone : (yamaContext S y hy hpar hh).coordinates.length * 1
+      = (yamaContext S y hy hpar hh).coordinates.length := Nat.mul_one _
+  unfold TerminalCopy.Context.height
+  rw [if_neg (by omega), if_pos hsrc]
+  rfl
+
+theorem yamaContext_height_other (S : Setting) (y : Nat) (hy hpar hh) (j i : Nat)
+    (hj1 : y < j) (hj2 : j < S.n - 1) :
+    (yamaContext S y hy hpar hh).height
+        (j + (yamaContext S y hy hpar hh).coordinates.length * i)
+      = height S.tower.base j := by
+  rcases Nat.eq_zero_or_pos i with hi | hi
+  · subst hi
+    rw [Nat.mul_zero, Nat.add_zero]
+    exact yamaContext_height_orig S y hy hpar hh j hj2
+  · obtain ⟨hsrc, _⟩ := coord_source_block (yamaContext S y hy hpar hh).coordinates j i
+      hj1 hj2
+    have hL := (yamaContext S y hy hpar hh).coordinates.root_add_length
+    have hmul : (yamaContext S y hy hpar hh).coordinates.length * 1
+        ≤ (yamaContext S y hy hpar hh).coordinates.length * i := Nat.mul_le_mul_left _ hi
+    have hone : (yamaContext S y hy hpar hh).coordinates.length * 1
+        = (yamaContext S y hy hpar hh).coordinates.length := Nat.mul_one _
+    have hyy : (yamaContext S y hy hpar hh).coordinates.y = y := rfl
+    have hxx : (yamaContext S y hy hpar hh).coordinates.x = S.n - 1 := rfl
+    unfold TerminalCopy.Context.height
+    rw [if_neg (by omega), if_neg (by rw [hsrc]; omega), hsrc]
+    rfl
+
 end Yukito
