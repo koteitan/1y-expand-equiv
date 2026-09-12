@@ -75,11 +75,11 @@ theorem not_breakHere (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r 
 /-- 鎖の要素の右隣は、その行で生きている。鎖の要素はどれも「ある列の親」なので、
 `leftmost_child_rows`（最左の子は右隣）が使える。したがって鎖の上では
 隙間 break は発動しない。 -/
-theorem chain_succ_live (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k q x : Nat)
-    (h : (rows (ofSequence s) k).forest.parent x = some q) :
-    0 < (rows (ofSequence s) (k + 1)).value (q + 1) :=
-  (rows_parent_iff_next_live (ofSequence s) k (q + 1)).mp
-    ⟨q, leftmost_child_seq s hs k q x h⟩
+theorem chain_succ_live (T : Tower) (k q x : Nat)
+    (h : (rows T.base k).forest.parent x = some q) :
+    0 < (rows T.base (k + 1)).value (q + 1) :=
+  (rows_parent_iff_next_live T.base k (q + 1)).mp
+    ⟨q, leftmost_child_rows T k q x h⟩
 
 /-- 目標列が死んでいて右隣が生きていれば、`firstAtLeast` は右隣を指す。
 山の段で唯一のずれが起きるのがこの形である。 -/

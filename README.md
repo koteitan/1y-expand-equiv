@@ -751,10 +751,29 @@ B0      topForest_sibSucc
 
 これで**抽出後の行についても山の段が閉じた**（`firstLiveNotSmaller_extract`）。
 
-残るのは、橋渡しの側（`Rep` / `Lift` / `Search` / `DiagBridge`）も一般の底へ
-広げることである。`ofSequence s` を塔の `base`、`s.length` を列の上限 `n` に
-置き換える作業になる。上限については `extractRow_tail_one`（入力列の外の列は
-抽出後も値 1）が要る条件を与える。
+橋渡しの側も一般の底へ広げた。塔に列の上限を足した `Setting` を使う。
+
+```
+structure Setting where
+  tower : Tower
+  n     : Nat                              列の上限
+  htail : ∀ c, n ≤ c → tower.base.value c = 1
+```
+
+上限より右の列は行 1 以降で死ぬ（`setting_value_zero_of_ge`）。`Search.lean` と
+`Lift.lean` の `mountainGo_rep` / `mountainGo_length` をこの形に書き直し、
+一般の行から始める入口を足した（`calcMountainFrom_rep`）。
+
+```
+linearSetting s hs   入力列から作る設定
+extractSetting s hs  抽出後の行から作る設定
+```
+
+これで**抽出後の行から作った山も全行が一致する**（`calcMountain_extract_rep`）。
+抽出の繰り返し（`getBadRoot` や `expand` の再帰）を支える土台になる。
+
+残るのは、抽出段（`DiagBridge`）も一般の設定へ広げて、抽出を任意回繰り返せる形に
+することである。
 
 ## 残っている課題
 

@@ -247,4 +247,10 @@ theorem extractRow_tail_one (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat)
   rw [hz]
   exact ofSequence_value_ge s c hc
 
+/-- 抽出後の行から作る設定。 -/
+def extractSetting (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Setting where
+  tower := extractTower s hs
+  n := s.length
+  htail := fun c h => extractRow_tail_one s hs c h
+
 end Yukito

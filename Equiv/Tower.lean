@@ -43,6 +43,26 @@ structure Tower where
   B0 : ∀ root e, frame0.parent (root + 1) = some root → frame0.parent e = some root →
         root + 1 < e → base.value e ≤ base.value (root + 1)
 
+/-- 橋渡しの設定。塔と、列の上限。上限より右の列は値 1 で、行 1 以降では死ぬ。 -/
+structure Setting where
+  /-- 塔。 -/
+  tower : Tower
+  /-- 列の上限。 -/
+  n : Nat
+  /-- 上限より右の列の値は 1。 -/
+  htail : ∀ c, n ≤ c → tower.base.value c = 1
+
+/-- 上限より右の列は行 1 以降で死んでいる。 -/
+theorem setting_value_zero_of_ge (S : Setting) (r c : Nat) (hr : 0 < r) (h : S.n ≤ c) :
+    (rows S.tower.base r).value c = 0 := by
+  have h1 : (rows S.tower.base 1).value c = 0 := by
+    show S.tower.base.difference c = 0
+    have hn := Row.parent_none_of_one S.tower.base (S.htail c h)
+    simp only [Row.difference, hn]
+  have h2 : (rows S.tower.base r).value c ≤ (rows S.tower.base 1).value c :=
+    rows_value_antitone S.tower.base hr c
+  omega
+
 /-- 層 `k` の frame。 -/
 def frameAt (T : Tower) : Nat → ParentForest
   | 0 => T.frame0

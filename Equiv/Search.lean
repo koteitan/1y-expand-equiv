@@ -57,21 +57,21 @@ def searchPred (U : Nat → Nat) (c : Nat) : Nat → Bool :=
 
 `x` は今いる鎖の位置、`p` はその `prev` での添字。`hacc` は「`x` 以上の生きた祖先は
 すべて値が `c` の値以上」で、これまでの比較が失敗してきたことを表す。 -/
-theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
+theorem searchUpper_eq (S : Setting) (k : Nat)
     (prev row : Rowj) (i c : Nat)
-    (hprev : Rep prev k s.length (rows (ofSequence s) k).value)
-    (hpar : ParRep prev k (rows (ofSequence s) k).forest)
-    (hrow : Rep row (k + 1) s.length (rows (ofSequence s) (k + 1)).value)
+    (hprev : Rep prev k S.n (rows S.tower.base k).value)
+    (hpar : ParRep prev k (rows S.tower.base k).forest)
+    (hrow : Rep row (k + 1) S.n (rows S.tower.base (k + 1)).value)
     (hi : i < row.size) (hci : (row[i]'hi).pos + (k + 1) = c) :
     ∀ fuel x p, ∀ hp : p < prev.size, (prev[p]'hp).pos + k = x →
-      (ZeroY.Forest.Ancestor (rows (ofSequence s) k).forest.parent c x ∨ x = c) →
-      (∀ y, ZeroY.Forest.Ancestor (rows (ofSequence s) k).forest.parent c y → x ≤ y →
-        0 < (rows (ofSequence s) (k + 1)).value y →
-        (rows (ofSequence s) (k + 1)).value c ≤ (rows (ofSequence s) (k + 1)).value y) →
+      (ZeroY.Forest.Ancestor (rows S.tower.base k).forest.parent c x ∨ x = c) →
+      (∀ y, ZeroY.Forest.Ancestor (rows S.tower.base k).forest.parent c y → x ≤ y →
+        0 < (rows S.tower.base (k + 1)).value y →
+        (rows S.tower.base (k + 1)).value c ≤ (rows S.tower.base (k + 1)).value y) →
       p < fuel →
       readIdx row (k + 1) (searchUpper prev row i fuel (some p))
-        = chainFind (rows (ofSequence s) k).forest
-            (searchPred (rows (ofSequence s) (k + 1)).value c) fuel x := by
+        = chainFind (rows S.tower.base k).forest
+            (searchPred (rows S.tower.base (k + 1)).value c) fuel x := by
   intro fuel
   induction fuel with
   | zero => intro x p hp _ _ _ hf; omega
@@ -95,58 +95,58 @@ theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
         obtain ⟨q, hq⟩ : ∃ q, (prev[p']'hp').pos + k = q := ⟨_, rfl⟩
         rw [hq] at hFx
         -- q は行 k で生きているので k ≤ q
-        have hqV : 0 < (rows (ofSequence s) k).value q :=
-          ((rows (ofSequence s) k).parent_values hFx).1
+        have hqV : 0 < (rows S.tower.base k).value q :=
+          ((rows S.tower.base k).parent_values hFx).1
         have hqk : k ≤ q := by
           rcases Nat.lt_or_ge q k with hlt | hge
-          · rw [rows_value_zero_of_lt (ofSequence s) k q hlt] at hqV; omega
+          · rw [rows_value_zero_of_lt S.tower.base k q hlt] at hqV; omega
           · exact hge
         have htarget : (prev[p']'hp').pos - 1 = q - (k + 1) := by omega
         -- q は c の祖先
-        have hqc : ZeroY.Forest.Ancestor (rows (ofSequence s) k).forest.parent c q := by
+        have hqc : ZeroY.Forest.Ancestor (rows S.tower.base k).forest.parent c q := by
           rcases hxc with ha | he
           · exact Relation.TransGen.tail ha hFx
           · rw [← he]; exact Relation.TransGen.single hFx
         -- 添字は減る
         have hidx : p' < p :=
           index_lt_of_pos_lt prev hprev.posMono p' p hp' hp
-            (by have := (rows (ofSequence s) k).forest.parent_left hFx; omega)
+            (by have := (rows S.tower.base k).forest.parent_left hFx; omega)
         rw [chainFind, hFx]
         dsimp only
-        rcases Nat.eq_zero_or_pos ((rows (ofSequence s) (k + 1)).value q) with hdead | hlive
+        rcases Nat.eq_zero_or_pos ((rows S.tower.base (k + 1)).value q) with hdead | hlive
         · -- 鎖の根に降りた場合。どちらも親を返さない。
-          have hnp : (rows (ofSequence s) k).forest.parent q = none := by
-            rcases hqp : (rows (ofSequence s) k).forest.parent q with _ | t
+          have hnp : (rows S.tower.base k).forest.parent q = none := by
+            rcases hqp : (rows S.tower.base k).forest.parent q with _ | t
             · rfl
-            · exact absurd ((rows_parent_iff_next_live (ofSequence s) k q).mp ⟨t, hqp⟩)
+            · exact absurd ((rows_parent_iff_next_live S.tower.base k q).mp ⟨t, hqp⟩)
                 (by omega)
-          have hpred : searchPred (rows (ofSequence s) (k + 1)).value c q = false := by
+          have hpred : searchPred (rows S.tower.base (k + 1)).value c q = false := by
             simp only [searchPred, Bool.and_eq_false_iff, decide_eq_false_iff_not]
             exact Or.inl (by omega)
-          have hfalse : ¬ (searchPred (rows (ofSequence s) (k + 1)).value c q = true) := by
+          have hfalse : ¬ (searchPred (rows S.tower.base (k + 1)).value c q = true) := by
             rw [hpred]
             exact fun hcon => Bool.noConfusion hcon
           rw [if_neg hfalse, chainFind_none_of_no_parent hnp fuel]
           -- JS 側
-          have hsucc : 0 < (rows (ofSequence s) (k + 1)).value (q + 1) :=
-            chain_succ_live s hs k q x hFx
-          have hsn : q + 1 < s.length := by
-            rcases Nat.lt_or_ge (q + 1) s.length with h | h
+          have hsucc : 0 < (rows S.tower.base (k + 1)).value (q + 1) :=
+            chain_succ_live S.tower k q x hFx
+          have hsn : q + 1 < S.n := by
+            rcases Nat.lt_or_ge (q + 1) S.n with h | h
             · exact h
-            · rw [rows_value_zero_of_ge s (k + 1) (q + 1) (by omega) h] at hsucc; omega
-          obtain ⟨j, hj, hcj, hfa⟩ := rep_lookup_dead row (k + 1) s.length
-            (rows (ofSequence s) (k + 1)).value hrow q (by omega) hsn (by omega) hsucc
+            · rw [setting_value_zero_of_ge S (k + 1) (q + 1) (by omega) h] at hsucc; omega
+          obtain ⟨j, hj, hcj, hfa⟩ := rep_lookup_dead row (k + 1) S.n
+            (rows S.tower.base (k + 1)).value hrow q (by omega) hsn (by omega) hsucc
           rw [htarget, hfa]
           by_cases hb : breakHere row j = true
           · rw [if_pos hb]; rfl
           · rw [if_neg hb, dif_pos hj, dif_pos hi]
             have hreach : ∀ y,
-                ZeroY.Forest.Ancestor (rows (ofSequence s) k).forest.parent c y →
-                (∃ t, (rows (ofSequence s) k).forest.parent y = some t) →
-                (rows (ofSequence s) (k + 1)).value c ≤
-                  (rows (ofSequence s) (k + 1)).value y := by
+                ZeroY.Forest.Ancestor (rows S.tower.base k).forest.parent c y →
+                (∃ t, (rows S.tower.base k).forest.parent y = some t) →
+                (rows S.tower.base (k + 1)).value c ≤
+                  (rows S.tower.base (k + 1)).value y := by
               intro y hy hyt
-              have hlive' := (rows_parent_iff_next_live (ofSequence s) k y).mp hyt
+              have hlive' := (rows_parent_iff_next_live S.tower.base k y).mp hyt
               refine hacc y hy (anc_ge_of_gt_parent hxc hFx hy ?_) hlive'
               rcases Nat.lt_or_ge q y with h | h
               · exact h
@@ -157,10 +157,10 @@ theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
                     (ParentForest.ancestor_of_zeroY (anc_of_common c y q hy hqc he))
                   rw [hnp] at ht
                   cases ht
-            have hle := (root_step_le_seq s hs k c q hqc hreach).2
-            have hvj : (row[j]'hj).val = (rows (ofSequence s) (k + 1)).value (q + 1) := by
+            have hle := (root_step_le S.tower k c q hqc hreach).2
+            have hvj : (row[j]'hj).val = (rows S.tower.base (k + 1)).value (q + 1) := by
               rw [hrow.val _ (mem_of_getElem row j hj), hcj]
-            have hvi : (row[i]'hi).val = (rows (ofSequence s) (k + 1)).value c := by
+            have hvi : (row[i]'hi).val = (rows S.tower.base (k + 1)).value c := by
               rw [hrow.val _ (mem_of_getElem row i hi), hci]
             rw [if_neg (by omega)]
             cases fuel with
@@ -178,36 +178,36 @@ theorem searchUpper_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
                     rw [hnp] at hFq
                     cases hFq
         · -- 鎖の要素が生きている場合。ちょうど引けて隙間 break も出ない。
-          have hqn : q < s.length := by
-            rcases Nat.lt_or_ge q s.length with h | h
+          have hqn : q < S.n := by
+            rcases Nat.lt_or_ge q S.n with h | h
             · exact h
-            · rw [rows_value_zero_of_ge s (k + 1) q (by omega) h] at hlive; omega
+            · rw [setting_value_zero_of_ge S (k + 1) q (by omega) h] at hlive; omega
           have hqk1 : k + 1 ≤ q := by
             rcases Nat.lt_or_ge q (k + 1) with h | h
-            · rw [rows_value_zero_of_lt (ofSequence s) (k + 1) q h] at hlive; omega
+            · rw [rows_value_zero_of_lt S.tower.base (k + 1) q h] at hlive; omega
             · exact h
-          obtain ⟨j, hj, hcj, hfa⟩ := rep_lookup row (k + 1) s.length
-            (rows (ofSequence s) (k + 1)).value hrow q (by omega) hqn hlive
-          have hsucc : 0 < (rows (ofSequence s) (k + 1)).value (q + 1) :=
-            chain_succ_live s hs k q x hFx
-          have hsn : q + 1 < s.length := by
-            rcases Nat.lt_or_ge (q + 1) s.length with h | h
+          obtain ⟨j, hj, hcj, hfa⟩ := rep_lookup row (k + 1) S.n
+            (rows S.tower.base (k + 1)).value hrow q (by omega) hqn hlive
+          have hsucc : 0 < (rows S.tower.base (k + 1)).value (q + 1) :=
+            chain_succ_live S.tower k q x hFx
+          have hsn : q + 1 < S.n := by
+            rcases Nat.lt_or_ge (q + 1) S.n with h | h
             · exact h
-            · rw [rows_value_zero_of_ge s (k + 1) (q + 1) (by omega) h] at hsucc; omega
-          have hnb := not_breakHere row (k + 1) s.length
-            (rows (ofSequence s) (k + 1)).value hrow q j hj hcj (by omega) hsn hsucc
+            · rw [setting_value_zero_of_ge S (k + 1) (q + 1) (by omega) h] at hsucc; omega
+          have hnb := not_breakHere row (k + 1) S.n
+            (rows S.tower.base (k + 1)).value hrow q j hj hcj (by omega) hsn hsucc
           rw [htarget, hfa, if_neg (by rw [hnb]; simp), dif_pos hj, dif_pos hi]
-          have hvj : (row[j]'hj).val = (rows (ofSequence s) (k + 1)).value q := by
+          have hvj : (row[j]'hj).val = (rows S.tower.base (k + 1)).value q := by
             rw [hrow.val _ (mem_of_getElem row j hj), hcj]
-          have hvi : (row[i]'hi).val = (rows (ofSequence s) (k + 1)).value c := by
+          have hvi : (row[i]'hi).val = (rows S.tower.base (k + 1)).value c := by
             rw [hrow.val _ (mem_of_getElem row i hi), hci]
-          have hpred : searchPred (rows (ofSequence s) (k + 1)).value c q
-              = decide ((rows (ofSequence s) (k + 1)).value q <
-                        (rows (ofSequence s) (k + 1)).value c) := by
+          have hpred : searchPred (rows S.tower.base (k + 1)).value c q
+              = decide ((rows S.tower.base (k + 1)).value q <
+                        (rows S.tower.base (k + 1)).value c) := by
             simp only [searchPred, decide_eq_true hlive, Bool.true_and]
           rw [hpred]
-          by_cases hcmp : (rows (ofSequence s) (k + 1)).value q <
-              (rows (ofSequence s) (k + 1)).value c
+          by_cases hcmp : (rows S.tower.base (k + 1)).value q <
+              (rows S.tower.base (k + 1)).value c
           · rw [if_pos (by omega), if_pos (decide_eq_true hcmp)]
             simp only [readIdx, dif_pos hj, hcj]
           · rw [if_neg (by omega), if_neg (by simp [hcmp])]
@@ -270,52 +270,52 @@ theorem assignParents_some_par (pv row : Rowj) (i : Nat)
   rfl
 
 /-- 親を持つ列は入力列の中にある。 -/
-theorem col_lt_of_parent (s : List Nat) (k a b : Nat)
-    (hab : (rows (ofSequence s) k).forest.parent a = some b) : a < s.length := by
-  obtain ⟨hbv, hlt⟩ := (rows (ofSequence s) k).parent_values hab
-  rcases Nat.lt_or_ge a s.length with h | h
+theorem col_lt_of_parent (S : Setting) (k a b : Nat)
+    (hab : (rows S.tower.base k).forest.parent a = some b) : a < S.n := by
+  obtain ⟨hbv, hlt⟩ := (rows S.tower.base k).parent_values hab
+  rcases Nat.lt_or_ge a S.n with h | h
   · exact h
   · exfalso
     cases k with
     | zero =>
-        have he : (rows (ofSequence s) 0).value a = 1 := ofSequence_value_ge s a h
+        have he : (rows S.tower.base 0).value a = 1 := S.htail a h
         omega
     | succ k =>
-        have he : (rows (ofSequence s) (k + 1)).value a = 0 :=
-          rows_value_zero_of_ge s (k + 1) a (by omega) h
+        have he : (rows S.tower.base (k + 1)).value a = 0 :=
+          setting_value_zero_of_ge S (k + 1) a (by omega) h
         omega
 
 /-- 疎配列での添字は鎖に沿って真に減る。`chainFind` の燃料はこれで足りる。 -/
-theorem idx_measure (s : List Nat) (k : Nat) (prev : Rowj)
-    (hprev : Rep prev k s.length (rows (ofSequence s) k).value) :
-    ∀ a b, (rows (ofSequence s) k).forest.parent a = some b →
+theorem idx_measure (S : Setting) (k : Nat) (prev : Rowj)
+    (hprev : Rep prev k S.n (rows S.tower.base k).value) :
+    ∀ a b, (rows S.tower.base k).forest.parent a = some b →
       firstAtLeast prev (b - k) < firstAtLeast prev (a - k) := by
   intro a b hab
-  obtain ⟨hbv, hlt⟩ := (rows (ofSequence s) k).parent_values hab
-  have hav : 0 < (rows (ofSequence s) k).value a := by omega
-  have hba : b < a := (rows (ofSequence s) k).forest.parent_left hab
-  have han : a < s.length := col_lt_of_parent s k a b hab
+  obtain ⟨hbv, hlt⟩ := (rows S.tower.base k).parent_values hab
+  have hav : 0 < (rows S.tower.base k).value a := by omega
+  have hba : b < a := (rows S.tower.base k).forest.parent_left hab
+  have han : a < S.n := col_lt_of_parent S k a b hab
   have hbk : k ≤ b := by
     rcases Nat.lt_or_ge b k with h | h
-    · rw [rows_value_zero_of_lt (ofSequence s) k b h] at hbv; omega
+    · rw [rows_value_zero_of_lt S.tower.base k b h] at hbv; omega
     · exact h
   obtain ⟨jb, hjb, hcb, hfb⟩ :=
-    rep_lookup prev k s.length _ hprev b hbk (by omega) hbv
+    rep_lookup prev k S.n _ hprev b hbk (by omega) hbv
   obtain ⟨ja, hja, hca, hfa⟩ :=
-    rep_lookup prev k s.length _ hprev a (by omega) han hav
+    rep_lookup prev k S.n _ hprev a (by omega) han hav
   rw [hfb, hfa]
   exact index_lt_of_pos_lt prev hprev.posMono jb ja hjb hja (by omega)
 
 /-- **`assignParents` が計算する親は `restrictedParent` に一致する。**
 これで疎配列と密表現の橋渡しが 1 行ぶん閉じる。 -/
-theorem parRep_assignParents (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
+theorem parRep_assignParents (S : Setting) (k : Nat)
     (prev row : Rowj)
-    (hprev : Rep prev k s.length (rows (ofSequence s) k).value)
-    (hpar : ParRep prev k (rows (ofSequence s) k).forest)
-    (hrow : Rep row (k + 1) s.length (rows (ofSequence s) (k + 1)).value)
+    (hprev : Rep prev k S.n (rows S.tower.base k).value)
+    (hpar : ParRep prev k (rows S.tower.base k).forest)
+    (hrow : Rep row (k + 1) S.n (rows S.tower.base (k + 1)).value)
     (hnf : NoForced row) :
     ParRep (assignParents (some prev) row) (k + 1)
-      (rows (ofSequence s) (k + 1)).forest := by
+      (rows S.tower.base (k + 1)).forest := by
   intro y hy
   obtain ⟨i, hi, hiy⟩ := getElem_of_mem _ hy
   have hsz : (assignParents (some prev) row).size = row.size :=
@@ -324,38 +324,38 @@ theorem parRep_assignParents (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k : Nat)
   have hpos : ((assignParents (some prev) row)[i]'hi).pos = (row[i]'hi').pos :=
     assignParents_pos (some prev) row i hi hi'
   -- 列 c
-  have hcv : 0 < (rows (ofSequence s) (k + 1)).value ((row[i]'hi').pos + (k + 1)) := by
+  have hcv : 0 < (rows S.tower.base (k + 1)).value ((row[i]'hi').pos + (k + 1)) := by
     have h1 := hrow.live _ (mem_of_getElem row i hi')
     have h2 := hrow.val _ (mem_of_getElem row i hi')
     omega
-  have hcn : (row[i]'hi').pos + (k + 1) < s.length := hrow.bound _ (mem_of_getElem row i hi')
+  have hcn : (row[i]'hi').pos + (k + 1) < S.n := hrow.bound _ (mem_of_getElem row i hi')
   have hck : k + 1 ≤ (row[i]'hi').pos + (k + 1) := by omega
   -- c は行 k でも生きている
-  have hcv0 : 0 < (rows (ofSequence s) k).value ((row[i]'hi').pos + (k + 1)) := by
-    have := rows_value_le (ofSequence s) k ((row[i]'hi').pos + (k + 1))
+  have hcv0 : 0 < (rows S.tower.base k).value ((row[i]'hi').pos + (k + 1)) := by
+    have := rows_value_le S.tower.base k ((row[i]'hi').pos + (k + 1))
     omega
   obtain ⟨p0, hp0, hcp0, hfa0⟩ :=
-    rep_lookup prev k s.length _ hprev ((row[i]'hi').pos + (k + 1)) (by omega) hcn hcv0
+    rep_lookup prev k S.n _ hprev ((row[i]'hi').pos + (k + 1)) (by omega) hcn hcv0
   -- 探索の出発点
   have hstart : (row[i]'hi').pos + 1 = ((row[i]'hi').pos + (k + 1)) - k := by omega
   -- 歩行の一致
-  have hstep := searchUpper_eq s hs k prev row i ((row[i]'hi').pos + (k + 1))
+  have hstep := searchUpper_eq S k prev row i ((row[i]'hi').pos + (k + 1))
     hprev hpar hrow hi' rfl (prev.size + 1) ((row[i]'hi').pos + (k + 1)) p0 hp0 hcp0
     (Or.inr rfl)
     (fun z hz hle _ => absurd (ZeroY.Forest.ancestor_lt
-      (rows (ofSequence s) k).forest.parent_left hz) (by omega))
+      (rows S.tower.base k).forest.parent_left hz) (by omega))
     (by omega)
   -- 燃料が足りている
-  have hbig := chainFind_ge (F := (rows (ofSequence s) k).forest)
-    (pred := searchPred (rows (ofSequence s) (k + 1)).value
+  have hbig := chainFind_ge (F := (rows S.tower.base k).forest)
+    (pred := searchPred (rows S.tower.base (k + 1)).value
       ((row[i]'hi').pos + (k + 1)))
-    (fun z => firstAtLeast prev (z - k)) (idx_measure s k prev hprev)
+    (fun z => firstAtLeast prev (z - k)) (idx_measure S k prev hprev)
     ((row[i]'hi').pos + (k + 1)) (prev.size + 1)
     (by rw [hfa0]; omega) ((row[i]'hi').pos + (k + 1))
-  have hres : chainFind (rows (ofSequence s) k).forest
-      (searchPred (rows (ofSequence s) (k + 1)).value ((row[i]'hi').pos + (k + 1)))
+  have hres : chainFind (rows S.tower.base k).forest
+      (searchPred (rows S.tower.base (k + 1)).value ((row[i]'hi').pos + (k + 1)))
       (prev.size + 1) ((row[i]'hi').pos + (k + 1))
-      = (rows (ofSequence s) (k + 1)).forest.parent ((row[i]'hi').pos + (k + 1)) := by
+      = (rows S.tower.base (k + 1)).forest.parent ((row[i]'hi').pos + (k + 1)) := by
     rw [← hbig]
     exact chainFind_eq_restrictedParent' _ _ _ _ (by omega)
   -- 場合分け

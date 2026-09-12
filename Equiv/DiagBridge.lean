@@ -718,4 +718,24 @@ theorem extract_parent (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
   rep_read_par _ 0 s.length (extractRow s hs) (rep_extract s hs fuel hf)
     (parRep_extract s hs fuel hf) (fun q hq => absurd hq (by omega)) c hc
 
+/-! ## 抽出後の行から作る山
+
+`extractSetting` と `calcMountainFrom_rep` を繋ぐと、抽出後の行から作った JS の山も
+Phyrion 側の `rows (extractRow s hs)` に一致する。これが抽出の繰り返し
+（`getBadRoot` や `expand` の再帰）を支える。 -/
+
+/-- **抽出後の行から作った山も全行が一致する。** -/
+theorem calcMountain_extract_rep (s : List Nat) (hs : ∀ x ∈ s, 0 < x)
+    (fuel0 : Nat) (hf : sequenceBound s ≤ fuel0) (fuel r : Nat)
+    (hr : r < (calcMountainFrom
+      (parseDiag (calcDiagonal (calcMountain s (fuel0 + 1)))) (fuel + 1)).length) :
+    Rep ((calcMountainFrom
+        (parseDiag (calcDiagonal (calcMountain s (fuel0 + 1)))) (fuel + 1))[r]'hr)
+        r s.length (rows (extractRow s hs) r).value ∧
+      ParRep ((calcMountainFrom
+        (parseDiag (calcDiagonal (calcMountain s (fuel0 + 1)))) (fuel + 1))[r]'hr)
+        r (rows (extractRow s hs) r).forest :=
+  calcMountainFrom_rep (extractSetting s hs) _ fuel r
+    (rep_extract s hs fuel0 hf) (parRep_extract s hs fuel0 hf) hr
+
 end Yukito
