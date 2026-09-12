@@ -47,12 +47,18 @@ theorem rows_value_zero_of_lt (base : Row) :
 
 /-! ## 表現述語 -/
 
-/-- 疎配列 `row` が、行のずれ `r` のもとで密な値 `V` を表している。 -/
-structure Rep (row : Rowj) (r : Nat) (V : Nat → Nat) : Prop where
+/-- 疎配列 `row` が、行のずれ `r`・列の上限 `n` のもとで密な値 `V` を表している。
+
+上限が要るのは、`ofSequence` が列 `n` 以降を値 1 で埋めるからである。埋めた列は
+値 1 なので親を持てず（親には真に小さい正の値が要る）、他の列の親にもならない。
+行 1 以降では死んでいるので、上限が効くのは行 0 だけである。 -/
+structure Rep (row : Rowj) (r n : Nat) (V : Nat → Nat) : Prop where
   mono : PosMono row
   val : ∀ i, ∀ hi : i < row.size, (row[i]'hi).val = V ((row[i]'hi).pos + r)
   live : ∀ i, ∀ hi : i < row.size, 0 < (row[i]'hi).val
-  cover : ∀ c, r ≤ c → 0 < V c → ∃ i, ∃ hi : i < row.size, (row[i]'hi).pos + r = c
+  bound : ∀ i, ∀ hi : i < row.size, (row[i]'hi).pos + r < n
+  cover : ∀ c, r ≤ c → c < n → 0 < V c →
+    ∃ i, ∃ hi : i < row.size, (row[i]'hi).pos + r = c
 
 /-- 疎配列を列番号で引く。JS の `while (row[j].position < c - r) j++` と、
 その後の「ちょうどか」の判定にあたる。 -/
@@ -64,8 +70,9 @@ def readVal (row : Rowj) (r c : Nat) : Nat :=
 
 /-- **読み替えの正しさ。** `Rep` があれば、疎配列を列番号で引いた値は
 密表現の値に一致する。 -/
-theorem rep_read (row : Rowj) (r : Nat) (V : Nat → Nat) (h : Rep row r V)
-    (hzero : ∀ c, c < r → V c = 0) (c : Nat) : readVal row r c = V c := by
+theorem rep_read (row : Rowj) (r n : Nat) (V : Nat → Nat) (h : Rep row r n V)
+    (hzero : ∀ c, c < r → V c = 0) (c : Nat) (hcn : c < n) :
+    readVal row r c = V c := by
   show (if hj : firstAtLeast row (c - r) < row.size then
           if (row[firstAtLeast row (c - r)]'hj).pos + r = c then
             (row[firstAtLeast row (c - r)]'hj).val else 0
@@ -96,7 +103,7 @@ theorem rep_read (row : Rowj) (r : Nat) (V : Nat → Nat) (h : Rep row r V)
         · rfl
       · rfl
     · -- 生きた列：`cover` のセルを `firstAtLeast` が指す
-      obtain ⟨i, hi, hci⟩ := h.cover c hrc hv
+      obtain ⟨i, hi, hci⟩ := h.cover c hrc hcn hv
       have hpi : (row[i]'hi).pos = c - r := by omega
       have hfa : firstAtLeast row (c - r) = i :=
         firstAtLeast_eq_of_mem row h.mono (c - r) i hi hpi
@@ -122,10 +129,10 @@ theorem assignParents_val (prev : Option Rowj) (row : Rowj) (i : Nat)
   simp only [assignParents, Array.getElem_mapIdx]
   cases prev <;> rfl
 
-theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r : Nat) (V : Nat → Nat)
-    (h : Rep row r V) : Rep (assignParents prev row) r V := by
+theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r n : Nat) (V : Nat → Nat)
+    (h : Rep row r n V) : Rep (assignParents prev row) r n V := by
   have hsize := assignParents_size prev row
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro i j hi hj hij
     rw [assignParents_pos prev row i hi (by omega),
       assignParents_pos prev row j hj (by omega)]
@@ -137,10 +144,52 @@ theorem rep_assignParents (prev : Option Rowj) (row : Rowj) (r : Nat) (V : Nat �
   · intro i hi
     rw [assignParents_val prev row i hi (by omega)]
     exact h.live i (by omega)
-  · intro c hrc hv
-    obtain ⟨i, hi, hci⟩ := h.cover c hrc hv
+  · intro i hi
+    rw [assignParents_pos prev row i hi (by omega)]
+    exact h.bound i (by omega)
+  · intro c hrc hcn hv
+    obtain ⟨i, hi, hci⟩ := h.cover c hrc hcn hv
     refine ⟨i, by omega, ?_⟩
     rw [assignParents_pos prev row i (by omega) hi]
     exact hci
+
+/-! ## 行 0 -/
+
+theorem row0_size (s : List Nat) : (row0 s).size = s.length := by
+  simp only [row0, Array.size_mapIdx, List.size_toArray]
+
+/-- 行 0 は入力列そのものを表す。 -/
+theorem rep_row0 (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
+    Rep (row0 s) 0 s.length (ofSequence s).value := by
+  have hsize := row0_size s
+  have hget : ∀ i, ∀ hi : i < (row0 s).size,
+      (row0 s)[i]'hi = { pos := i, val := s[i]'(by omega), par := none } := by
+    intro i hi
+    simp only [row0, Array.getElem_mapIdx, List.getElem_toArray]
+  have hval : ∀ i, ∀ h : i < s.length, (ofSequence s).value i = s[i]'h := by
+    intro i h
+    show s[i]?.getD 1 = _
+    rw [List.getElem?_eq_getElem h]
+    rfl
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · intro i j hi hj hij
+    rw [hget i hi, hget j hj]
+    exact hij
+  · intro i hi
+    rw [hget i hi]
+    show s[i]'(by omega) = (ofSequence s).value (i + 0)
+    rw [Nat.add_zero, hval i (by omega)]
+  · intro i hi
+    rw [hget i hi]
+    exact hs _ (List.getElem_mem _)
+  · intro i hi
+    rw [hget i hi]
+    show i + 0 < s.length
+    omega
+  · intro c _ hcn _
+    refine ⟨c, by omega, ?_⟩
+    rw [hget c (by omega)]
+    show c + 0 = c
+    omega
 
 end Yukito
