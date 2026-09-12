@@ -30,6 +30,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Yukito.lean` | `script.js` の `calcMountain` を Lean へ書き起こしたもの。疎配列・添字演算・`break` の位置まで写す |
 | `Equiv/YukitoCheck.lean` | 書き起こしが `script.js` の出力と一致することの検査 |
 | `Equiv/Sparse.lean` | 疎配列の走査（`firstAtLeast`）の性質 |
+| `Equiv/Rep.lean` | 疎配列が密表現を表していること（`Rep`）と読み替えの正しさ |
 | `Equiv/Bridge.lean` | 疎表現（生きたセルだけを並べる）と密表現（値 0 が不在）の読み替え |
 | `Equiv/Row0.lean` | **行 0 の親写像が一致する**（`restrictedParent_linear`） |
 | `Equiv/Row0Spec.lean` | 行 0 の親の初等的な特徴づけ |
@@ -412,6 +413,24 @@ firstAtLeast_gt_of_not_mem  無ければ、指すセルは target より右に�
 
 3 つ目が「疎配列を列番号で引く」の正しさである。4 つ目が山の段で唯一の食い違いに
 なる箇所で、`firstLiveNotSmaller_ofSequence` がそこを埋める。
+
+その上に表現述語を置いた（`Rep.lean`）。
+
+```
+mono   position は狭義単調増加
+val    セルの値は密表現の値
+live   セルの値は正
+cover  生きている列はすべてセルとして現れる
+```
+
+これがあれば、疎配列を列番号で引いた値は密表現の値にそのまま一致する
+（`rep_read`）。列 `r` 未満については JS 側は `position ≥ 0` なのでセルが無く 0、
+密表現側も 0 である（`rows_value_zero_of_lt`：列 `c` が行 `r+1` で生きるには親が
+行 `r` で生きていなければならず、親は左にあるので、生きた列は 1 行ごとに右へ
+1 つ以上ずれる）。`assignParents` は `par` しか書き換えないのでこの 4 条件を保つ。
+
+残るのは `nextRow`（階差行の構成）が表現を保つことと、`par` が
+`restrictedParent` に対応することである。
 
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。
