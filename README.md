@@ -32,6 +32,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Sparse.lean` | 疎配列の走査（`firstAtLeast`）の性質 |
 | `Equiv/Rep.lean` | 疎配列が密表現を表していること（`Rep`）と読み替えの正しさ |
 | `Equiv/Lookup.lean` | 列番号での引き方と、JS の隙間 break が無害であること |
+| `Equiv/Search.lean` | **親探索が `chainFind` に 1 歩ずつ重なること** |
 | `Equiv/Bridge.lean` | 疎表現（生きたセルだけを並べる）と密表現（値 0 が不在）の読み替え |
 | `Equiv/Row0.lean` | **行 0 の親写像が一致する**（`restrictedParent_linear`） |
 | `Equiv/Row0Spec.lean` | 行 0 の親の初等的な特徴づけ |
@@ -482,9 +483,32 @@ chain_succ_live   鎖の要素の右隣はその行で生きている
 `chainFind_eq_restrictedParent'` は、止まる条件に「値が正」も入れた形である。
 疎配列では死んだ列がそもそも見えないので、JS 側ではこの条件が自動になる。
 
+### 親探索が `chainFind` に重なること
+
+JS の `searchUpper` は、1 つ下の行の親チェーンを辿り、各要素の列を今の行で引いて
+値を比べ、最初に小さいものを親にする。Lean 側の `chainFind` は同じ形をしており、
+`chainFind_eq_restrictedParent'` で `restrictedParent` に一致する。この 2 つが
+1 歩ずつ重なることを証明した（`searchUpper_eq`）。
+
+食い違いうるのは 2 か所だけで、どちらも押さえてある。
+
+```
+firstAtLeast のずれ  鎖の要素が今の行で死んでいるときだけ起きる（= 鎖の根）
+                     そこで指す列の値は c の値以上（root_step_le）
+隙間 break           鎖の要素の右隣は生きているので鎖の上では発動しない
+                     （chain_succ_live と not_breakHere）
+```
+
+根に降りたときは JS も Lean も親を返さない。JS は隙間 break で、あるいは値の比較に
+失敗してもう 1 歩進んだ先で親が無くなって止まる。Lean は正値条件で根を弾く。
+
+帰納で担ぐのは「今いる位置 `x` 以上の生きた祖先はすべて値が `c` の値以上」という
+条件である。これまでの比較が失敗してきたことを表しており、根に着いたときに
+`root_step_le` の仮定にそのまま渡る。
+
 残るのは `assignParents` が計算する `par` が `restrictedParent` に対応すること、
-すなわち `ParRep` を実際に立てることである。上の部品でずれの箇所は全部押さえた
-ので、あとは `searchUpper` の再帰を `chainFind` の再帰に重ねる作業になる。
+すなわち `ParRep` を実際に立てることである。`searchUpper_eq` の頭に
+`firstAtLeast prev (c.pos + 1)` を差し込み、燃料が足りることを言えばよい。
 
 書き起こしが原本と一致していることは、`script.js` の `calcMountain` の出力と
 突き合わせてビルド時に検査している（`YukitoCheck.lean`、5 列）。

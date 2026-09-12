@@ -84,19 +84,22 @@ theorem chain_succ_live (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k q x : Nat)
 /-- 目標列が死んでいて右隣が生きていれば、`firstAtLeast` は右隣を指す。
 山の段で唯一のずれが起きるのがこの形である。 -/
 theorem rep_lookup_dead (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r n U)
-    (c : Nat) (hrc : r ≤ c) (hcn : c + 1 < n) (hdead : U c = 0) (hlive : 0 < U (c + 1)) :
+    (c : Nat) (hrc : r ≤ c + 1) (hcn : c + 1 < n) (hdead : U c = 0)
+    (hlive : 0 < U (c + 1)) :
     ∃ j, ∃ hj : j < row.size,
       (row[j]'hj).pos + r = c + 1 ∧ firstAtLeast row (c - r) = j := by
-  obtain ⟨j, hj, hcj, _⟩ := rep_lookup row r n U h (c + 1) (by omega) hcn hlive
+  obtain ⟨j, hj, hcj, _⟩ := rep_lookup row r n U h (c + 1) hrc hcn hlive
   refine ⟨j, hj, hcj, firstAtLeast_eq row (c - r) j hj (by omega) ?_⟩
   intro i hi hij
   have h1 := h.posMono i j hi hj hij
-  have h2 : (row[i]'hi).pos + r ≠ c := by
-    intro he
-    have hlv := h.live _ (mem_of_getElem row i hi)
-    have hv := h.val _ (mem_of_getElem row i hi)
-    rw [he, hdead] at hv
+  rcases Nat.lt_or_ge c r with _ | hrc'
+  · omega
+  · have h2 : (row[i]'hi).pos + r ≠ c := by
+      intro he
+      have hlv := h.live _ (mem_of_getElem row i hi)
+      have hv := h.val _ (mem_of_getElem row i hi)
+      rw [he, hdead] at hv
+      omega
     omega
-  omega
 
 end Yukito
