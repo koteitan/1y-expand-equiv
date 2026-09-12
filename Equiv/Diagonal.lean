@@ -132,6 +132,14 @@ theorem chainFind_none {F : ParentForest} {pred : Nat → Bool} :
       · have := F.parent_left hq
         exact ih q (by omega) h p ha'
 
+/-- 親を持たない列では探索は何も返さない。 -/
+theorem chainFind_none_of_no_parent {F : ParentForest} {pred : Nat → Bool} {c : Nat}
+    (h : F.parent c = none) : ∀ fuel, chainFind F pred fuel c = none := by
+  intro fuel
+  cases fuel with
+  | zero => rfl
+  | succ f => rw [chainFind, h]
+
 /-- **探索は `restrictedParent` である。** 止まる条件に「値が正」も入れた形。
 疎配列では死んだ列がそもそも見えないので、JS 側ではこの条件が自動になる。 -/
 theorem chainFind_eq_restrictedParent' (F : ParentForest) (U : Nat → Nat)

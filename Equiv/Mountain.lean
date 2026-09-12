@@ -53,12 +53,16 @@ theorem firstLiveAfter_eq_succ (base : Row) (r root fuel j : Nat)
       rw [firstLiveAfter, if_pos hlive] at h
       exact (Option.some.inj h).symm
 
-/-- **山の段の残る義務。** 要素がすべて正の列について `FirstLiveNotSmaller` が
-成り立つ。すなわち JS の親探索が鎖の根に到達したとき、そこで `firstAtLeast` が
-指す列は Lean 側で親に採られる列より値が小さくならない。 -/
-theorem firstLiveNotSmaller_ofSequence (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
-    FirstLiveNotSmaller (ofSequence s) := by
-  intro r c root j fuel hanc _hroot hreach hj
+/-- **鎖の根での段。** 歩行が根に到達したなら、`root + 1` は生きていて、その値は
+`c` の値以上である。JS が根の所で `firstAtLeast` に指される列がこれである。 -/
+theorem root_step_le (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r c root : Nat)
+    (hanc : ZeroY.Forest.Ancestor (rows (ofSequence s) r).forest.parent c root)
+    (hreach : ∀ q, ZeroY.Forest.Ancestor (rows (ofSequence s) r).forest.parent c q →
+      (∃ t, (rows (ofSequence s) r).forest.parent q = some t) →
+      (rows (ofSequence s) (r + 1)).value c ≤ (rows (ofSequence s) (r + 1)).value q) :
+    0 < (rows (ofSequence s) (r + 1)).value (root + 1) ∧
+      (rows (ofSequence s) (r + 1)).value c ≤
+        (rows (ofSequence s) (r + 1)).value (root + 1) := by
   -- 手順 1
   obtain ⟨p, hGp, hpc⟩ := child_toward (ParentForest.ancestor_of_zeroY hanc)
   have hGp' : restrictedParent (frameAt s r) (towerVal s r) p = some root := by
@@ -78,9 +82,6 @@ theorem firstLiveNotSmaller_ofSequence (s : List Nat) (hs : ∀ x ∈ s, 0 < x) 
     · exact ⟨z, rfl⟩
   have hlive : 0 < (rows (ofSequence s) (r + 1)).value (root + 1) :=
     (rows_parent_iff_next_live (ofSequence s) r (root + 1)).mp ⟨z, hz⟩
-  -- 手順 4
-  have hjeq : j = root + 1 := firstLiveAfter_eq_succ (ofSequence s) r root fuel j hlive hj
-  subst hjeq
   -- 手順 5
   obtain ⟨hancF, hposR, _, _⟩ :=
     (restrictedParent_some_iff (frameAt s r) (towerVal s r) p root).mp hGp'
@@ -102,6 +103,17 @@ theorem firstLiveNotSmaller_ofSequence (s : List Nat) (hs : ∀ x ∈ s, 0 < x) 
   rw [difference_eq_towerVal] at h8
   have h8' : (rows (ofSequence s) (r + 1)).value p ≤
       (rows (ofSequence s) (r + 1)).value (root + 1) := h8
-  omega
+  exact ⟨hlive, by omega⟩
+
+/-- **山の段の残る義務。** 要素がすべて正の列について `FirstLiveNotSmaller` が
+成り立つ。すなわち JS の親探索が鎖の根に到達したとき、そこで `firstAtLeast` が
+指す列は Lean 側で親に採られる列より値が小さくならない。 -/
+theorem firstLiveNotSmaller_ofSequence (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
+    FirstLiveNotSmaller (ofSequence s) := by
+  intro r c root j fuel hanc _hroot hreach hj
+  obtain ⟨hlive, hle⟩ := root_step_le s hs r c root hanc hreach
+  have hjeq : j = root + 1 := firstLiveAfter_eq_succ (ofSequence s) r root fuel j hlive hj
+  subst hjeq
+  exact hle
 
 end Yukito
