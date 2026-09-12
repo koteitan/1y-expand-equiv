@@ -252,7 +252,7 @@ theorem fujiSrcRowAt_eq (P : FujiParams)
     (hbh : P.badRootHeight = height S.tower.base y)
     (hcut : P.cutHeight = height S.tower.base x)
     (i k : Nat) (isRep isAsc : Bool)
-    (hk : k ≤ height S.tower.base y
+    (hk : isRep = true → k ≤ height S.tower.base y
       + (height S.tower.base x - height S.tower.base y) * i) :
     fujiSrcRowAt P i k isRep isAsc
       = if isAsc = true ∧ height S.tower.base y ≤ k then
@@ -276,6 +276,7 @@ theorem fujiSrcRowAt_eq (P : FujiParams)
           repeat' split
           all_goals omega
       | true =>
+          have hk' := hk rfl
           rw [if_pos rfl, fujiSrcRow_rep, hbh, hcut]
           simp only [if_true, true_and, Nat.max_def]
           repeat' split
@@ -444,13 +445,14 @@ theorem lowerContext_parent_src (hyx : y < x) (hroot) (hhigher) (P : FujiParams)
     (hsm : P.badRootSeam = y)
     (k i j : Nat) (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x) (isAsc : Bool)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
-    (hk : k ≤ height S.tower.base y
+    (hk : j = y → k ≤ height S.tower.base y
       + (height S.tower.base x - height S.tower.base y) * i) :
     (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i)
       = ((rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).forest.parent
           (if j = y then x else j)).map
           (fun q => q + (if y ≤ q then (i - (if j = y then 1 else 0)) * (x - y) else 0)) := by
-  rw [fujiSrcRowAt_eq P hbh hcut i k (isRepAt P j) isAsc hk]
+  rw [fujiSrcRowAt_eq P hbh hcut i k (isRepAt P j) isAsc
+    (fun hr => hk (by rw [← hsm]; exact of_decide_eq_true hr))]
   rcases Decidable.em (j = y) with hje | hjne
   · subst hje
     have hrep : isRepAt P j = true := by
@@ -480,29 +482,36 @@ theorem lowerContext_parent_src (hyx : y < x) (hroot) (hhigher) (P : FujiParams)
 /-- **JS の元のセルの列。** 置き換えの継ぎ目では行の最後（= `n−1`）、
 そうでなければ列 `j` そのもの。 -/
 theorem sourceIdx_lower_col (S : Setting) (M : List Rowj) (hM : MtRep S M)
-    (P : FujiParams) (sy j : Nat) (hsy : sy < M.length) (hn : 1 < S.n)
-    (hsyj : sy ≤ j) (hj : j < S.n)
-    (hlive : 0 < (rows S.tower.base sy).value j)
-    (hlast : 0 < (rows S.tower.base sy).value (S.n - 1)) :
+    (P : FujiParams) (sy j : Nat) (hsy : sy < M.length) (hn : 1 < S.n) (hj : j < S.n)
+    (hlive : isRepAt P j = false → 0 < (rows S.tower.base sy).value j)
+    (hlast : isRepAt P j = true → 0 < (rows S.tower.base sy).value (S.n - 1)) :
     ∃ h : sourceIdx M sy j (isRepAt P j) < (rowAt M sy).size,
       ((rowAt M sy)[sourceIdx M sy j (isRepAt P j)]'h).pos + sy
         = if j = P.badRootSeam then S.n - 1 else j := by
   cases hb : isRepAt P j with
   | true =>
       rw [if_pos (of_decide_eq_true hb)]
-      exact sourceIdx_last_col S M hM sy j hsy hn hlast
+      exact sourceIdx_last_col S M hM sy j hsy hn (hlast hb)
   | false =>
       rw [if_neg (of_decide_eq_false hb)]
-      exact sourceIdx_col S M hM sy j hsy hsyj hj hlive
+      have hlv := hlive hb
+      have hsyj : sy ≤ j := by
+        rcases Nat.lt_or_ge j sy with hxx | hxx
+        · rw [rows_value_zero_of_lt S.tower.base sy j hxx] at hlv
+          omega
+        · exact hxx
+      exact sourceIdx_col S M hM sy j hsy hsyj hj hlv
 
 /-- **JS が積むセルの親。** 元の段の元の列の親を、`parentCopy` で写した列にある。 -/
 theorem fujiCellAt_par_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (P : FujiParams) (hyk : P.yamakazi = false) (nd : Nat → Nat)
     (i j : Nat) (isAsc : Bool) (res : List Rowj) (k : Nat)
     (hry : fujiSrcRowAt P i k (isRepAt P j) isAsc < M.length)
-    (hn : 1 < S.n) (hjn : j < S.n) (hkj : k ≤ j)
-    (hlive : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
-    (hlast : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
+    (hn : 1 < S.n) (hjn : j < S.n)
+    (hlive : isRepAt P j = false →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
+    (hlast : isRepAt P j = true →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
     (C : CopyCoordinates.Context) (hy : C.y = P.badRootSeam) (hL : C.length = P.len)
     (p : Nat) (hp : (fujiCellAt M P nd i j (isRepAt P j) isAsc res k).par = some p) :
     ∃ hp' : p < (rowAt res k).size, ∃ q,
@@ -528,7 +537,7 @@ theorem fujiCellAt_par_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
       (i - (if isRepAt P j then 1 else 0)) (nd (j + P.len * i)) hsy hry C hy hL p hp'
   obtain ⟨hsx', hcolsrc⟩ :=
     sourceIdx_lower_col S M hM P (fujiSrcRowAt P i k (isRepAt P j) isAsc) j hry hn
-      (by omega) hjn hlive hlast
+      hjn hlive hlast
   refine ⟨hpp, q, ?_, hcol⟩
   rw [← hcolsrc]
   exact hq
@@ -550,12 +559,14 @@ theorem fujiCellAt_par_some_of_parent_lower (S : Setting) (M : List Rowj) (hM : 
     (nd : Nat → Nat) (st : List Rowj) (i j k pc : Nat) (isAsc : Bool)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
     (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x)
-    (hk : k ≤ height S.tower.base y
+    (hk : j = y → k ≤ height S.tower.base y
       + (height S.tower.base x - height S.tower.base y) * i)
     (hry : fujiSrcRowAt P i k (isRepAt P j) isAsc < M.length)
-    (hn : 1 < S.n) (hkj : k ≤ j)
-    (hlive : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
-    (hlast : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
+    (hn : 1 < S.n)
+    (hlive : isRepAt P j = false →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
+    (hlast : isRepAt P j = true →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
     (hmono : PosMono (rowAt st k)) (hcov : HasCol st k pc)
     (hpc : (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i) = some pc) :
     ∃ u, (fujiCellAt M P nd i j (isRepAt P j) isAsc st k).par = some u := by
@@ -573,7 +584,7 @@ theorem fujiCellAt_par_some_of_parent_lower (S : Setting) (M : List Rowj) (hM : 
     hpceq0
   obtain ⟨hsx, hcolsrc⟩ :=
     sourceIdx_lower_col S M hM P (fujiSrcRowAt P i k (isRepAt P j) isAsc) j hry hn
-      (by have := fujiSrcRowAt_le P i k (isRepAt P j) isAsc; omega) (by omega) hlive hlast
+      (by omega) hlive hlast
   have hsrceq : (if j = P.badRootSeam then S.n - 1 else j) = (if j = y then x else j) := by
     rw [hsm, hx]
   have hF : (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).forest.parent
@@ -609,18 +620,20 @@ theorem fujiCellAt_parCol_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (nd : Nat → Nat) (res : List Rowj) (i j k p : Nat) (isAsc : Bool)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
     (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x)
-    (hk : k ≤ height S.tower.base y
+    (hk : j = y → k ≤ height S.tower.base y
       + (height S.tower.base x - height S.tower.base y) * i)
     (hry : fujiSrcRowAt P i k (isRepAt P j) isAsc < M.length)
-    (hn : 1 < S.n) (hkj : k ≤ j)
-    (hlive : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
-    (hlast : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
+    (hn : 1 < S.n)
+    (hlive : isRepAt P j = false →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
+    (hlast : isRepAt P j = true →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
     (hp : (fujiCellAt M P nd i j (isRepAt P j) isAsc res k).par = some p) :
     ∃ hp' : p < (rowAt res k).size,
       (lowerContext S y x hyx hroot hhigher).parent k (j + (x - y) * i)
         = some (((rowAt res k)[p]'hp').pos + k) := by
   obtain ⟨hpp, q, hq, hcol⟩ :=
-    fujiCellAt_par_lower S M hM P hyk nd i j isAsc res k hry hn (by omega) hkj hlive hlast
+    fujiCellAt_par_lower S M hM P hyk nd i j isAsc res k hry hn (by omega) hlive hlast
       (lowerContext S y x hyx hroot hhigher).coordinates (by rw [hsm]; rfl)
       (by rw [hlen]; rfl) p hp
   refine ⟨hpp, ?_⟩
@@ -642,12 +655,14 @@ theorem fujiCellAt_parNone_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
     (nd : Nat → Nat) (st : List Rowj) (i j k : Nat) (isAsc : Bool)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
     (hi : 0 < i) (hjy : y ≤ j) (hjx : j < x)
-    (hk : k ≤ height S.tower.base y
+    (hk : j = y → k ≤ height S.tower.base y
       + (height S.tower.base x - height S.tower.base y) * i)
     (hry : fujiSrcRowAt P i k (isRepAt P j) isAsc < M.length)
-    (hn : 1 < S.n) (hkj : k ≤ j)
-    (hlive : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
-    (hlast : 0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
+    (hn : 1 < S.n)
+    (hlive : isRepAt P j = false →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value j)
+    (hlast : isRepAt P j = true →
+      0 < (rows S.tower.base (fujiSrcRowAt P i k (isRepAt P j) isAsc)).value (S.n - 1))
     (hmono : PosMono (rowAt st k))
     (hcov : ∀ pc, pc < j + (x - y) * i →
       k ≤ (lowerContext S y x hyx hroot hhigher).height pc → HasCol st k pc)
@@ -665,7 +680,7 @@ theorem fujiCellAt_parNone_lower (S : Setting) (M : List Rowj) (hM : MtRep S M)
         ((lowerContext S y x hyx hroot hhigher).toRowMountain).parent_endpoint hpcM
       obtain ⟨u, hu⟩ :=
         fujiCellAt_par_some_of_parent_lower S M hM P hyk hbh hcut hsm hlen hx hyx hroot hhigher
-          nd st i j k pc isAsc hasc hi hjy hjx hk hry hn hkj hlive hlast hmono
+          nd st i j k pc isAsc hasc hi hjy hjx hk hry hn hlive hlast hmono
           (hcov pc hlt hge) hp
       rw [hu] at hnone
       exact absurd hnone (by simp)
