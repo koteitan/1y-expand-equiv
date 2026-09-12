@@ -982,4 +982,20 @@ theorem cell_orig_of_col_lt (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfue
     have hone : (expP M mfuel).len * 1 = (expP M mfuel).len := Nat.mul_one _
     omega
 
+/-! ## 元の山の差分の関係
+
+`ShapeRep` の `step` のうち、値が入っているセル（元からある列）はこれで片付く。 -/
+
+theorem rows_diff (base : Row) (r c p : Nat)
+    (hp : (rows base r).forest.parent c = some p) :
+    (rows base r).value c = (rows base r).value p + (rows base (r + 1)).value c := by
+  have hv := (rows base r).parent_values hp
+  have hnext : (rows base (r + 1)).value c = (rows base r).difference c :=
+    Row.next_value (rows base r) c
+  rw [hnext]
+  unfold Row.difference
+  rw [hp]
+  dsimp only
+  omega
+
 end Yukito
