@@ -417,4 +417,116 @@ theorem yamaContext_parent_other (S : Setting) (y : Nat) (hy hpar hh) (r j i : N
     rw [if_neg (by omega), if_neg (by rintro ⟨h1, _⟩; rw [hsrc] at h1; omega), hsrc, hblk]
     rfl
 
+/-! ## `expP` の各成分（山崎噴火の枝） -/
+
+theorem expP_badRootHeight_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
+    (mfuel : Nat) (hyama : expYama M mfuel) :
+    (expP M mfuel).badRootHeight = height S.tower.base (S.n - 1) - 1 := by
+  show (if expYama M mfuel then expCutH M - 1
+        else (topRowWithCol M (expSeam M mfuel) M.length).getD 0) = _
+  rw [if_pos hyama, expCutH_eq S M hM hn]
+
+theorem expP_yamakazi (M : List Rowj) (mfuel : Nat) (hyama : expYama M mfuel) :
+    (expP M mfuel).yamakazi = true := decide_eq_true hyama
+
+theorem expP_len_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (h0 : 0 < (expRes M).length) (y : Nat) (hseam : (expP M mfuel).badRootSeam = y) :
+    (expP M mfuel).len = S.n - 1 - y := by
+  show (expP M mfuel).afterCutLength - (expP M mfuel).badRootSeam = S.n - 1 - y
+  rw [expP_afterCutLength S M hM mfuel h0, hseam]
+
+/-! ## 素の形での言い換え -/
+
+theorem yamaContext_parent_seam_low' (S : Setting) (y : Nat) (hy hpar hh) (r i : Nat)
+    (hi : 0 < i) (hr : r < height S.tower.base (S.n - 1) - 1) :
+    (yamaContext S y hy hpar hh).parent r (y + (S.n - 1 - y) * i)
+      = ((rows S.tower.base r).forest.parent (S.n - 1)).map
+          ((yamaContext S y hy hpar hh).coordinates.parentCopy (i - 1)) :=
+  yamaContext_parent_seam_low S y hy hpar hh r i hi hr
+
+theorem yamaContext_parent_seam_high' (S : Setting) (y : Nat) (hy hpar hh) (r i : Nat)
+    (hi : 0 < i) (hr : height S.tower.base (S.n - 1) - 1 ≤ r) :
+    (yamaContext S y hy hpar hh).parent r (y + (S.n - 1 - y) * i)
+      = (rows S.tower.base r).forest.parent y :=
+  yamaContext_parent_seam_high S y hy hpar hh r i hi hr
+
+theorem yamaContext_parent_other' (S : Setting) (y : Nat) (hy hpar hh) (r j i : Nat)
+    (hj1 : y < j) (hj2 : j < S.n - 1) :
+    (yamaContext S y hy hpar hh).parent r (j + (S.n - 1 - y) * i)
+      = ((rows S.tower.base r).forest.parent j).map
+          ((yamaContext S y hy hpar hh).coordinates.parentCopy i) :=
+  yamaContext_parent_other S y hy hpar hh r j i hj1 hj2
+
+/-! ## **JS の親と原文の親が一致する（山崎噴火の枝）** -/
+
+theorem fujiCellAt_parCol_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
+    (mfuel : Nat) (hn : 1 < S.n) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (h0 : 0 < (expRes M).length)
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (res : List Rowj) (i j k : Nat)
+    (hi : 0 < i) (hjy : y ≤ j) (hjx : j < S.n - 1)
+    (hk : k < M.length) (hkj : k ≤ j)
+    (hlive : 0 < (rows S.tower.base k).value j)
+    (hlast : 0 < (rows S.tower.base k).value (S.n - 1))
+    (p : Nat)
+    (hp : (fujiCellAt M (expP M mfuel) nd i j (isRepAt (expP M mfuel) j) res k).par = some p) :
+    ∃ hp' : p < (rowAt res k).size,
+      (yamaContext S y hy hpar hh).parent k (j + (S.n - 1 - y) * i)
+        = some (((rowAt res k)[p]'hp').pos + k) := by
+  have hbh : (expP M mfuel).badRootHeight = height S.tower.base (S.n - 1) - 1 :=
+    expP_badRootHeight_yama S M hM hn mfuel hyama
+  have hcy : (yamaContext S y hy hpar hh).coordinates.y = (expP M mfuel).badRootSeam := by
+    rw [hseam]
+    rfl
+  have hcL : (yamaContext S y hy hpar hh).coordinates.length = (expP M mfuel).len := by
+    rw [expP_len_yama S M hM mfuel h0 y hseam]
+    rfl
+  obtain ⟨hp', q, hq, hcol⟩ :=
+    fujiCellAt_par_yama S M hM (expP M mfuel) nd i j (isRepAt (expP M mfuel) j) res k
+      (expP_yamakazi M mfuel hyama) (expP_yama_cut M mfuel hyama) hk hn hkj (by omega)
+      hlive hlast (yamaContext S y hy hpar hh).coordinates hcy hcL p hp
+  refine ⟨hp', ?_⟩
+  rcases Decidable.em (j = y) with hjeq | hjne
+  · have hrep : isRepAt (expP M mfuel) j = true := by
+      show decide (j = (expP M mfuel).badRootSeam) = true
+      rw [hseam, hjeq]
+      simp
+    rw [hrep] at hcol hq
+    have hir : i - (if (true : Bool) then 1 else 0) = i - 1 := by simp
+    rw [hir] at hcol
+    rcases Nat.lt_or_ge k (expP M mfuel).badRootHeight with hkb | hkb
+    · have hsrc : srcColYama S (expP M mfuel) j k true = S.n - 1 := by
+        show (if (true && decide (k < (expP M mfuel).badRootHeight)) = true
+              then S.n - 1 else j) = _
+        rw [if_pos (by simp [hkb])]
+      rw [hsrc] at hq
+      rw [hjeq, yamaContext_parent_seam_low' S y hy hpar hh k i hi (by omega), hq, hcol]
+      rfl
+    · have hsrc : srcColYama S (expP M mfuel) j k true = j := by
+        show (if (true && decide (k < (expP M mfuel).badRootHeight)) = true
+              then S.n - 1 else j) = _
+        rw [if_neg (by simp [Nat.not_lt.mpr hkb])]
+      rw [hsrc, hjeq] at hq
+      have hqy : (rows S.tower.base k).forest.parent
+          (yamaContext S y hy hpar hh).coordinates.y = some q := hq
+      rw [hjeq, yamaContext_parent_seam_high' S y hy hpar hh k i hi (by omega), hq, hcol,
+        parentCopy_of_parent_y _ _ q hqy]
+  · have hrep : isRepAt (expP M mfuel) j = false := by
+      show decide (j = (expP M mfuel).badRootSeam) = false
+      rw [hseam]
+      simp [hjne]
+    rw [hrep] at hcol hq
+    have hir : i - (if (false : Bool) then 1 else 0) = i := by simp
+    rw [hir] at hcol
+    have hsrc : srcColYama S (expP M mfuel) j k false = j := by
+      show (if (false && decide (k < (expP M mfuel).badRootHeight)) = true
+            then S.n - 1 else j) = _
+      rw [if_neg (by simp)]
+    rw [hsrc] at hq
+    rw [yamaContext_parent_other' S y hy hpar hh k j i (by omega) hjx, hq, hcol]
+    rfl
+
 end Yukito
