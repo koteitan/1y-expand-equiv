@@ -108,4 +108,35 @@ theorem tower_case_meet (s : List Nat) {k t z q1 q2 : Nat}
   have := one_of_ancestor t q2 z h2 hz htz hzpos
   omega
 
+/-! ## 帰納の組み立て
+
+層 `k` で「場合 1 が成り立つ」か「場合 2 が成り立つ」かのどちらかであることを
+`Resolves` として切り出す。これがあれば層に関する帰納で結論まで通る。
+
+層 0 では兄弟が存在しないので、`Resolves` は必ず場合 1 を与える。 -/
+
+/-- 層 `k` で 3 択が場合 1 か場合 2 に落ちること。 -/
+def Resolves (s : List Nat) (k q1 q2 : Nat) : Prop :=
+  (∃ t, (frameAt s (k+1)).parent q2 = some t ∧ t < q1 ∧
+        ZeroY.Forest.Ancestor (frameAt s k).parent q2 q1)
+  ∨ (∃ t, (frameAt s k).parent q1 = some t ∧ (frameAt s k).parent q2 = some t)
+
+/-- 組み立て。`Resolves` があれば、生きている左の列について単調性が出る。 -/
+theorem sib_mono_of_resolves (s : List Nat)
+    (hres : ∀ k q1 q2, q1 < q2 → Resolves s k q1 q2) :
+    ∀ k q1 q2, q1 < q2 → (∀ m, m ≤ k → 0 < towerVal s m q1) →
+      towerVal s k q2 ≤ towerVal s k q1 := by
+  intro k
+  induction k with
+  | zero =>
+      intro q1 q2 hlt hpos
+      rcases hres 0 q1 q2 hlt with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
+      · exact tower_case_ancestor s h2 hanc ht (hpos 0 (Nat.le_refl _))
+      · exact absurd (no_siblings_zero s h1 h2) (by omega)
+  | succ k ih =>
+      intro q1 q2 hlt hpos
+      rcases hres (k+1) q1 q2 hlt with ⟨t, h2, ht, hanc⟩ | ⟨t, h1, h2⟩
+      · exact tower_case_ancestor s h2 hanc ht (hpos (k+1) (Nat.le_refl _))
+      · exact tower_case_descent s h1 h2 (ih q1 q2 hlt (fun m hm => hpos m (by omega)))
+
 end Yukito
