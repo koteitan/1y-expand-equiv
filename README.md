@@ -58,6 +58,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/NoBad.lean` | **bad root が無いときの一致**（`expand_eq_no_bad`） |
 | `Equiv/Copy.lean` | Mt.Fuji シェルの三重ループの構造・座標・出力の幅 |
 | `Equiv/Shape.lean` | **`ShapeRep` と値の層の結論**（`expandOut_eq_value`） |
+| `Equiv/Yama.lean` | 山崎噴火の枝（原文の層 `k = K`）の組み立て |
 
 ## 座標の対応
 
@@ -1232,6 +1233,31 @@ expNd_yama_source0  expNd c = valAtIdx (対角の行 0) (source0 c)
 `ordinaryContext.copyValue (layers a (K+1)).row.value` になると言う。
 `layers a (K+1)` の値は `layers a K` の `topValue`、すなわち対角の値なので、
 これは上の式と同じものである。
+
+### 山崎噴火の枝の組み立て（`Yama.lean`）
+
+部品を繋いで、この枝での**出力の幅が仮定なしで定まる**ところまで来た。
+
+```
+expP_yama_cut            この枝では cutHeight = badRootHeight（落差 0）
+expCutH_eq               切る段は列 n−1 の高さ
+expP_afterCutLength      切ったあとの列数は n−1
+two_cells / one_cell     生きている列の数だけその段のセルがある
+height_lt_expRes_length  切ったあとも列 j < n−1 の高さは段の数より小さい
+kmaxAt_expRes_eq         kmax(i,j) = height j + 1
+hasCol_yama              列 j + len*i は段 0 … height j に載る
+expandOut_some_yama      expandOut (expandJS …)
+                           = (List.range ((n−1) + len*nrep)).map (列の値)
+```
+
+`height_lt_expRes_length` が要るのは、子を切ると最上段が空になって段が 1 つ減る
+ことがあるからである。減るのは最上段に列 `n−1` しか無かったときで、そのとき
+`j ≠ n−1` がそこに生きていればセルは 2 つ以上あり、pop しても空にならない。
+したがって `height j = M.length − 1` なら段は減らない。
+
+`kmaxAt_expRes_eq` は原文の `TerminalCopy.height` と一致する。列 `j + L*i` について、
+`j = y` なら `source = x` で `M.height y`、そうでなければ `M.height j` であり、
+どちらの場合も `M.height j` だからである。
 
 ### 値の埋め
 
