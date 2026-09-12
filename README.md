@@ -1368,8 +1368,20 @@ hasCol_pos             そこから添字と位置を取り出す
 fujiCell_par_isSome    lookupPos がその添字を見つけるので par は some
 ```
 
-この鎖の対偶が `ShapeRep` の `parNone`（JS が親を見つけないなら原文も親なし）
-である。
+この鎖を実際に繋いだ。
+
+```
+srcColY / srcColYama_eq  元の列を Setting と継ぎ目 y だけで書いた形
+parentCopy_eq            parentCopy b p = p + (if y ≤ p then b*L else 0)
+yamaContext_parent_src   原文の親 pc から 元の列とその親 q を取り出し
+                           pc = q + (if y ≤ q then shifts*L else 0)
+fujiCellAt_par_some_of_parent  原文に親があれば JS も親を持つ
+fujiCellAt_parNone_yama  その対偶（= ShapeRep の parNone）
+```
+
+`yamaContext_parent_src` で 3 分岐が 1 つの式にまとまる。`level` 以上の枝で
+桁上げが消えるのは、親 `q` が根 `y` より左で `if` の条件が偽になるからである。
+その形は `parentPos_some` がそのまま要求する形になっている。
 
 空段落としを通す運搬補題も揃えた。
 
