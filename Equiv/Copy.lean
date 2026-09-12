@@ -1684,4 +1684,39 @@ theorem kmaxAt_le_yama' (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
     kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
   kmaxAt_le' M P i j ach af (by omega)
 
+/-! ## 積む段の数は正 -/
+
+theorem seamHeightOf_pos_of_hasCol (M : List Rowj) (j r : Nat) :
+    ∀ hi, r < hi → hasCol M r j = true → 0 < seamHeightOf M j hi := by
+  intro hi
+  induction hi with
+  | zero => intro h; omega
+  | succ h ih =>
+      intro hr hc
+      rw [seamHeightOf]
+      split
+      · omega
+      · next hnc =>
+          have hrh : r < h := by
+            rcases Nat.lt_or_ge r h with h1 | h1
+            · exact h1
+            · exfalso
+              have : r = h := by omega
+              rw [this] at hc
+              exact hnc hc
+          exact ih hrh hc
+
+/-- 行 0 にはすべての列がある。 -/
+theorem hasCol_zero (S : Setting) (M : List Rowj) (hM : MtRep S M) (h0 : 0 < M.length)
+    (j : Nat) (hj : j < S.n) : hasCol M 0 j = true := by
+  refine (hasCol_iff S M hM 0 j h0 hj).mpr ?_
+  exact S.tower.hpos j
+
+/-- **積む段の数は正。** -/
+theorem kmaxAt_pos' (S : Setting) (M : List Rowj) (hM : MtRep S M) (h0 : 0 < M.length)
+    (P : FujiParams) (i j ach af : Nat) (hj : j < S.n) (hach : 0 < ach) :
+    0 < kmaxAt M P i j ach af :=
+  kmaxAt_pos M P i j ach af
+    (seamHeightOf_pos_of_hasCol M j 0 ach hach (hasCol_zero S M hM h0 j hj))
+
 end Yukito
