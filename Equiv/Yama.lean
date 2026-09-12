@@ -998,4 +998,35 @@ theorem rows_diff (base : Row) (r c p : Nat)
   dsimp only
   omega
 
+/-! ## `ShapeRep` の `tall` -/
+
+/-- **高さ `height_G c` の段は空段落としのあとにも残る。** -/
+theorem tall_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (hyama : expYama M mfuel)
+    (y : Nat) (hy : y < S.n - 1)
+    (hpar : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1) = some y)
+    (hh : 0 < height S.tower.base (S.n - 1))
+    (hseam : (expP M mfuel).badRootSeam = y)
+    (nd : Nat → Nat) (nrep c : Nat)
+    (hc : c < (S.n - 1) + (expP M mfuel).len * nrep) :
+    (yamaContext S y hy hpar hh).height c
+      < (dropEmptyTop
+          (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M))).length := by
+  obtain ⟨t, d, hd, _⟩ := cover_yama S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd nrep
+    ((yamaContext S y hy hpar hh).height c) c hc (Nat.le_refl _)
+  have hts : t < (rowAt (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M))
+      ((yamaContext S y hy hpar hh).height c)).size := lt_size_of_getElem? hd
+  have hlen : (yamaContext S y hy hpar hh).height c
+      < (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)).length := by
+    rcases Nat.lt_or_ge ((yamaContext S y hy hpar hh).height c)
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)).length with h | h
+    · exact h
+    · exfalso
+      rw [rowAt_of_ge _ _ h] at hts
+      simp at hts
+  exact lt_dropEmptyTop_length
+    (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)).length
+    (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M))
+    ((yamaContext S y hy hpar hh).height c) (Nat.le_refl _) hlen (by omega)
+
 end Yukito
