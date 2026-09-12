@@ -102,4 +102,29 @@ theorem rep_lookup_dead (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row 
       omega
     omega
 
+/-- 位置引きの成功。生きた列は必ず引ける。 -/
+theorem lookupPos_some (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r n U)
+    (c : Nat) (hrc : r ≤ c) (hcn : c < n) (hlive : 0 < U c) :
+    ∃ m, ∃ hm : m < row.size,
+      lookupPos row (c - r) = some m ∧ (row[m]'hm).pos + r = c := by
+  obtain ⟨m, hm, hcm, hfa⟩ := rep_lookup row r n U h c hrc hcn hlive
+  refine ⟨m, hm, ?_, hcm⟩
+  simp only [lookupPos, hfa, dif_pos hm,
+    if_pos (show (row[m]'hm).pos = c - r by omega)]
+
+/-- 位置引きの失敗。死んだ列は引けない。 -/
+theorem lookupPos_none (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r n U)
+    (c : Nat) (hrc : r ≤ c) (hdead : U c = 0) : lookupPos row (c - r) = none := by
+  simp only [lookupPos]
+  split
+  · rename_i hm
+    have hne : (row[firstAtLeast row (c - r)]'hm).pos ≠ c - r := by
+      intro he
+      have h1 := h.val _ (mem_of_getElem row _ hm)
+      have h2 := h.live _ (mem_of_getElem row _ hm)
+      rw [show (row[firstAtLeast row (c - r)]'hm).pos + r = c by omega, hdead] at h1
+      omega
+    rw [if_neg hne]
+  · rfl
+
 end Yukito

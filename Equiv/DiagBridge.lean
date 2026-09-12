@@ -116,4 +116,157 @@ theorem diagEntry_value (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
   rw [diagEntry, htop]
   simp only [dif_pos hk, hval]
 
+/-! ## 脚 1 歩の対応
+
+`Extract.lean` の `legStep` は密表現での脚 1 歩である。JS の `legStepJS` と
+1 対 1 に対応する。状態の読み替えは「（段, 添字）→（段, 列）」である。 -/
+
+/-- 山の頂の高さは列番号以下。生きた列は 1 行ごとに右へずれるからである。 -/
+theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
+    height (ofSequence s) c ≤ c := by
+  rcases Nat.lt_or_ge c (height (ofSequence s) c) with h | h
+  · have hl := height_live (ofSequence s) (ofSequence_positive s hs c)
+    rw [rows_value_zero_of_lt (ofSequence s) _ c h] at hl
+    omega
+  · exact h
+
+/-- Phyrion 版の山。 -/
+def mountainOf (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : RootGeometry.RowMountain :=
+  mountain (ofSequence s) (ofSequence_positive s hs)
+
+/-- 疎配列の状態（段, 添字）を列座標に読み替える。 -/
+def readState (M : List Rowj) (st : Nat × Nat) : Option (Nat × Nat) :=
+  if hi : st.2 < (rowAt M st.1).size then
+    some (st.1, ((rowAt M st.1)[st.2]'hi).pos + st.1)
+  else none
+
+/-- **脚 1 歩が一致する。** -/
+theorem legStepJS_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (M : List Rowj)
+    (hM : MountainRep M s) (h idx : Nat) (hh : h < M.length)
+    (hidx : idx < (rowAt M h).size) (hn : ((rowAt M h)[idx]'hidx).pos + h < s.length) :
+    (legStepJS M h idx).bind (readState M)
+      = legStep (mountainOf s hs) h (((rowAt M h)[idx]'hidx).pos + h) := by
+  have hrep := rep_top s M hM h hh
+  have hpar : ParRep (rowAt M h) h (rows (ofSequence s) h).forest := by
+    rw [rowAt_eq M h hh]; exact (hM h hh).2
+  have hP := hpar _ (mem_of_getElem _ idx hidx)
+  cases h with
+  | zero =>
+    show ((if hi : idx < (rowAt M 0).size then
+            match ((rowAt M 0)[idx]'hi).par with
+            | none => none
+            | some p => some ((0 : Nat), p)
+          else none).bind (readState M)) = _
+    rw [dif_pos hidx]
+    cases hpp : ((rowAt M 0)[idx]'hidx).par with
+    | none =>
+        rw [hpp] at hP
+        show (none : Option (Nat × Nat)) = _
+        show _ = (match (rows (ofSequence s) 0).forest.parent
+          (((rowAt M 0)[idx]'hidx).pos + 0) with
+          | none => none
+          | some q => if 0 ≤ (mountainOf s hs).height q then some (0, q)
+                      else some (0 - 1, q))
+        rw [hP]
+    | some p =>
+        rw [hpp] at hP
+        obtain ⟨hp, hFc⟩ := hP
+        show ((some ((0 : Nat), p)).bind (readState M)) = _
+        show (readState M (0, p)) = _
+        show (if hi : p < (rowAt M 0).size then
+                some ((0 : Nat), ((rowAt M 0)[p]'hi).pos + 0) else none) = _
+        rw [dif_pos hp]
+        show _ = (match (rows (ofSequence s) 0).forest.parent
+          (((rowAt M 0)[idx]'hidx).pos + 0) with
+          | none => none
+          | some q => if 0 ≤ (mountainOf s hs).height q then some (0, q)
+                      else some (0 - 1, q))
+        rw [hFc]
+        simp
+  | succ h' =>
+    have hh' : h' < M.length := by omega
+    have hrep' := rep_top s M hM h' hh'
+    have hpar' : ParRep (rowAt M h') h' (rows (ofSequence s) h').forest := by
+      rw [rowAt_eq M h' hh']; exact (hM h' hh').2
+    have hlive : 0 < (rows (ofSequence s) (h' + 1)).value
+        (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) := by
+      have h1 := hrep.val _ (mem_of_getElem _ idx hidx)
+      have h2 := hrep.live _ (mem_of_getElem _ idx hidx)
+      omega
+    have hlive' : 0 < (rows (ofSequence s) h').value
+        (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) := by
+      have := rows_value_le (ofSequence s) h'
+        (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1))
+      omega
+    obtain ⟨l0, hl0, hlk0, hcl0⟩ :=
+      lookupPos_some (rowAt M h') h' s.length _ hrep'
+        (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) (by omega) hn hlive'
+    have htarget : ((rowAt M (h' + 1))[idx]'hidx).pos + 1
+        = (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) - h' := by omega
+    show ((legStepJS M (h' + 1) idx).bind (readState M)) = _
+    rw [legStepJS]
+    simp only [dif_pos hidx, htarget, hlk0]
+    have hP' := hpar' _ (mem_of_getElem _ l0 hl0)
+    rw [hcl0] at hP'
+    show _ = (match (rows (ofSequence s) h').forest.parent
+        (((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1)) with
+      | none => none
+      | some q => if h' + 1 ≤ (mountainOf s hs).height q then some (h' + 1, q)
+                  else some (h' + 1 - 1, q))
+    rw [dif_pos hl0]
+    cases hpp : ((rowAt M h')[l0]'hl0).par with
+    | none =>
+        rw [hpp] at hP'
+        rw [hP']
+        rfl
+    | some l =>
+        rw [hpp] at hP'
+        obtain ⟨hl, hFc⟩ := hP'
+        dsimp only
+        rw [hFc, dif_pos hl]
+        dsimp only
+        have hqlt : ((rowAt M h')[l]'hl).pos + h'
+            < ((rowAt M (h' + 1))[idx]'hidx).pos + (h' + 1) :=
+          (rows (ofSequence s) h').forest.parent_left hFc
+        have hqlive' : 0 < (rows (ofSequence s) h').value
+            (((rowAt M h')[l]'hl).pos + h') := by
+          have h1 := hrep'.val _ (mem_of_getElem _ l hl)
+          have h2 := hrep'.live _ (mem_of_getElem _ l hl)
+          omega
+        have hqn : ((rowAt M h')[l]'hl).pos + h' < s.length := by omega
+        by_cases hz : ((rowAt M h')[l]'hl).pos = 0
+        · rw [if_pos hz]
+          have hhq : height (ofSequence s) (((rowAt M h')[l]'hl).pos + h') ≤ h' := by
+            have := height_le_self s hs (((rowAt M h')[l]'hl).pos + h')
+            omega
+          rw [if_neg (show ¬ (h' + 1 ≤ (mountainOf s hs).height
+            (((rowAt M h')[l]'hl).pos + h')) by
+              show ¬ (h' + 1 ≤ height (ofSequence s) _); omega)]
+          show readState M (h', l) = _
+          simp only [readState, dif_pos hl, Nat.add_sub_cancel]
+        · rw [if_neg hz]
+          have hteq : ((rowAt M h')[l]'hl).pos - 1
+              = (((rowAt M h')[l]'hl).pos + h') - (h' + 1) := by omega
+          rw [hteq]
+          by_cases hql : 0 < (rows (ofSequence s) (h' + 1)).value
+              (((rowAt M h')[l]'hl).pos + h')
+          · obtain ⟨m, hm, hlkm, hcm⟩ :=
+              lookupPos_some (rowAt M (h' + 1)) (h' + 1) s.length _ hrep
+                (((rowAt M h')[l]'hl).pos + h') (by omega) hqn hql
+            rw [hlkm]
+            rw [if_pos (show h' + 1 ≤ (mountainOf s hs).height
+              (((rowAt M h')[l]'hl).pos + h') from
+                (live_iff_le_height (ofSequence s)
+                  (ofSequence_positive s hs _) (h' + 1)).mp hql)]
+            show readState M (h' + 1, m) = _
+            simp only [readState, dif_pos hm, hcm]
+          · rw [lookupPos_none (rowAt M (h' + 1)) (h' + 1) s.length _ hrep
+              (((rowAt M h')[l]'hl).pos + h') (by omega) (by omega)]
+            rw [if_neg (show ¬ (h' + 1 ≤ (mountainOf s hs).height
+              (((rowAt M h')[l]'hl).pos + h')) from fun hcon =>
+                hql ((live_iff_le_height (ofSequence s)
+                  (ofSequence_positive s hs _) (h' + 1)).mpr hcon))]
+            show readState M (h', l) = _
+            simp only [readState, dif_pos hl, Nat.add_sub_cancel]
+
 end Yukito

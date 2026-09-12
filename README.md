@@ -438,10 +438,23 @@ diagEntry_value  JS が diagonal に積む値は Phyrion の topValue
 のが Phyrion の `height` で、「行 `r` に列 `i` がある ⟺ `r ≤ height i`」
 （`live_iff_le_height`）がそのまま効く。
 
+脚 1 歩も繋いだ（`legStepJS_eq`）。状態の読み替えは「（段, 添字）→（段, 列）」で、
+JS の 1 歩と密表現の `legStep` が 1 対 1 に対応する。段が下がるのは
+
+```
+親の列が -1 の位置にある（position = 0）  → height q ≤ q < h なので必ず下がる
+親の列がこの段で死んでいる                → h ≤ height q が偽
+```
+
+の 2 通りで、どちらも `live_iff_le_height` と `height_le_self` で判定が一致する。
+
+位置引きは `lookupPos` として切り出した。`lookupPos_some` / `lookupPos_none` が
+「生きた列は引ける・死んだ列は引けない」を与える。
+
 抽出段に残るのは、脚歩行（`legWalkJS`）が `Pseudo.parent` に、2 つの探索
 （`pwScan` / `treeScan`）が `restrictedParent` に一致することである。密表現側では
 どちらも証明済み（`jsWalk_eq_pseudo`、`chainFind_eq_restrictedParent'`）なので、
-`Rep` で疎配列と繋ぐ作業になる。
+1 歩の対応を歩行全体に回す作業になる。
 
 ## 疎配列との橋渡し
 

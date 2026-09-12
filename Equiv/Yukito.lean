@@ -147,6 +147,12 @@ def topAt (M : List Rowj) (i : Nat) : Nat → Option (Nat × Nat)
       if (row[k]'hk).pos + j = i then some (j, k) else topAt M i j
     else topAt M i j
 
+/-- 位置 `t` のセルを引く。無ければ `none`。JS の
+`while (row[m].position < t) m++; if (row[m].position == t) …` にあたる。 -/
+def lookupPos (row : Rowj) (t : Nat) : Option Nat :=
+  let m := firstAtLeast row t
+  if hm : m < row.size then (if (row[m]'hm).pos = t then some m else none) else none
+
 /-- JS の脚 1 歩（疎配列版）。状態は `(段, その段での添字)`。 -/
 def legStepJS (M : List Rowj) (h idx : Nat) : Option (Nat × Nat) :=
   let row := rowAt M h
@@ -158,24 +164,24 @@ def legStepJS (M : List Rowj) (h idx : Nat) : Option (Nat × Nat) :=
       | some p => some (0, p)
     | h'+1 =>
       let below := rowAt M h'
-      let l0 := firstAtLeast below ((row[idx]'hi).pos + 1)
-      if hl0 : l0 < below.size then
-        match (below[l0]'hl0).par with
-        | none => none
-        | some l =>
-          if hl : l < below.size then
-            -- JS の目標は `position - 1`。`position = 0` なら `-1` になり、
-            -- どのセルにも一致しないので必ず段を下げる。自然数の切り捨て
-            -- 引き算では `0` になってしまうので、ここだけ場合分けする。
-            if (below[l]'hl).pos = 0 then some (h', l)
-            else
-              let t := (below[l]'hl).pos - 1
-              let m := firstAtLeast row t
-              if hm : m < row.size then
-                if (row[m]'hm).pos = t then some (h'+1, m) else some (h', l)
-              else some (h', l)
-          else none
-      else none
+      match lookupPos below ((row[idx]'hi).pos + 1) with
+      | none => none
+      | some l0 =>
+        if hl0 : l0 < below.size then
+          match (below[l0]'hl0).par with
+          | none => none
+          | some l =>
+            if hl : l < below.size then
+              -- JS の目標は `position - 1`。`position = 0` なら `-1` になり、
+              -- どのセルにも一致しないので必ず段を下げる。自然数の切り捨て
+              -- 引き算では `0` になってしまうので、ここだけ場合分けする。
+              if (below[l]'hl).pos = 0 then some (h', l)
+              else
+                match lookupPos row ((below[l]'hl).pos - 1) with
+                | some m => some (h' + 1, m)
+                | none => some (h', l)
+            else none
+        else none
   else none
 
 /-- JS の脚歩行（疎配列版）。着いた列を返す。`none` は JS の `-1`。 -/
