@@ -114,4 +114,145 @@ theorem rowAt_pushAt (res : List Rowj) (k m : Nat) (c : Cell) (hk : k ≤ res.le
       · exact rowAt_append_lt _ _ _ h2
       · rw [rowAt_append_gt _ _ _ (by omega), rowAt_of_ge _ _ (by omega)]
 
+/-! ## 段のループ
+
+`fujiRows` は段 `k = 0 … kmax−1` に 1 個ずつセルを積む。段 `k` に積むとき、
+それより上の段はまだ触られていないので、`fujiCell` に渡る「今の段」は
+ループに入る前の段 `k` そのものである。 -/
+
+/-- `fujiRows` が段 `k` に積むセル。 -/
+def fujiCellAt (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat) (isRep : Bool)
+    (res : List Rowj) (k : Nat) : Cell :=
+  let sysx := fujiSource P i k isRep
+  let sx := sourceIdx M sysx.1 j sysx.2
+  let ir := if isRep then 1 else 0
+  fujiCell M P (rowAt res k) sysx.1 sx k i j (i - ir) (nd (j + P.len * i))
+
+theorem fujiRows_length (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) : ∀ (kmax : Nat) (res : List Rowj),
+      (fujiRows M P nd i j isRep kmax res).length = max res.length kmax := by
+  intro kmax
+  induction kmax with
+  | zero => intro res; simp only [fujiRows, Nat.max_def]; split <;> omega
+  | succ kmax ih =>
+      intro res
+      have hlen := ih res
+      have hk : kmax ≤ (fujiRows M P nd i j isRep kmax res).length := by
+        rw [hlen]
+        simp only [Nat.max_def]
+        split <;> omega
+      show (pushAt (fujiRows M P nd i j isRep kmax res) kmax _).length = _
+      rw [pushAt_length _ _ _ hk, hlen]
+      simp only [Nat.max_def]
+      split <;> split <;> (first | omega | (split <;> omega))
+
+/-- **段のループの結果。** 段 `m < kmax` にはセルが 1 個増え、他は変わらない。 -/
+theorem rowAt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) : ∀ (kmax : Nat) (res : List Rowj) (m : Nat),
+      rowAt (fujiRows M P nd i j isRep kmax res) m
+        = if m < kmax then (rowAt res m).push (fujiCellAt M P nd i j isRep res m)
+          else rowAt res m := by
+  intro kmax
+  induction kmax with
+  | zero => intro res m; rw [if_neg (by omega)]; rfl
+  | succ kmax ih =>
+      intro res m
+      have hlen := fujiRows_length M P nd i j isRep kmax res
+      have hk : kmax ≤ (fujiRows M P nd i j isRep kmax res).length := by
+        rw [hlen]
+        simp only [Nat.max_def]
+        split <;> omega
+      have hcur : rowAt (fujiRows M P nd i j isRep kmax res) kmax = rowAt res kmax := by
+        rw [ih res kmax, if_neg (by omega)]
+      show rowAt (pushAt (fujiRows M P nd i j isRep kmax res) kmax
+        (fujiCell M P (rowAt (fujiRows M P nd i j isRep kmax res) kmax)
+          (fujiSource P i kmax isRep).1
+          (sourceIdx M (fujiSource P i kmax isRep).1 j (fujiSource P i kmax isRep).2)
+          kmax i j (i - (if isRep then 1 else 0)) (nd (j + P.len * i)))) m = _
+      rw [rowAt_pushAt _ _ _ _ hk]
+      rcases Decidable.em (m = kmax) with hm | hm
+      · rw [if_pos hm, hcur, if_pos (show m < kmax + 1 by omega), hm]
+        rfl
+      · rw [if_neg hm, ih res m]
+        rcases Nat.lt_or_ge m kmax with h | h
+        · rw [if_pos h, if_pos (show m < kmax + 1 by omega)]
+        · rw [if_neg (show ¬ m < kmax by omega), if_neg (show ¬ m < kmax + 1 by omega)]
+
+/-! ## 継ぎ目と繰り返しのループ -/
+
+/-- 継ぎ目の列 `j` が「置き換え」の列か。 -/
+def isRepAt (P : FujiParams) (j : Nat) : Bool := decide (j = P.badRootSeam)
+
+/-- 継ぎ目の列 `j` で積む段の数。 -/
+def kmaxAt (M : List Rowj) (P : FujiParams) (i j afterCutHeight ascFuel : Nat) : Nat :=
+  let isAsc := isAscending M P.badRootHeight P.badRootSeam j ascFuel
+  let seamH := seamHeightOf M j afterCutHeight
+  let d := P.cutHeight - P.badRootHeight
+  if isAsc then seamH + d * i else seamH
+
+theorem fujiSeams_zero (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i ach af : Nat) (res : List Rowj) : fujiSeams M P nd i ach af 0 res = res := rfl
+
+theorem fujiSeams_succ (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (i ach af t : Nat) (res : List Rowj) :
+    fujiSeams M P nd i ach af (t + 1) res
+      = fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
+          (kmaxAt M P i (P.badRootSeam + t) ach af) (fujiSeams M P nd i ach af t res) := rfl
+
+theorem fujiIters_zero (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (ach af : Nat) (res : List Rowj) : fujiIters M P nd ach af 0 res = res := rfl
+
+theorem fujiIters_succ (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
+    (ach af i : Nat) (res : List Rowj) :
+    fujiIters M P nd ach af (i + 1) res
+      = fujiSeams M P nd (i + 1) ach af P.len (fujiIters M P nd ach af i res) := rfl
+
+/-! ## 段は後ろに伸びるだけ
+
+`pushAt` は末尾に積むので、既にある添字のセルは変わらない。したがって
+`fujiCell` が見る「今の段」は、最終形と既存の添字の上で一致する。 -/
+
+/-- `b` は `a` の後ろにセルを足したもの。 -/
+def RowExt (a b : Rowj) : Prop := a.size ≤ b.size ∧ ∀ i, i < a.size → b[i]? = a[i]?
+
+theorem RowExt.rfl' (a : Rowj) : RowExt a a := ⟨Nat.le_refl _, fun _ _ => rfl⟩
+
+theorem RowExt.trans {a b c : Rowj} (h1 : RowExt a b) (h2 : RowExt b c) : RowExt a c := by
+  refine ⟨Nat.le_trans h1.1 h2.1, fun i hi => ?_⟩
+  exact (h2.2 i (Nat.lt_of_lt_of_le hi h1.1)).trans (h1.2 i hi)
+
+theorem RowExt.push (a : Rowj) (c : Cell) : RowExt a (a.push c) :=
+  ⟨by rw [Array.size_push]; omega,
+   fun i hi => by rw [Array.getElem?_push, if_neg (by omega)]⟩
+
+theorem rowExt_fujiRows (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i j : Nat)
+    (isRep : Bool) (kmax : Nat) (res : List Rowj) (m : Nat) :
+    RowExt (rowAt res m) (rowAt (fujiRows M P nd i j isRep kmax res) m) := by
+  rw [rowAt_fujiRows]
+  split
+  · exact RowExt.push _ _
+  · exact RowExt.rfl' _
+
+theorem rowExt_fujiSeams (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (i ach af : Nat) :
+    ∀ (t : Nat) (res : List Rowj) (m : Nat),
+      RowExt (rowAt res m) (rowAt (fujiSeams M P nd i ach af t res) m) := by
+  intro t
+  induction t with
+  | zero => intro res m; exact RowExt.rfl' _
+  | succ t ih =>
+      intro res m
+      rw [fujiSeams_succ]
+      exact RowExt.trans (ih res m) (rowExt_fujiRows _ _ _ _ _ _ _ _ _)
+
+theorem rowExt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ach af : Nat) :
+    ∀ (n : Nat) (res : List Rowj) (m : Nat),
+      RowExt (rowAt res m) (rowAt (fujiIters M P nd ach af n res) m) := by
+  intro n
+  induction n with
+  | zero => intro res m; exact RowExt.rfl' _
+  | succ n ih =>
+      intro res m
+      rw [fujiIters_succ]
+      exact RowExt.trans (ih res m) (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+
 end Yukito
