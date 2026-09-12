@@ -42,6 +42,7 @@ Phyrion 版は 1-Y の展開の整礎性と標準生成集合の辞書式整列�
 | `Equiv/Tower.lean` | 森の塔。frame と値を層ごとに並べ、行 0 を特別扱いせずに済ませる |
 | `Equiv/SibSucc.lean` | **右隣の兄弟の単調性と `RootChildAdjacent`。山の段の残り 2 本** |
 | `Equiv/Chain.lean` | 親鎖についての小補題 |
+| `Equiv/Mountain.lean` | **山の段の組み上げ。`FirstLiveNotSmaller`** |
 | `Equiv/Extract.lean` | 抽出段。JS の脚歩行が Phyrion の `Pseudo.parent` に一致すること |
 | `Equiv/Diagonal.lean` | 抽出段。対角の親が `rawExtract` の親に一致すること |
 
@@ -248,6 +249,39 @@ Inv            結論を含意し降下でも保たれるが、3 択が尽きな
 `Tower.lean` の `frameAt` / `towerVal` / `tower_case_descent` / `frameAt_step` は
 `SibSucc.lean` がそのまま使っている。`Resolves` と `Inv` は使っていない。
 
+## 山の段の組み上げ
+
+`RootCase.lean` で立てた残る義務 `FirstLiveNotSmaller` を、揃った部品から
+組み立てた（`Mountain.lean`）。要素がすべて正の列について成り立つ。
+
+記号は行 `r` について次のとおり。
+
+```
+G = (rows base r).forest = frameAt s (r+1)      その行の森
+F = frameAt s r                                 frame（行 0 では線形森）
+U = towerVal s r = (rows base r).value          frame の上の値
+v = towerVal s (r+1) = (rows base (r+1)).value  次の行の値（= U の差分）
+```
+
+手順はこうである。
+
+```
+1  root の G 子 p で c に至る道の上にあるものを取る    child_toward
+2  hreach から v c ≤ v p
+3  root は G 子 p を持つので root+1 は生きている       rootChildAdjacent_tower
+4  したがって firstLiveAfter が返す j は root+1        firstLiveAfter_eq_succ
+5  root の F 子 e で p に至る道の上にあるものを取る
+6  (1)  U p ≤ U (root+1)                              one_of_nonancestor_tower
+7  (a)  root は root+1 の F 祖先                       leftmost_child_all
+8  v p ≤ v (root+1)                                   diff_le_of_a_and_one
+9  1 と 8 を繋いで v c ≤ v j
+```
+
+`hroot`（`root` がその行の森の根であること）は使わない。必要なのは `root` が
+`G` 子を持つことだけである。
+
+これで `js_root_step_no_parent` の仮定が外れ、**密表現での山の段の一致が閉じた**。
+
 ## 抽出段
 
 JS の `calcDiagonal` は列の頂から脚をたどり、**その行で親を持たない節点**で止まる。
@@ -364,15 +398,11 @@ JS は対角を文字列にしてから `calcMountain` に渡す。素の数と�
 ## 残っている課題
 
 ```
-山の段    (a)、(1)、RootChildAdjacent は済。残りは組み上げと疎配列との橋渡し
+山の段    密表現での対応は済。疎配列との橋渡しが残り
 抽出段    密表現での対応は済。疎配列との橋渡しが残り
 bad root  未
 コピー層  未
 ```
-
-山の段の組み上げとは、`FirstLiveNotSmaller`（`RootCase.lean` で定義した、
-JS が鎖の根で指す列が親にならないという主張）を、上の部品から実際に組み立てる
-ことである。部品は揃った。
 
 コピー層が全体の大半である。
 

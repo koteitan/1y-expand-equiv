@@ -292,19 +292,29 @@ theorem rootChildAdjacent_of_ancestor (hc : Compat F U) {root p : Nat}
 なので、`j` と `e` は `F` 兄弟である。`e` は `p` の `F` 祖先（または `p` 自身）
 なので最大性から `U p ≤ U e`。したがって残る義務は `U e ≤ U j` の 1 本だけになる。 -/
 
-/-- 非祖先の場合の (1)。兄弟の単調性を仮定として受け取り、`U p ≤ U j` を出す。 -/
-theorem one_of_nonancestor (hc : Compat F U) {root p j e : Nat}
+/-- 非祖先の場合の (1)。`Compat` を使わず `0 < U e` を直接受け取る形。
+層 0 では `Compat` が成り立たない（`U 0 > 0` だが線形森で `0` は親を持たない）ので、
+こちらを基本形にする。 -/
+theorem one_of_nonancestor' {root p j e : Nat}
     (hp : restrictedParent F U p = some root)
     (he : F.parent e = some root)
     (hanc : ZeroY.Forest.Ancestor F.parent p e ∨ e = p)
+    (hpos : 0 < U e)
     (hsib : U e ≤ U j) : U p ≤ U j := by
   have hre : root < e := F.parent_left he
-  have hpos : 0 < U e := (hc e).mpr ⟨root, he⟩
   have h1 : U p ≤ U e := by
     rcases hanc with ha | heq
     · exact one_of_ancestor root p e hp ha hre hpos
     · subst heq; exact Nat.le_refl _
   omega
+
+/-- 非祖先の場合の (1)。兄弟の単調性を仮定として受け取り、`U p ≤ U j` を出す。 -/
+theorem one_of_nonancestor (hc : Compat F U) {root p j e : Nat}
+    (hp : restrictedParent F U p = some root)
+    (he : F.parent e = some root)
+    (hanc : ZeroY.Forest.Ancestor F.parent p e ∨ e = p)
+    (hsib : U e ≤ U j) : U p ≤ U j :=
+  one_of_nonancestor' hp he hanc ((hc e).mpr ⟨root, he⟩) hsib
 
 /-- `j` と `e` が `F` 兄弟であること。`j` 側は `fparent_eq_root` から出る。 -/
 theorem j_e_siblings (hc : Compat F U) {root j e : Nat}
