@@ -423,8 +423,25 @@ parseDiag    parseSequenceElement 相当
 
 出力とその読み直しも `#guard` で JS と突き合わせてある（`"v"` が出る例を含む 5 列）。
 
-抽出段に残るのは、この書き起こしが密表現側の `rawExtract` に一致することの証明で
-ある。
+### 疎配列側と密表現の対応
+
+頂の探索と値の対応を示した（`DiagBridge.lean`）。
+
+```
+MountainRep   山の各行が Rep と ParRep を満たすこと
+rowAt_eq      範囲内なら rowAt はその行
+topAt_eq      topAt は height i の段とその添字を返す
+diagEntry_value  JS が diagonal に積む値は Phyrion の topValue
+```
+
+`topAt` は段を上から下へ走らせて列 `i` を含む最上段を探す。密表現側でそれにあたる
+のが Phyrion の `height` で、「行 `r` に列 `i` がある ⟺ `r ≤ height i`」
+（`live_iff_le_height`）がそのまま効く。
+
+抽出段に残るのは、脚歩行（`legWalkJS`）が `Pseudo.parent` に、2 つの探索
+（`pwScan` / `treeScan`）が `restrictedParent` に一致することである。密表現側では
+どちらも証明済み（`jsWalk_eq_pseudo`、`chainFind_eq_restrictedParent'`）なので、
+`Rep` で疎配列と繋ぐ作業になる。
 
 ## 疎配列との橋渡し
 

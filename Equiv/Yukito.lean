@@ -134,52 +134,49 @@ JS の後半。列ごとに頂から脚をたどり、着いた列を `diagonalT
 `none` を返す形にしてある。
 -/
 
+/-- 段を取り出す。JS は範囲内しか触らないので、範囲外は空行で構わない。 -/
+def rowAt (M : List Rowj) (h : Nat) : Rowj := M.getD h #[]
+
 /-- 列 `i` を含む最上段とその添字。JS は `j` を上から下へ走らせる。 -/
 def topAt (M : List Rowj) (i : Nat) : Nat → Option (Nat × Nat)
   | 0 => none
   | j+1 =>
-    match M[j]? with
-    | none => topAt M i j
-    | some row =>
-      let k := firstAtLeast row (i - j)
-      if hk : k < row.size then
-        if (row[k]'hk).pos + j = i then some (j, k) else topAt M i j
-      else topAt M i j
+    let row := rowAt M j
+    let k := firstAtLeast row (i - j)
+    if hk : k < row.size then
+      if (row[k]'hk).pos + j = i then some (j, k) else topAt M i j
+    else topAt M i j
 
 /-- JS の脚 1 歩（疎配列版）。状態は `(段, その段での添字)`。 -/
 def legStepJS (M : List Rowj) (h idx : Nat) : Option (Nat × Nat) :=
-  match M[h]? with
-  | none => none
-  | some row =>
-    if hi : idx < row.size then
-      match h with
-      | 0 =>
-        match (row[idx]'hi).par with
+  let row := rowAt M h
+  if hi : idx < row.size then
+    match h with
+    | 0 =>
+      match (row[idx]'hi).par with
+      | none => none
+      | some p => some (0, p)
+    | h'+1 =>
+      let below := rowAt M h'
+      let l0 := firstAtLeast below ((row[idx]'hi).pos + 1)
+      if hl0 : l0 < below.size then
+        match (below[l0]'hl0).par with
         | none => none
-        | some p => some (0, p)
-      | h'+1 =>
-        match M[h']? with
-        | none => none
-        | some below =>
-          let l0 := firstAtLeast below ((row[idx]'hi).pos + 1)
-          if hl0 : l0 < below.size then
-            match (below[l0]'hl0).par with
-            | none => none
-            | some l =>
-              if hl : l < below.size then
-                -- JS の目標は `position - 1`。`position = 0` なら `-1` になり、
-                -- どのセルにも一致しないので必ず段を下げる。自然数の切り捨て
-                -- 引き算では `0` になってしまうので、ここだけ場合分けする。
-                if (below[l]'hl).pos = 0 then some (h', l)
-                else
-                  let t := (below[l]'hl).pos - 1
-                  let m := firstAtLeast row t
-                  if hm : m < row.size then
-                    if (row[m]'hm).pos = t then some (h'+1, m) else some (h', l)
-                  else some (h', l)
-              else none
+        | some l =>
+          if hl : l < below.size then
+            -- JS の目標は `position - 1`。`position = 0` なら `-1` になり、
+            -- どのセルにも一致しないので必ず段を下げる。自然数の切り捨て
+            -- 引き算では `0` になってしまうので、ここだけ場合分けする。
+            if (below[l]'hl).pos = 0 then some (h', l)
+            else
+              let t := (below[l]'hl).pos - 1
+              let m := firstAtLeast row t
+              if hm : m < row.size then
+                if (row[m]'hm).pos = t then some (h'+1, m) else some (h', l)
+              else some (h', l)
           else none
-    else none
+      else none
+  else none
 
 /-- JS の脚歩行（疎配列版）。着いた列を返す。`none` は JS の `-1`。 -/
 def legWalkJS (M : List Rowj) : Nat → Nat → Nat → Option Nat
@@ -188,26 +185,22 @@ def legWalkJS (M : List Rowj) : Nat → Nat → Nat → Option Nat
     match legStepJS M h idx with
     | none => none
     | some (h', idx') =>
-      match M[h']? with
-      | none => none
-      | some row =>
-        if hi : idx' < row.size then
-          match (row[idx']'hi).par with
-          | none => some ((row[idx']'hi).pos + h')
-          | some _ => legWalkJS M fuel h' idx'
-        else none
+      let row := rowAt M h'
+      if hi : idx' < row.size then
+        match (row[idx']'hi).par with
+        | none => some ((row[idx']'hi).pos + h')
+        | some _ => legWalkJS M fuel h' idx'
+      else none
 
 /-- 列 `i` についての対角の 1 要素。値と歩行結果。 -/
 def diagEntry (M : List Rowj) (i : Nat) : Option (Nat × Option Nat) :=
   match topAt M i M.length with
   | none => none
   | some (j, k) =>
-    match M[j]? with
-    | none => none
-    | some row =>
-      if hk : k < row.size then
-        some ((row[k]'hk).val, legWalkJS M (i + 1) j k)
-      else none
+    let row := rowAt M j
+    if hk : k < row.size then
+      some ((row[k]'hk).val, legWalkJS M (i + 1) j k)
+    else none
 
 /-- 対角の値と歩行結果の並び。JS の `diagonal` と `diagonalTree`。 -/
 def diagList (M : List Rowj) : List (Nat × Option Nat) :=

@@ -5,6 +5,7 @@ import Equiv.Rep
 import Equiv.Lookup
 import Equiv.Search
 import Equiv.Lift
+import Equiv.DiagBridge
 import Equiv.Bridge
 import Equiv.Row0
 import Equiv.Row0Spec
