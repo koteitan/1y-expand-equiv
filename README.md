@@ -1259,6 +1259,41 @@ expandOut_some_yama      expandOut (expandJS …)
 `j = y` なら `source = x` で `M.height y`、そうでなければ `M.height j` であり、
 どちらの場合も `M.height j` だからである。
 
+枝の判定と bad root も密表現の言葉になった。
+
+```
+lastVal_of_rep    行の最後の値は最後の列の値
+lastVal_expDg     対角の最後の値は topValue base (n−1)
+expYama_iff       expYama M (f+1) ↔ topValue base (n−1) = 1
+getBadRoot_yama   この枝では getBadRoot = (rows base (height(n−1)−1)).forest.parent (n−1)
+expSeam_yama      継ぎ目 y は「最後の列 x = n−1 の、頂の 1 つ下の段での親」
+```
+
+密表現側の `badRootOf` は「頂の値が 1 ならその層で止まり、頂の 1 つ下の段での親を
+返す」なので、JS の `yama` はまさに「bad root がこの層で見つかる」場合である。
+
+そこでコピー先の山を組み立てた。
+
+```
+yamaContext S y … : TerminalCopy.Context
+  mountain    = mountainOf' S（設定の底から作る山）
+  coordinates = ⟨y, n−1, y < n−1⟩
+  level       = height (n−1) − 1
+  last_parent = 「最後の列の親が y」（expSeam_yama）
+  last_height = height (n−1) = level + 1
+```
+
+これが原文の `badAtTerminalMountain` にあたる山である。
+
+空段落としを通す運搬補題も揃えた。
+
+```
+take_len_cons / dropEmptyTop_length_le / rowAt_dropEmptyTop
+lt_dropEmptyTop_length   空でない段は残る（ShapeRep の tall に要る）
+getElem?_dropEmptyTop / hasCol_dropEmptyTop
+rowsMono_dropEmptyTop / parLt_dropEmptyTop
+```
+
 ### 値の埋め
 
 `fillRow` は「直前までに積んだ結果を見ながら 1 つずつ積む折り畳み」である。この形を
