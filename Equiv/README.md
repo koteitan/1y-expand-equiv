@@ -59,9 +59,10 @@ Lean の `Pseudo.parent` は代わりに高さの条件 `H p ∈ {H c − 1, H c
 ## bad root
 
 JS の `getBadRoot` は対角の最後の値が 1 になるまで抽出を繰り返し、その層で
-「頂の 1 つ下の段での親」を返す。これが Phyrion の `findBadRoot` の列に一致する
-(`getBadRoot_eq_findBadRoot`)。分岐条件（行 0 の最後のセルに親が無い ⟺ `findBadRoot` が
-`none`）も一致する。
+「頂の 1 つ下の段での親」を返す。これはまず密表現側の同じ探索 `badRootOf` に一致し
+（`getBadRoot_eq`）、bad root の層では原文の `BadAt` の親、すなわち bad root の列を返す
+（`badRootOf_of_badAt`）。分岐条件（行 0 の最後のセルに親が無い ⟺ `findBadRoot` が
+`none`）も一致する（`last_parent_none_iff`）。
 
 ## 値の層
 
