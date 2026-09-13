@@ -61,14 +61,26 @@ theorem expand_eq (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)
 
 ## 座標の対応
 
-Yukito 版は疎配列、Phyrion 版は列ごとの値の関数である。対応は次のとおり。
+列 (1,2,4,8) の山。
+
+Yukito 版
 
 ```
-Yukito 版 (行 r, position P)  ↔  Phyrion 版 (行 r, 列 c = P + r)
+row 3: {value 1, position 0}
+row 2: {value 1, position 0} {value 2, position 1}
+row 1: {value 1, position 0} {value 2, position 1} {value 4, position 2}
+row 0: {value 1, position 0} {value 2, position 1} {value 4, position 2} {value 8, position 3}
 ```
 
-この変換のもとで、`script.js` の「右腿で下へ、親を取り、左腿で上へ」という歩行は、
-前の行の親チェーンをそのまま辿ることになる。
+Phyrion 版
+
+```
+        c=0  c=1  c=2  c=3
+row 3    -    -    -    1
+row 2    -    -    1    2
+row 1    -    1    2    4
+row 0    1    2    4    8
+```
 
 ## 証明の骨格
 
