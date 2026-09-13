@@ -50,6 +50,24 @@ theorem expand_eq (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)
     expandOut (expandJS N (m + 1) efuel (calcMountain s (m + 1))) = expandValues s hs N
 ```
 
+左辺が Yukito 版の expand、右辺が Phyrion 版の expand である。
+
+| | 式 | どちらか |
+|---|---|---|
+| 左辺 | `expandOut (expandJS N (m + 1) efuel (calcMountain s (m + 1)))` | Yukito 版 |
+| 右辺 | `expandValues s hs N` | Phyrion 版 |
+
+左辺は `script.js` の `expand(s, N, true)` を 3 つの部品に分けて書いたものである。
+
+| 部品 | Lean | `script.js` |
+|---|---|---|
+| 山を作る | [`calcMountain s (m + 1)`](Equiv/Yukito.lean#L129) | `calcMountain(s)` |
+| 展開した山を作る | [`expandJS N (m + 1) efuel …`](Equiv/Yukito.lean#L578) | `expand` の本体 |
+| 段 0 の値を読む | [`expandOut …`](Equiv/Yukito.lean#L574) | `stringify` の出力 |
+
+右辺は [`OneY.Numeric.expandValues`](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/formalization/OneY/Expansion.lean#L46) そのものである。
+`N` はどちらも展開の回数（`script.js` の `n`）である。
+
 `ZeroY.Legal s` は「すべての要素が正」かつ「先頭が 1」で、Phyrion 版が `expandValues` に
 課している条件そのものである。標準形の Y 数列はこれを満たす。`m` と `efuel` は燃料で、
 `sequenceBound s`（値の最大）と列の長さ以上あれば足りる。
