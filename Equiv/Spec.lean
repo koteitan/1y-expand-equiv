@@ -35,25 +35,20 @@ structure FujiSpec (S : Setting) (M : List Rowj) (mfuel : Nat) (G : RowMountain)
   kmaxHeight : ∀ i j, 0 < i → y ≤ j → j < x →
     kmaxAt M (expP M mfuel) i j (expRes M).length mfuel
       = G.height (j + (expP M mfuel).len * i) + 1
-  parNonePush : ∀ (nd : Nat → Nat) (i' t' m : Nat), t' < (expP M mfuel).len →
+  parNoneCell : ∀ (nd : Nat → Nat) (st : List Rowj) (i' t' m : Nat), t' < (expP M mfuel).len →
     m < kmaxAt M (expP M mfuel) (i' + 1) (y + t') (expRes M).length mfuel →
+    PosMono (rowAt st m) →
+    (∀ pc, pc < (y + t') + (expP M mfuel).len * (i' + 1) → m ≤ G.height pc → HasCol st m pc) →
     (fujiCellAt M (expP M mfuel) nd (i' + 1) (y + t') (isRepAt (expP M mfuel) (y + t'))
-      (isAscAt M (expP M mfuel) (y + t') mfuel)
-      (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
-        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m).par = none →
+      (isAscAt M (expP M mfuel) (y + t') mfuel) st m).par = none →
     (G.row m).parent ((y + t') + (expP M mfuel).len * (i' + 1)) = none
-  parColPush : ∀ (nd : Nat → Nat) (i' t' m p : Nat), t' < (expP M mfuel).len →
+  parColCell : ∀ (nd : Nat → Nat) (st : List Rowj) (i' t' m p : Nat), t' < (expP M mfuel).len →
     m < kmaxAt M (expP M mfuel) (i' + 1) (y + t') (expRes M).length mfuel →
     (fujiCellAt M (expP M mfuel) nd (i' + 1) (y + t') (isRepAt (expP M mfuel) (y + t'))
-      (isAscAt M (expP M mfuel) (y + t') mfuel)
-      (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
-        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m).par = some p →
-    ∃ hp : p < (rowAt (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
-        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m).size,
+      (isAscAt M (expP M mfuel) (y + t') mfuel) st m).par = some p →
+    ∃ hp : p < (rowAt st m).size,
       (G.row m).parent ((y + t') + (expP M mfuel).len * (i' + 1))
-        = some (((rowAt (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
-            (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) m)[p]'hp).pos
-          + m)
+        = some (((rowAt st m)[p]'hp).pos + m)
 
 namespace FujiSpec
 
@@ -68,20 +63,39 @@ theorem hacl (h : FujiSpec S M mfuel G y x) : (expP M mfuel).afterCutLength = S.
 theorem hlen (h : FujiSpec S M mfuel G y x) : (expP M mfuel).len = x - y := by
   rw [expP_len_yama S M h.hM mfuel (expRes_length_pos M h.hM2) y h.hsm, h.hx]
 
-theorem rowsMono (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep : Nat) :
-    RowsMono (fujiRs M mfuel nd nrep) := by
+/-- 切ったあとの山は、三重ループを始める条件を満たす。 -/
+theorem start (h : FujiSpec S M mfuel G y x) :
+    ColLt (expRes M) (expP M mfuel).afterCutLength ∧
+      (expP M mfuel).badRootSeam + (expP M mfuel).len = (expP M mfuel).afterCutLength ∧
+      RowsMono (expRes M) := by
   have hyx := h.hyx
   have hx := h.hx
   have hacl := h.hacl
-  have hsum : (expP M mfuel).badRootSeam + (expP M mfuel).len
-      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by rw [h.hsm, hacl]; omega)
-  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
-    rw [hacl]
-    exact colLt_cutChild S M h.hM (expCutH M) h.hn (Nat.le_of_eq h.hcutH.symm)
+  refine ⟨?_, badRootSeam_add_len _ (by rw [h.hsm, hacl]; omega),
+    rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M h.hM)⟩
+  rw [hacl]
+  exact colLt_cutChild S M h.hM (expCutH M) h.hn (Nat.le_of_eq h.hcutH.symm)
+
+theorem rowsMono (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep : Nat) :
+    RowsMono (fujiRs M mfuel nd nrep) := by
+  obtain ⟨hcolLt, hsum, hmono⟩ := h.start
   exact rowsMono_dropEmptyTop _
     (fujiIters_invariant M (expP M mfuel) nd (expRes M).length mfuel h.hkm nrep (expRes M)
-      (expP M mfuel).afterCutLength hcolLt (by omega)
-      (rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M h.hM))).1
+      (expP M mfuel).afterCutLength hcolLt (by omega) hmono).1
+
+/-- 積む途中の状態でも位置は真に増加している。 -/
+theorem rowsMonoState (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (i' t' : Nat) :
+    RowsMono (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) := by
+  obtain ⟨hcolLt, hsum, hmono⟩ := h.start
+  obtain ⟨hm1, hb1⟩ := fujiIters_invariant M (expP M mfuel) nd (expRes M).length mfuel h.hkm i'
+    (expRes M) (expP M mfuel).afterCutLength hcolLt (by omega) hmono
+  have hmul : (expP M mfuel).len * (i' + 1)
+      = (expP M mfuel).len * i' + (expP M mfuel).len := Nat.mul_succ _ _
+  exact (fujiSeams_invariant M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel h.hkm t'
+    (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))
+    ((expP M mfuel).badRootSeam + (expP M mfuel).len + (expP M mfuel).len * i')
+    hb1 (by omega) hm1).1
 
 /-- **高さ `m` 以下の列は段 `m` に載る。** -/
 theorem cover (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep m c : Nat)
@@ -217,6 +231,40 @@ theorem stepOrig (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep r c p :
     h.colValOrig nd nrep (r + 1) c hc (by omega)]
   exact rows_diff S.tower.base r c p hp
 
+/-- **積む途中の状態でも、それより左の列は高さまで載っている。** -/
+theorem hasColState (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (i' t k pc : Nat)
+    (ht : t < (expP M mfuel).len) (hlt : pc < (y + t) + (expP M mfuel).len * (i' + 1))
+    (hk : k ≤ G.height pc) :
+    HasCol (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t
+      (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) k pc := by
+  have hyx := h.hyx
+  have hx := h.hx
+  have hlen := h.hlen
+  have hsm := h.hsm
+  rcases Nat.lt_or_ge pc x with hpc | hpc
+  · rw [h.heightOrig pc hpc] at hk
+    have hkl : k < (expRes M).length := by
+      have := height_lt_expRes_length S M h.hM h.hn h.hM2 pc (by omega)
+      omega
+    exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+      (hasCol_fujiIters_old M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M) k pc
+        (hasCol_cutChild S M h.hM h.hn (expCutH M) h.hcutH k pc (by omega) hk hkl))
+  · obtain ⟨i2, j2, hi2, hi2n, hj2y, hj2x, hpceq⟩ :=
+      col_decomp y x (expP M mfuel).len (i' + 1) pc hlen (by omega) hyx hpc (by omega)
+    have hkmax : k < kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel := by
+      rw [h.kmaxHeight i2 j2 hi2 hj2y hj2x, ← hpceq]
+      omega
+    rcases col_lt_lex y x (expP M mfuel).len hlen (by omega) j2 i2 (y + t) (i' + 1)
+      hj2y hj2x (by omega) (by omega) (by omega) with hlex | ⟨hie, hje⟩
+    · rw [hpceq]
+      exact HasCol.ext (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
+        (hasCol_fujiIters M (expP M mfuel) nd (expRes M).length mfuel h.hkm i' (expRes M) k i2 j2
+          hi2 (by omega) (by omega) (by omega) hkmax)
+    · rw [hpceq, hie]
+      exact hasCol_fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel h.hkm t
+        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M)) k j2
+        (by omega) (by omega) (by rw [← hie]; exact hkmax)
+
 theorem parNone (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
     (hd : (rowAt (fujiRs M mfuel nd nrep) m)[u]? = some d) (hp : d.par = none) :
     (G.row m).parent (d.pos + m) = none := by
@@ -224,7 +272,8 @@ theorem parNone (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep m u : Na
     with hold | ⟨i', t', _, ht', hk', hde⟩
   · exact h.parNoneOrig m u d hold hp
   · rw [hde, fujiCellAt_col_exp M mfuel nd (i' + 1) (y + t') m _ _ _ (h.hkm _ _) hk']
-    exact h.parNonePush nd i' t' m ht' hk' (by rw [hde] at hp; exact hp)
+    exact h.parNoneCell nd _ i' t' m ht' hk' (h.rowsMonoState nd i' t' m)
+      (fun pc hlt hge => h.hasColState nd i' t' m pc ht' hlt hge) (by rw [hde] at hp; exact hp)
 
 theorem parCol (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
     (hd : (rowAt (fujiRs M mfuel nd nrep) m)[u]? = some d) (p : Nat) (hp : d.par = some p) :
@@ -241,7 +290,9 @@ theorem parCol (h : FujiSpec S M mfuel G y x) (nd : Nat → Nat) (nrep m u : Nat
       rowAt_dropEmptyTop_of_cell _ m u d hd
     rw [hrow]
     exact rowExt_fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M) m
-  · obtain ⟨hp'', hcolp⟩ := h.parColPush nd i' t' m p ht' hk' (by rw [hde] at hp; exact hp)
+  · obtain ⟨hp'', hcolp⟩ := h.parColCell nd (fujiSeams M (expP M mfuel) nd (i' + 1) (expRes M).length mfuel t'
+        (fujiIters M (expP M mfuel) nd (expRes M).length mfuel i' (expRes M))) i' t' m p ht' hk'
+      (by rw [hde] at hp; exact hp)
     obtain ⟨hp', hpeq⟩ :=
       (rowExt_state_to_fujiRs M mfuel nd nrep m i' t' hi' (by omega) hne).getElem p hp''
     refine ⟨hp', ?_⟩
@@ -363,21 +414,18 @@ theorem yamaSpec (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
     · show height S.tower.base j + 1
         = (yamaContext S y hy hpar hh).height (j + (S.n - 1 - y) * i) + 1
       rw [yamaContext_height_other' S y hy hpar hh j i (by omega) hjx]
-  parNonePush := fun nd i' t' m ht' hk' hnone => by
-    have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
+  parNoneCell := fun nd st i' t' m ht' hk' hmono hcov hnone => by
     obtain ⟨_, _, hmM, hmj, hlivej⟩ :=
       push_side S M hM mfuel hn hM2 hyama y hy hseam i' t' m ht' hk'
-    refine fujiCellAt_parNone_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam nd _
-      (i' + 1) t' m _ (hra_of_seamAsc M (expP M mfuel) mfuel (y + t') hasc) (by omega) ht' hmM
-      hmj hlivej (rowsMono_state S M hM mfuel hn hM2 hyama y hy hseam nd i' t' m) ?_ hnone
-    intro pc hlt hge
-    exact hasCol_state S M hM mfuel hn hM2 hyama y hy hpar hh hseam nd i' t' m pc ht' hlt hge
-  parColPush := fun nd i' t' m p ht' hk' hsome => by
+    exact fujiCellAt_parNone_yama S M hM mfuel hn hyama y hy hpar hh (expRes_length_pos M hM2)
+      hseam nd st (i' + 1) t' m _ (hra_of_seamAsc M (expP M mfuel) mfuel (y + t') hasc)
+      (by omega) ht' hmM hmj hlivej hmono hcov hnone
+  parColCell := fun nd st i' t' m p ht' hk' hsome => by
     have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
     obtain ⟨hjx, _, hmM, hmj, hlivej⟩ :=
       push_side S M hM mfuel hn hM2 hyama y hy hseam i' t' m ht' hk'
     rw [expP_len_yama S M hM mfuel h0 y hseam]
-    exact fujiCellAt_parCol_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam nd _ (i' + 1)
+    exact fujiCellAt_parCol_yama S M hM mfuel hn hyama y hy hpar hh h0 hseam nd st (i' + 1)
       (y + t') m (by omega) (by omega) hjx hmM hmj hlivej p _
       (hra_of_seamAsc M (expP M mfuel) mfuel (y + t') hasc) hsome
 
