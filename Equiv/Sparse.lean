@@ -17,7 +17,7 @@ firstAtLeast_eq_of_mem  position がちょうど target のセルがあれば、
 
 3 つ目が「疎配列を列番号で引く」の正しさである。逆に、ちょうどのセルが無いと
 `firstAtLeast` は**右隣のセルを指す**。これが山の段で唯一の食い違いになる箇所で、
-`Mountain.lean` の `firstLiveNotSmaller_ofSequence` がそこを埋める。
+`Mountain.lean` の `root_step_le` がそこを埋める。
 -/
 
 namespace Yukito

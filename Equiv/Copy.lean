@@ -1000,7 +1000,7 @@ theorem colVal_step (Rs : List Rowj)
   rw [hpm, readValAt_eq_readVal _ (r + 1) c hrc]
   rfl
 
-/-- **差分の関係を列だけで書いたもの。** `value_of_diff` の `hstep` の形。 -/
+/-- **差分の関係を列だけで書いたもの。** `value_of_diff_prefix` の `hstep` の形。 -/
 theorem colVal_step_col (Rs : List Rowj)
     (hpar : ∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
       ((rowAt Rs r)[i]'h).par = some p → p < i)
@@ -1021,7 +1021,7 @@ theorem colVal_step_col (Rs : List Rowj)
     exact hcp
   rw [readVal_of_index _ (posMono_fillValues Rs r hmono) r cp p hpF hposF]
 
-/-- **値が入っているセルは埋めで変わらない。** `value_of_diff` の `htop` に使う。 -/
+/-- **値が入っているセルは埋めで変わらない。** `value_of_diff_prefix` の `htop` に使う。 -/
 theorem colVal_top (Rs : List Rowj)
     (hpar : ∀ (r i : Nat) (h : i < (rowAt Rs r).size) (p : Nat),
       ((rowAt Rs r)[i]'h).par = some p → p < i)
@@ -1037,7 +1037,7 @@ theorem colVal_top (Rs : List Rowj)
   rw [readVal_of_index _ (posMono_fillValues Rs r hmono) r c i hiF hposF]
   rw [fillValues_val Rs hpar r hr i hi, if_pos hval]
 
-/-- 段に列が無ければ読んだ値は 0。`value_of_diff` の `hzero` に使う。 -/
+/-- 段に列が無ければ読んだ値は 0。`value_of_diff_prefix` の `hzero` に使う。 -/
 theorem readVal_of_no_col (row : Rowj) (r c : Nat)
     (h : ∀ (t : Nat) (d : Cell), row[t]? = some d → d.pos + r ≠ c) : readVal row r c = 0 := by
   rcases Nat.lt_or_ge (firstAtLeast row (c - r)) row.size with hm | hm

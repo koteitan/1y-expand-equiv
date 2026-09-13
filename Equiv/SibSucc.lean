@@ -11,16 +11,16 @@ root の restricted 親を共有する root+1 と e があり root+1 < e なら
   U e ≤ U (root+1)
 ```
 
-一般の兄弟についてこれは**偽**である（`Sibling.lean` の反例）。効いているのは
+一般の兄弟についてこれは**偽**である。効いているのは
 片方が `root + 1`、すなわち `root` の右隣であるという条件である。
 
-## これまで詰まっていた所
+## 素直に降りると閉じない
 
 層 `k` で兄弟なら差分の関係で目標は層 `k−1` に移る（`tower_case_descent`）。
 ところが移った先で `e` は `root` の**子**とは限らず、`root` の子孫でしかない。
-そこで 3 択（祖先・兄弟・どちらでもない）に分かれ、3 番目が閉じなかった。
+そこで 3 択（祖先・兄弟・どちらでもない）に分かれ、3 番目が閉じない。
 
-## 抜け道
+## 引き上げてから降りる
 
 一段下がる**前に** `e` を `root` の子まで引き上げる。`root` は層 `k` の frame で
 `e` の祖先なので、`root` の子で `e` に至る道の上にあるもの `a` が取れる
@@ -150,7 +150,7 @@ theorem sibSucc (T : Tower) : ∀ m, SibSucc T m := by
 
 `SibSucc` は行の形で書き直せる。`frameAt T (m+1) = (rows T.base m).forest`、
 `towerVal T (m+1) = (rows T.base (m+1)).value` がどちらも定義そのままだから
-である。これを `one_of_nonancestor` に入れると、残っていた仮定 `hsib` が消える。 -/
+である。これを `one_of_nonancestor'` に入れると、残っていた仮定 `hsib` が消える。 -/
 
 /-- 行の形で書いた `SibSucc`。 -/
 theorem sibSucc_rows (T : Tower) (m root e : Nat)
@@ -299,7 +299,7 @@ theorem one_of_nonancestor_tower (T : Tower) (r : Nat)
 /-! ## 線形森を底とする塔
 
 入力列から作る塔。底の frame は線形森で、2 つの義務は自明に成り立つ。
-以前の `ofSequence` 版の定理はこの塔での特殊化として言い直す。 -/
+入力列についての定理は、この塔での特殊化として得る。 -/
 
 /-- 線形森で親が `root` なら、その列は `root + 1` である。 -/
 theorem linear_child_eq {root e : Nat}

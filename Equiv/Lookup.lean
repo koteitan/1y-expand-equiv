@@ -19,8 +19,8 @@ if (j<0 || j<lastLayer.length-1 && lastLayer[j].position+1!=lastLayer[j+1].posit
 
 親探索が見る列は鎖の要素であり、鎖の要素 `q` は必ず「ある列の親」なので、
 `leftmost_child_all` から `q + 1` も生きている。したがって鎖の上では隙間 break は
-発動しない。発動しうるのは鎖の根に降りたときだけで、そこは
-`firstLiveNotSmaller_ofSequence` が押さえる。
+発動しない。発動しうるのは鎖の根に降りたときだけで、そこでは JS も Lean も親を返さない
+（`Search.lean`）。
 -/
 
 namespace Yukito

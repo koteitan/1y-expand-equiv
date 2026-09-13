@@ -8,7 +8,6 @@ import Equiv.Lift
 import Equiv.DiagBridge
 import Equiv.Row0
 import Equiv.RowSucc
-import Equiv.RootZero
 import Equiv.RootGen
 import Equiv.FirstLive
 import Equiv.Tower

@@ -3,10 +3,10 @@ import Equiv.RowSucc
 import OneY.NumericGeometry
 
 /-!
-# 山の段の組み上げ
+# 鎖の根での段
 
-`RootCase.lean` で立てた残る義務 `FirstLiveNotSmaller` を、揃った部品から
-組み立てる。標準形の Y 数列（要素がすべて正の列）について成り立つ。
+JS が鎖の根に降りたとき、`firstAtLeast` が指す列は `root + 1` である。その値が
+`c` の値以上であることを `root_step_le` で示す。
 
 記号は次のとおり。行 `r` について
 
@@ -23,16 +23,12 @@ v = towerVal s (r+1) = (rows base (r+1)).value  次の行の値（= U の差分�
 1  root の G 子 p で c に至る道の上にあるものを取る（child_toward）
 2  hreach から v c ≤ v p
 3  root は G 子 p を持つので root+1 は生きている（rootChildAdjacent_tower）
-4  したがって firstLiveAfter が返す j は root+1（firstLiveAfter_eq_succ）
-5  root の F 子 e で p に至る道の上にあるものを取る
-6  (1)  U p ≤ U (root+1)                     one_of_nonancestor_tower
-7  (a)  root は root+1 の F 祖先              leftmost_child_all
-8  v p ≤ v (root+1)                          diff_le_of_a_and_one
-9  1 と 8 を繋いで v c ≤ v j
+4  root の F 子 e で p に至る道の上にあるものを取る
+5  (1)  U p ≤ U (root+1)                     one_of_nonancestor_tower
+6  (a)  root は root+1 の F 祖先              leftmost_child_all
+7  v p ≤ v (root+1)                          diff_le_of_a_and_one
+8  2 と 7 を繋いで v c ≤ v (root+1)
 ```
-
-`hroot`（`root` がその行の森の根であること）は使わない。必要なのは `root` が
-`G` 子を持つことだけである。
 -/
 
 namespace Yukito
@@ -90,20 +86,20 @@ theorem root_step_le (T : Tower) (r c root : Nat)
     · exact ⟨z, rfl⟩
   have hlive : 0 < (rows T.base (r + 1)).value (root + 1) :=
     (rows_parent_iff_next_live T.base r (root + 1)).mp ⟨z, hz⟩
-  -- 手順 5
+  -- 手順 4
   obtain ⟨hancF, hposR, _, _⟩ :=
     (restrictedParent_some_iff (frameAt T r) (towerVal T r) p root).mp hGp'
   obtain ⟨e, hFe, hep⟩ := child_toward (ParentForest.ancestor_of_zeroY hancF)
-  -- 手順 6
+  -- 手順 5
   have hone : towerVal T r p ≤ towerVal T r (root + 1) :=
     one_of_nonancestor_tower T r hGp hFe
       (by rcases hep with h | h
           · exact Or.inl (ParentForest.ancestor_to_zeroY h)
           · exact Or.inr h)
-  -- 手順 7
+  -- 手順 6
   have hA : ZeroY.Forest.Ancestor (frameAt T r).parent (root + 1) root :=
     Relation.TransGen.single (leftmost_child_all T r root e hFe)
-  -- 手順 8
+  -- 手順 7
   have h8 := diff_le_of_a_and_one (F := frameAt T r) (U := towerVal T r)
     root p (root + 1) hGp' hA hposR
     (fun _ h1 h2 => absurd h2 (by omega))
