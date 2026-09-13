@@ -24,7 +24,7 @@ open OneY OneY.Numeric
 /-- **`expand` の分岐条件が一致する。** JS の「行 0 の最後のセルに親が無い」と、
 Phyrion の「`findBadRoot` が `none`」は同値である。 -/
 theorem last_parent_none_iff (s : List Nat) (hs : ZeroY.Legal s) (fuel : Nat)
-    (hf : sequenceBound s ≤ fuel) (hn : 0 < s.length) :
+    (_hf : sequenceBound s ≤ fuel) (hn : 0 < s.length) :
     readPar (rowAt (calcMountain s (fuel + 1)) 0) 0 (s.length - 1) = none
       ↔ findBadRoot s hs (s.length - 1) = none := by
   have h0 : (0 : Nat) < (calcMountain s (fuel + 1)).length :=

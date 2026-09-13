@@ -35,7 +35,7 @@ structure MtRep (S : Setting) (M : List Rowj) : Prop where
   tall : ∀ i, i < S.n → height S.tower.base i < M.length
 
 /-- 列 `i` が行 `r` にあることと、`r ≤ height i` は同値。 -/
-theorem col_live_iff (S : Setting) (i : Nat) (hi : i < S.n)
+theorem col_live_iff (S : Setting) (i : Nat) (_hi : i < S.n)
     (r : Nat) : 0 < (rows S.tower.base r).value i ↔ r ≤ height S.tower.base i :=
   live_iff_le_height S.tower.base (S.tower.hpos i) r
 
@@ -275,7 +275,7 @@ theorem legStepJS_eq (S : Setting) (M : List Rowj)
 /-- **脚歩行が一致する。** 1 歩の対応を歩行全体に回したもの。 -/
 theorem legWalkJS_eq (S : Setting) (M : List Rowj)
     (hM : MtRep S M) :
-    ∀ fuel h idx, ∀ hh : h < M.length, ∀ hidx : idx < (rowAt M h).size,
+    ∀ fuel h idx, ∀ _hh : h < M.length, ∀ hidx : idx < (rowAt M h).size,
       ((rowAt M h)[idx]'hidx).pos + h < S.n →
       legWalkJS M fuel h idx
         = jsWalk (mountainOf' S) fuel h (((rowAt M h)[idx]'hidx).pos + h) := by
@@ -503,7 +503,7 @@ theorem calcDiagonal_eq (S : Setting) (M : List Rowj) (hM : MtRep S M) :
   have hin : i < S.n := List.mem_range.mp hi
   have htarget : ((List.range S.n).map (topValue S.tower.base)).getD i 0
       = topValue S.tower.base i := getD_map_range S.n i _ 0 hin
-  simp only [hd, ht, htarget]
+  simp only [ht, htarget]
   rw [treeScan_eq S (topValue S.tower.base i) (i + 1) i,
     chainFind_eq_restrictedParent (Pseudo.forest (mountainOf' S))
       (topValue S.tower.base) hpos (i + 1) i (by omega),

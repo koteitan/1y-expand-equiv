@@ -272,7 +272,7 @@ theorem fujiSrcRowAt_eq (P : FujiParams)
       cases isRep with
       | false =>
           rw [if_pos rfl, fujiSrcRow_notrep, hbh, hcut]
-          simp only [Bool.false_eq_true, if_false, Nat.sub_zero, and_true, true_and,
+          simp only [Bool.false_eq_true, if_false, Nat.sub_zero, true_and,
             Nat.max_def]
           repeat' split
           all_goals omega
@@ -1016,7 +1016,7 @@ theorem srcRow_le_other (S : Setting) (P : FujiParams) (y x : Nat)
     (hyx : y < x)
     (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
     (hhigher : height S.tower.base y < height S.tower.base x)
-    (i k j : Nat) (hi : 0 < i) (hjy : y < j) (hjx : j ≤ x) (isRep isAsc : Bool)
+    (i k j : Nat) (_hi : 0 < i) (hjy : y < j) (hjx : j ≤ x) (isRep isAsc : Bool)
     (hrep : isRep = false)
     (hasc : isAsc = true ↔ (lowerContext S y x hyx hroot hhigher).InCone j)
     (hk : k ≤ (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)) :
@@ -1046,7 +1046,7 @@ theorem srcRow_le_other (S : Setting) (P : FujiParams) (y x : Nat)
 theorem srcRow_le_seam (S : Setting) (P : FujiParams) (y x : Nat)
     (hbh : P.badRootHeight = height S.tower.base y)
     (hcut : P.cutHeight = height S.tower.base x)
-    (hyx : y < x)
+    (_hyx : y < x)
     (hhigher : height S.tower.base y < height S.tower.base x)
     (i k : Nat) (hi : 0 < i) (isRep isAsc : Bool) (hasct : isAsc = true)
     (hk : k ≤ height S.tower.base y
@@ -1719,7 +1719,7 @@ theorem valAtIdx_of_expandOut (M' : List Rowj) (W : Nat) (f : Nat → Nat)
   have h2 : (expandOut M')[c]? = ((List.range W).map f)[c]? := by rw [h]
   rw [show expandOut M' = (rowAt M' 0).toList.map (fun d => d.val) from rfl] at h2
   simp only [List.getElem?_map, List.getElem?_range, Array.getElem?_toList,
-    Array.getElem?_eq_getElem hc', hc, ↓reduceIte, Option.map_some] at h2
+    Array.getElem?_eq_getElem hc', hc, Option.map_some] at h2
   unfold valAtIdx
   rw [dif_pos hc']
   exact Option.some.inj h2
@@ -1934,7 +1934,7 @@ theorem hhas_of_parent (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < 
 
 /-- **層 `k ≤ K` では最後の列の値は 1 より大きい。** -/
 theorem value_gt_one_layer (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}
-    (hbad : BadAt (rootedSequence s hs) K d x y) (hxs : s.length - 1 = x) (k : Nat)
+    (hbad : BadAt (rootedSequence s hs) K d x y) (_hxs : s.length - 1 = x) (k : Nat)
     (hk : k ≤ K) :
     1 < (iterSet (linearSetting s hs.1) k).tower.base.value x := by
   have hb : (iterSet (linearSetting s hs.1) k).tower.base

@@ -974,7 +974,7 @@ theorem cell_orig_of_col_lt (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfue
     (hn : 1 < S.n) (hM2 : 2 ≤ M.length)
     (hkm : ∀ i2 j2, kmaxAt M (expP M mfuel) i2 j2 (expRes M).length mfuel
       ≤ j2 + (expP M mfuel).len * i2 + 1)
-    (y : Nat) (hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
+    (y : Nat) (_hy : y < S.n - 1) (hseam : (expP M mfuel).badRootSeam = y)
     (nd : Nat → Nat) (nrep m t : Nat) (d : Cell)
     (hd : (rowAt (fujiIters M (expP M mfuel) nd (expRes M).length mfuel nrep (expRes M)) m)[t]?
       = some d)
@@ -1152,7 +1152,7 @@ theorem step_orig_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : N
 
 /-! ## `fujiRs` のセルの正体 -/
 
-theorem fujiRs_cell (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
+theorem fujiRs_cell (S : Setting) (M : List Rowj) (_hM : MtRep S M) (mfuel : Nat)
     (y : Nat) (hseam : (expP M mfuel).badRootSeam = y)
     (nd : Nat → Nat) (nrep m u : Nat) (d : Cell)
     (hd : (rowAt (fujiRs M mfuel nd nrep) m)[u]? = some d) :

@@ -170,7 +170,7 @@ theorem searchUpper_eq (S : Setting) (k : Nat)
                 have hP' := hpar _ (mem_of_getElem prev p' hp')
                 rw [hq] at hP'
                 cases hpp' : (prev[p']'hp').par with
-                | none => simp only [hpp', readIdx]
+                | none => simp only [readIdx]
                 | some t =>
                     exfalso
                     rw [hpp'] at hP'

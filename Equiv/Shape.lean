@@ -52,7 +52,7 @@ structure ShapeRep (Rs : List Rowj) (G : RowMountain) (top : Nat → Nat) (W : N
 
 variable {Rs : List Rowj} {G : RowMountain} {top : Nat → Nat} {W : Nat}
 
-theorem ShapeRep.hzero (h : ShapeRep Rs G top W) (r c : Nat) (hc : c < W)
+theorem ShapeRep.hzero (h : ShapeRep Rs G top W) (r c : Nat) (_hc : c < W)
     (hgt : G.height c < r) : colVal Rs r c = 0 := by
   refine readVal_of_no_col _ r c ?_
   intro t d hd hcol

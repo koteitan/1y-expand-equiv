@@ -165,7 +165,7 @@ theorem topForest_heights (T : Tower) (root e : Nat)
 theorem topForest_sibSucc (T : Tower) (root e : Nat)
     (hj : (mountainOfT T).topForest.parent (root + 1) = some root)
     (he : (mountainOfT T).topForest.parent e = some root)
-    (hlt : root + 1 < e) :
+    (_hlt : root + 1 < e) :
     topValue T.base e ≤ topValue T.base (root + 1) := by
   obtain ⟨hHe, _, hanc⟩ := topForest_heights T root e he
   obtain ⟨hHj, _, _⟩ := topForest_heights T root (root + 1) hj

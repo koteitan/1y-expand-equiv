@@ -40,7 +40,7 @@ theorem rep_lookup (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r n U
 /-- 生きている 2 列が隣り合っていれば、配列でも隣り合う。 -/
 theorem rep_succ_index (row : Rowj) (r n : Nat) (U : Nat → Nat) (h : Rep row r n U)
     (c j : Nat) (hj : j < row.size) (hcj : (row[j]'hj).pos + r = c)
-    (hrc : r ≤ c) (hcn : c + 1 < n) (hlive : 0 < U (c + 1)) :
+    (_hrc : r ≤ c) (hcn : c + 1 < n) (hlive : 0 < U (c + 1)) :
     ∃ hj1 : j + 1 < row.size, (row[j+1]'hj1).pos + r = c + 1 := by
   obtain ⟨m, hm, hcm, _⟩ := rep_lookup row r n U h (c + 1) (by omega) hcn hlive
   have hjm : j < m := by

@@ -1232,7 +1232,7 @@ theorem fujiSource_yama (P : FujiParams) (hy : P.yamakazi = true)
   · rw [if_neg (Nat.not_lt.mpr h1)]
     rcases Nat.eq_or_lt_of_le h1 with h2 | h2
     · rw [if_pos (by omega)]
-      simp [show ¬ (k < P.badRootHeight) by omega, h2]
+      simp [h2]
     · rw [if_neg (by omega), if_neg (by simp [show ¬ (k ≤ P.badRootHeight) by omega])]
       simp [show ¬ (k < P.badRootHeight) by omega]
 
@@ -1978,7 +1978,7 @@ theorem col_decomp (y x L n c : Nat) (hL : L = x - y) (hLp : 0 < L) (hyx : y < x
   exact ⟨q + 1, y + r, by omega, by omega, by omega, by omega, by omega⟩
 
 theorem col_lt_lex (y x L : Nat) (hL : L = x - y) (hyx : y < x)
-    (j1 i1 j2 i2 : Nat) (h1 : y ≤ j1) (h1' : j1 < x) (h2 : y ≤ j2) (h2' : j2 < x)
+    (j1 i1 j2 i2 : Nat) (h1 : y ≤ j1) (_h1' : j1 < x) (_h2 : y ≤ j2) (h2' : j2 < x)
     (hlt : j1 + L * i1 < j2 + L * i2) : i1 < i2 ∨ (i1 = i2 ∧ j1 < j2) := by
   rcases Nat.lt_or_ge i1 i2 with h | h
   · exact Or.inl h
