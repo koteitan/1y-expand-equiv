@@ -2,7 +2,7 @@
 
 2026 年 9 月 10 日に Phyrion 氏の Lean 4 による 1-Y 数列の整礎性・整列性の[形式化](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean)が公開された。
 
-ただし Phyrion 氏の[論文](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/Well-Ordering%20of%20the%201-Y%20Sequence%20System.pdf)にはこう書かれており、**Phyrion 版は Yukito 版の形式化であるとは主張していない**。
+ただし Phyrion 氏の[論文](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/Well-Ordering%20of%20the%201-Y%20Sequence%20System.pdf)にはこう書かれており、Phyrion 版は Yukito 版の形式化であるとは主張していない。
 
 > The precise convention considered here is the ancestor-preserving algorithm below and in
 > the fixed source snapshot. No equivalence with every variant described elsewhere is assumed.
@@ -11,10 +11,14 @@
 
 | | 何か | 場所 |
 |---|---|---|
-| Yukito 版 | Yukito 氏による 1-Y の展開規則 | [Naruyoko/YNySequence](https://github.com/Naruyoko/YNySequence) の [`script.js`](https://github.com/Naruyoko/YNySequence/blob/2de13970b9ac818c935577b8284c41dec01f0039/script.js) の `expand` |
-| Phyrion 版 | Phyrion 氏が独自に定めた祖先保存アルゴリズム | [Phyrion1343/1Y-Well-Ordering-Lean](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean) の [`OneY.Numeric.expandValues`](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/formalization/OneY/Expansion.lean#L46) |
+| Yukito 版 | Yukito 氏による 1-Y の展開規則 | [Naruyoko/YNySequence](https://github.com/Naruyoko/YNySequence) の revision 2de1397 の [`script.js`](https://github.com/Naruyoko/YNySequence/blob/2de13970b9ac818c935577b8284c41dec01f0039/script.js) の `expand` |
+| Phyrion 版 | Phyrion 氏が独自に定めた祖先保存アルゴリズム | [Phyrion1343/1Y-Well-Ordering-Lean](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean) の revision 6533b29 の [`OneY.Numeric.expandValues`](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/formalization/OneY/Expansion.lean#L46) |
 
 ## 検証方法
+
+下記のように、js である Yukito 版 をまず Lean に翻訳した。これが [`Equiv/Yukito.lean`](Equiv/Yukito.lean) である。
+
+その上で、[`Equiv/Yukito.lean`](Equiv/Yukito.lean) の `expandJS` と、Phyrion 版の `expandValues` が同じ関数であることを定理 `expand_eq` で証明した。 
 
 ```mermaid
 flowchart TB
@@ -29,20 +33,13 @@ flowchart TB
   B <-->|"2: expand_eq で証明"| C
 ```
 
-| 図の箱 | ファイル |
-|---|---|
-| 原本 | [`script.js`](https://github.com/Naruyoko/YNySequence/blob/2de13970b9ac818c935577b8284c41dec01f0039/script.js)（Naruyoko/YNySequence コミット 2de1397） |
-| Lean 化 | [`Equiv/Yukito.lean`](Equiv/Yukito.lean) |
-| Lean | [`OneY.Numeric.expandValues`](https://github.com/Phyrion1343/1Y-Well-Ordering-Lean/blob/6533b2975f3cafb3582dc8f8127e9ea7144d7e69/formalization/OneY/Expansion.lean#L46)（Phyrion1343/1Y-Well-Ordering-Lean コミット 6533b29） |
-
 ## 検証結果
 
-### (1) js ⇔ lean の対応
+### (1) Yukito 版(js) ⇔ Yukito 版(lean) の対応
 
-`script.js` の本文と `Equiv/Yukito.lean` の本文を並べて読み合わせた。
-[correspondence.md](correspondence.md) にある。
+`script.js` の本文と `Equiv/Yukito.lean` の本文の対応は [correspondence.md](correspondence.md) である。ここの翻訳の正しさは、見比べるしかない。
 
-### (2) lean ⇔ lean の証明
+### (2) Yukito 版(lean) = Phyrion 版(lean) の証明
 
 [`Equiv/Lower.lean`](Equiv/Lower.lean#L2152) の `expand_eq` で証明した。
 
