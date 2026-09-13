@@ -103,20 +103,4 @@ theorem one_of_ancestor (root p j : Nat)
     omega
   · exact hge
 
-/-- (a) の祖先の場合。`root` と `j` はどちらも `p` の `F` 祖先で `root < j`
-なので、祖先鎖の線形性から `root` は `j` の `F` 祖先である。 -/
-theorem a_of_ancestor (root p j : Nat)
-    (hp : restrictedParent F U p = some root)
-    (hj : ZeroY.Forest.Ancestor F.parent p j)
-    (hjr : root < j) : ZeroY.Forest.Ancestor F.parent j root := by
-  obtain ⟨hroot, _, _, _⟩ := (restrictedParent_some_iff F U p root).mp hp
-  exact anc_of_common p root j hroot hj hjr
-
-/-- (a) の非祖先の場合。`j` の `G` 親が `root` であれば、`root` は
-`j` の `F` 祖先である。 -/
-theorem a_of_gparent (root j : Nat)
-    (hj : restrictedParent F U j = some root) :
-    ZeroY.Forest.Ancestor F.parent j root :=
-  ((restrictedParent_some_iff F U j root).mp hj).1
-
 end Yukito

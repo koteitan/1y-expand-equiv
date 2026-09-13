@@ -1,4 +1,4 @@
-import Equiv.Bridge
+import Equiv.Yukito
 import ZeroY.Forest.MatrixParents
 import ZeroY.Forest.Comparison
 

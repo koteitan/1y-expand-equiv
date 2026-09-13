@@ -6,17 +6,11 @@ import Equiv.Lookup
 import Equiv.Search
 import Equiv.Lift
 import Equiv.DiagBridge
-import Equiv.Bridge
 import Equiv.Row0
-import Equiv.Row0Spec
 import Equiv.RowSucc
-import Equiv.RootCase
 import Equiv.RootZero
 import Equiv.RootGen
-import Equiv.NoCross
-import Equiv.Sibling
 import Equiv.FirstLive
-import Equiv.SibLive
 import Equiv.Tower
 import Equiv.Chain
 import Equiv.SibSucc

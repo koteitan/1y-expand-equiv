@@ -38,9 +38,6 @@ theorem expP_yamakazi_lower (M : List Rowj) (mfuel : Nat) (h : ¬ expYama M mfue
   show decide (expYama M mfuel) = false
   exact decide_eq_false h
 
-theorem expP_badRootSeam (M : List Rowj) (mfuel : Nat) :
-    (expP M mfuel).badRootSeam = expSeam M mfuel := rfl
-
 theorem expP_cutHeight_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (hn : 1 < S.n)
     (mfuel : Nat) (h : ¬ expYama M mfuel) :
     (expP M mfuel).cutHeight = height S.tower.base (S.n - 1) := by
@@ -67,22 +64,6 @@ def lowerContext (S : Setting) (y x : Nat) (hyx : y < x)
   last_higher := hhigher
 
 variable {S : Setting} {y x : Nat}
-
-theorem lowerContext_y (hyx : y < x) (hroot) (hhigher) :
-    (lowerContext S y x hyx hroot hhigher).coordinates.y = y := rfl
-
-theorem lowerContext_x (hyx : y < x) (hroot) (hhigher) :
-    (lowerContext S y x hyx hroot hhigher).coordinates.x = x := rfl
-
-theorem lowerContext_length (hyx : y < x) (hroot) (hhigher) :
-    (lowerContext S y x hyx hroot hhigher).coordinates.length = x - y := rfl
-
-theorem lowerContext_floor (hyx : y < x) (hroot) (hhigher) :
-    (lowerContext S y x hyx hroot hhigher).floor = height S.tower.base y := rfl
-
-theorem lowerContext_rise (hyx : y < x) (hroot) (hhigher) :
-    (lowerContext S y x hyx hroot hhigher).rise
-      = height S.tower.base x - height S.tower.base y := rfl
 
 /-- **`InCone` は「段 `height y` で生きていて、その段の根が `y`」。** -/
 theorem lowerContext_inCone (hyx : y < x) (hroot) (hhigher) (c : Nat) :
@@ -706,24 +687,6 @@ theorem kmaxAt_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat
   exact kmaxAt_eq_height_lower M hM P hyx hroot hhigher hbh hsm hcut
     (expRes M).length mfuel i j hj1 hj2 hjn
     (seamHeightOf_expRes S M hM hn hM2 j (by omega)) hbhlen hfuel
-
-/-- **積む段の数は列より小さい。** 山の高さが列以下であることから出る。 -/
-theorem kmaxAt_le_lower (S : Setting) (M : List Rowj) (hM : MtRep S M) (mfuel : Nat)
-    (hn : 1 < S.n) (hM2 : 2 ≤ M.length) (P : FujiParams)
-    (hbh : P.badRootHeight = height S.tower.base y)
-    (hsm : P.badRootSeam = y) (hcut : P.cutHeight = height S.tower.base x)
-    (hx : x = S.n - 1) (hyx : y < x)
-    (hroot : (mountainOf' S).rootAt (height S.tower.base y) x = y)
-    (hhigher : height S.tower.base y < height S.tower.base x)
-    (hfuel : (rowAt M (height S.tower.base y)).size ≤ mfuel)
-    (i j : Nat) (hj1 : y ≤ j) (hj2 : j < x) :
-    kmaxAt M P i j (expRes M).length mfuel ≤ j + (x - y) * i + 1 := by
-  rw [kmaxAt_lower S M hM mfuel hn hM2 P hbh hsm hcut hx hyx hroot hhigher hfuel i j hj1 hj2]
-  have hle : (lowerContext S y x hyx hroot hhigher).height (j + (x - y) * i)
-      ≤ j + (x - y) * i :=
-    rowMountain_height_le ((lowerContext S y x hyx hroot hhigher).toRowMountain)
-      (j + (x - y) * i)
-  omega
 
 /-! ## 落差は幅を超えない
 

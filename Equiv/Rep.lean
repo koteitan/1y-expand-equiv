@@ -65,43 +65,6 @@ def readVal (row : Rowj) (r c : Nat) : Nat :=
     if (row[j]'h).pos + r = c then (row[j]'h).val else 0
   else 0
 
-/-- **読み替えの正しさ。** `Rep` があれば、疎配列を列番号で引いた値は
-密表現の値に一致する。 -/
-theorem rep_read (row : Rowj) (r n : Nat) (V : Nat → Nat) (h : Rep row r n V)
-    (hzero : ∀ c, c < r → V c = 0) (c : Nat) (hcn : c < n) :
-    readVal row r c = V c := by
-  show (if hj : firstAtLeast row (c - r) < row.size then
-          if (row[firstAtLeast row (c - r)]'hj).pos + r = c then
-            (row[firstAtLeast row (c - r)]'hj).val else 0
-        else 0) = V c
-  rcases Nat.lt_or_ge c r with hcr | hrc
-  · rw [hzero c hcr]
-    split
-    · split
-      · exfalso; omega
-      · rfl
-    · rfl
-  · rcases Nat.eq_zero_or_pos (V c) with hv | hv
-    · rw [hv]
-      split
-      · rename_i hj
-        split
-        · rename_i he
-          have h1 := h.val _ (mem_of_getElem row _ hj)
-          have h2 := h.live _ (mem_of_getElem row _ hj)
-          rw [he] at h1
-          omega
-        · rfl
-      · rfl
-    · obtain ⟨x, hx, hcx⟩ := h.cover c hrc hcn hv
-      obtain ⟨i, hi, hix⟩ := getElem_of_mem row hx
-      have hpi : (row[i]'hi).pos = c - r := by rw [hix]; omega
-      have hci : (row[i]'hi).pos + r = c := by rw [hix]; exact hcx
-      have hfa : firstAtLeast row (c - r) = i :=
-        firstAtLeast_eq_of_mem row h.posMono (c - r) i hi hpi
-      simp only [hfa, dif_pos hi, if_pos hci]
-      rw [h.val _ (mem_of_getElem row i hi), hci]
-
 /-- 疎配列の添字を列番号に読み替える。 -/
 def readIdx (row : Rowj) (r : Nat) : Option Nat → Option Nat
   | none => none
@@ -139,17 +102,6 @@ theorem assignParents_val (prev : Option Rowj) (row : Rowj) (i : Nat)
 
 /-- 強制親のセルが無いこと。素の数から作った行は常にこれを満たす。 -/
 def NoForced (row : Rowj) : Prop := ∀ x ∈ row.toList, x.forced = false
-
-theorem noForced_assignParents (prev : Option Rowj) (row : Rowj) (h : NoForced row) :
-    NoForced (assignParents prev row) := by
-  intro x hx
-  obtain ⟨i, hi, hix⟩ := getElem_of_mem _ hx
-  have hsz := assignParents_size prev row
-  have hi' : i < row.size := by omega
-  have hf := h _ (mem_of_getElem row i hi')
-  rw [← hix]
-  simp only [assignParents, Array.getElem_mapIdx, hf]
-  cases prev <;> rfl
 
 theorem noForced_row0 (s : List Nat) : NoForced (row0 s) := by
   intro x hx

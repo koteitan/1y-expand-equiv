@@ -230,23 +230,4 @@ theorem chainFind_eq_restrictedParent (F : ParentForest) (U : Nat → Nat)
 JS の `diagonal` と `diagonalTree` から作られる行が、Phyrion の `rawExtract`
 そのものであることを、値と親の両方について述べる。 -/
 
-/-- 対角の値は `rawExtract` の値である。 -/
-theorem rawExtract_value (base : Row) (hpos : ∀ c, 0 < base.value c) (c : Nat) :
-    (rawExtract base hpos).value c = topValue base c := rfl
-
-/-- **対角の親は `rawExtract` の親である。** JS の後半のループを
-`chainFind` として書き写し、`restrictedParent` に一致させた。 -/
-theorem rawExtract_parent (base : Row) (hpos : ∀ c, 0 < base.value c)
-    (fuel c : Nat) (hf : c ≤ fuel) :
-    chainFind (Pseudo.forest (mountain base hpos))
-        (fun p => decide (topValue base p < topValue base c)) fuel c
-      = (rawExtract base hpos).forest.parent c :=
-  chainFind_eq_restrictedParent _ _ (fun p => topValue_pos base (hpos p)) fuel c hf
-
-/-- JS の `pw` は線形森の `restrictedParent` である。素の数として書き出したとき、
-読み直しで復元される親がこれである。 -/
-theorem pw_eq_restrictedParent (U : Nat → Nat) (hpos : ∀ p, 0 < U p) (c : Nat) :
-    scanLeft U (U c) c = restrictedParent linearForest U c :=
-  (restrictedParent_linear U hpos c).symm
-
 end Yukito

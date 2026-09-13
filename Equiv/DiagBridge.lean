@@ -109,22 +109,6 @@ theorem rep_top (S : Setting) (M : List Rowj) (hM : MtRep S M)
   rw [rowAt_eq M H hH]
   exact (hM.rowRep H hH).1
 
-/-- **対角の値は頂の値。** JS が `diagonal` に積む値は Phyrion の `topValue` である。 -/
-theorem diagEntry_value (S : Setting) (M : List Rowj)
-    (hM : MtRep S M) (i : Nat) (hi : i < S.n)
-    (hlen : height S.tower.base i < M.length) :
-    ∃ p, diagEntry M i = some (topValue S.tower.base i, p) := by
-  obtain ⟨k, hk, hck, htop⟩ := topAt_eq S M hM i hi M.length (Nat.le_refl _) hlen
-  have hrep := rep_top S M hM (height S.tower.base i) hlen
-  have hval : ((rowAt M (height S.tower.base i))[k]'hk).val
-      = topValue S.tower.base i := by
-    have h := hrep.val _ (mem_of_getElem _ k hk)
-    rw [hck] at h
-    exact h
-  refine ⟨legWalkJS M (i + 1) (height S.tower.base i) k, ?_⟩
-  rw [diagEntry, htop]
-  simp only [dif_pos hk, hval]
-
 /-! ## 脚 1 歩の対応
 
 `Extract.lean` の `legStep` は密表現での脚 1 歩である。JS の `legStepJS` と
@@ -700,21 +684,6 @@ theorem rep_extract (S : Setting) (M : List Rowj) (hM : MtRep S M) :
       (extractOf S).value :=
   rep_assignParents none _ 0 S.n _ (rep_parseDiag S M hM)
 
-/-- **抽出段の値が一致する。** -/
-theorem extract_value (S : Setting) (M : List Rowj) (hM : MtRep S M) (c : Nat) (hc : c < S.n) :
-    readVal (assignParents none
-        (parseDiag (calcDiagonal (M)))) 0 c
-      = (extractOf S).value c :=
-  rep_read _ 0 S.n _ (rep_extract S M hM) (fun q hq => absurd hq (by omega)) c hc
-
-/-- **抽出段の親が一致する。** -/
-theorem extract_parent (S : Setting) (M : List Rowj) (hM : MtRep S M) (c : Nat) (hc : c < S.n) :
-    readPar (assignParents none
-        (parseDiag (calcDiagonal (M)))) 0 c
-      = (extractOf S).forest.parent c :=
-  rep_read_par _ 0 S.n (extractOf S) (rep_extract S M hM)
-    (parRep_extract S M hM) (fun q hq => absurd hq (by omega)) c hc
-
 /-! ## 入力列から作る山への特殊化 -/
 
 /-- 入力列から作る山は設定に対応している。 -/
@@ -724,22 +693,6 @@ theorem mtRep_calcMountain (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
   rowRep := fun r hr => calcMountain_rep s hs fuel r hr
   size0 := size_rowAt_calcMountain_zero s fuel
   tall := fun i hi => height_lt_length s hs fuel hf i hi
-
-/-- **抽出段の値が一致する（入力列から作る山）。** -/
-theorem extract_value_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
-    (hf : sequenceBound s ≤ fuel) (c : Nat) (hc : c < s.length) :
-    readVal (assignParents none
-        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0 c
-      = (extractRow s hs).value c :=
-  extract_value (linearSetting s hs) _ (mtRep_calcMountain s hs fuel hf) c hc
-
-/-- **抽出段の親が一致する（入力列から作る山）。** -/
-theorem extract_parent_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel : Nat)
-    (hf : sequenceBound s ≤ fuel) (c : Nat) (hc : c < s.length) :
-    readPar (assignParents none
-        (parseDiag (calcDiagonal (calcMountain s (fuel + 1))))) 0 c
-      = (extractRow s hs).forest.parent c :=
-  extract_parent (linearSetting s hs) _ (mtRep_calcMountain s hs fuel hf) c hc
 
 /-! ## 抽出した設定
 

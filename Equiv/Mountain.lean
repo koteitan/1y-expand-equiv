@@ -1,5 +1,5 @@
 import Equiv.SibSucc
-import Equiv.RootCase
+import Equiv.RowSucc
 import OneY.NumericGeometry
 
 /-!
@@ -39,16 +39,6 @@ namespace Yukito
 
 open OneY OneY.Numeric
 
-/-- Phyrion 版の山。 -/
-def mountainOf (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : RootGeometry.RowMountain :=
-  mountain (ofSequence s) (ofSequence_positive s hs)
-
-theorem mountainOf_height_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
-    (mountainOf s hs).height c = height (ofSequence s) c := rfl
-
-theorem mountainOf_rootAt_eq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r c : Nat) :
-    (mountainOf s hs).rootAt r c = (rows (ofSequence s) r).forest.root c := rfl
-
 /-- 山の頂の高さは列番号以下。生きた列は 1 行ごとに右へずれるからである。 -/
 theorem height_le_self' (base : Row) (hpos : ∀ c, 0 < base.value c) (c : Nat) :
     height base c ≤ c := by
@@ -57,10 +47,6 @@ theorem height_le_self' (base : Row) (hpos : ∀ c, 0 < base.value c) (c : Nat) 
     rw [rows_value_zero_of_lt base _ c h] at hl
     omega
   · exact h
-
-theorem height_le_self (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (c : Nat) :
-    height (ofSequence s) c ≤ c :=
-  height_le_self' (ofSequence s) (ofSequence_positive s hs) c
 
 /-- `select (frameAt s r) (towerVal s r)` の差分は次の層の値そのもの。 -/
 theorem difference_eq_towerVal (T : Tower) (r : Nat) :
@@ -74,16 +60,6 @@ theorem difference_eq_towerVal (T : Tower) (r : Nat) :
       rw [← T.hbase c]
       rfl
   | succ k => rfl
-
-/-- JS の `firstLiveAfter` は、`root + 1` が生きていればそこで止まる。 -/
-theorem firstLiveAfter_eq_succ (base : Row) (r root fuel j : Nat)
-    (hlive : 0 < (rows base (r + 1)).value (root + 1))
-    (h : firstLiveAfter base r root fuel = some j) : j = root + 1 := by
-  cases fuel with
-  | zero => cases h
-  | succ n =>
-      rw [firstLiveAfter, if_pos hlive] at h
-      exact (Option.some.inj h).symm
 
 /-- **鎖の根での段。** 歩行が根に到達したなら、`root + 1` は生きていて、その値は
 `c` の値以上である。JS が根の所で `firstAtLeast` に指される列がこれである。 -/
@@ -136,30 +112,5 @@ theorem root_step_le (T : Tower) (r c root : Nat)
   have h8' : (rows T.base (r + 1)).value p ≤
       (rows T.base (r + 1)).value (root + 1) := h8
   exact ⟨hlive, by omega⟩
-
-/-- **山の段の残る義務。** 要素がすべて正の列について `FirstLiveNotSmaller` が
-成り立つ。すなわち JS の親探索が鎖の根に到達したとき、そこで `firstAtLeast` が
-指す列は Lean 側で親に採られる列より値が小さくならない。 -/
-theorem firstLiveNotSmaller_tower (T : Tower) : FirstLiveNotSmaller T.base := by
-  intro r c root j fuel hanc _hroot hreach hj
-  obtain ⟨hlive, hle⟩ := root_step_le T r c root hanc hreach
-  have hjeq : j = root + 1 := firstLiveAfter_eq_succ T.base r root fuel j hlive hj
-  subst hjeq
-  exact hle
-
-/-- 入力列から作る塔での特殊化。 -/
-theorem root_step_le_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (r c root : Nat)
-    (hanc : ZeroY.Forest.Ancestor (rows (ofSequence s) r).forest.parent c root)
-    (hreach : ∀ q, ZeroY.Forest.Ancestor (rows (ofSequence s) r).forest.parent c q →
-      (∃ t, (rows (ofSequence s) r).forest.parent q = some t) →
-      (rows (ofSequence s) (r + 1)).value c ≤ (rows (ofSequence s) (r + 1)).value q) :
-    0 < (rows (ofSequence s) (r + 1)).value (root + 1) ∧
-      (rows (ofSequence s) (r + 1)).value c ≤
-        (rows (ofSequence s) (r + 1)).value (root + 1) :=
-  root_step_le (linearTower s hs) r c root hanc hreach
-
-theorem firstLiveNotSmaller_ofSequence (s : List Nat) (hs : ∀ x ∈ s, 0 < x) :
-    FirstLiveNotSmaller (ofSequence s) :=
-  firstLiveNotSmaller_tower (linearTower s hs)
 
 end Yukito

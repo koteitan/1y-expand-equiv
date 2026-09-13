@@ -313,39 +313,4 @@ theorem badRootOf_of_badAt (s : List Nat) (hs : ZeroY.Legal s) (c : Nat)
       show badRootOf (iterSet (linearSetting s hs.1) (k + 1)) c fuel = some p
       exact ih (k + 1) (by omega) (by omega)
 
-/-- **密表現側の探索は `findBadRoot` である。** -/
-theorem badRootOf_eq (s : List Nat) (hs : ZeroY.Legal s) (fuel : Nat)
-    (hf : sequenceBound s ≤ fuel)
-    (hp : (ofSequence s).forest.parent (s.length - 1) ≠ none) :
-    badRootOf (linearSetting s hs.1) (s.length - 1) fuel
-      = (findBadRoot s hs (s.length - 1)).map (·.column) := by
-  obtain ⟨K, hK, r, p, _, hbad⟩ := sequence_badRoot_exists s hs (s.length - 1) hp
-  have hfr : findBadRoot s hs (s.length - 1) = some ⟨K, r, p⟩ := by
-    cases hz : findBadRoot s hs (s.length - 1) with
-    | none =>
-        exfalso
-        rw [findBadRoot_none_iff] at hz
-        exact hp hz
-    | some z =>
-        have hzs := (findBadRoot_sound s hs (s.length - 1) hz).2
-        rw [rootAddress_unique (z := z) (w := ⟨K, r, p⟩) hzs hbad]
-  rw [hfr]
-  show _ = some p
-  exact badRootOf_of_badAt s hs (s.length - 1) hbad fuel 0 (by omega) (by omega)
-
-/-- **JS の `getBadRoot` は Phyrion の `findBadRoot` の列である。** -/
-theorem getBadRoot_eq_findBadRoot (s : List Nat) (hs : ZeroY.Legal s) (m fuel : Nat)
-    (hm : sequenceBound s ≤ m) (hf : sequenceBound s ≤ fuel) (hn : 1 < s.length)
-    (hp : (ofSequence s).forest.parent (s.length - 1) ≠ none) :
-    getBadRoot (calcMountain s (m + 1)) (m + 1) fuel
-      = (findBadRoot s hs (s.length - 1)).map (·.column) := by
-  have hgt : 1 < (ofSequence s).value (s.length - 1) := by
-    have hpos := ofSequence_positive s hs.1 (s.length - 1)
-    rcases Nat.lt_or_ge 1 ((ofSequence s).value (s.length - 1)) with h | h
-    · exact h
-    · exact absurd (Row.parent_none_of_one (ofSequence s) (by omega)) hp
-  rw [getBadRoot_eq m fuel (linearSetting s hs.1) (calcMountain s (m + 1))
-    (mtRep_calcMountain s hs.1 m hm) hm hn hgt]
-  exact badRootOf_eq s hs fuel hf hp
-
 end Yukito

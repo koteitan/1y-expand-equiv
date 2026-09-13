@@ -40,47 +40,6 @@ theorem expRes_length_pos (M : List Rowj) (hM2 : 2 ≤ M.length) : 0 < (expRes M
   show 0 < (cutChild M (expCutH M)).length
   omega
 
-/-- **山崎噴火の枝での出力の形。** 幅は `(n−1) + len * nrep` で、仮定は
-「列が 2 つ以上」「継ぎ目が `n−1` より左」「行 0 の最後のセルが親を持つ」だけ。 -/
-theorem expandOut_some_yama (S : Setting) (M : List Rowj) (hM : MtRep S M)
-    (nrep mfuel efuel : Nat) (hn : 1 < S.n) (hM2 : 2 ≤ M.length)
-    (hyama : expYama M mfuel)
-    (hsm : (expP M mfuel).badRootSeam < S.n - 1)
-    (hhas : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
-          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true) :
-    expandOut (expandJS nrep mfuel (efuel + 1) M)
-      = (List.range ((S.n - 1) + (expP M mfuel).len * nrep)).map
-          (fun c => valAtIdx (rowAt (expandJS nrep mfuel (efuel + 1) M) 0) c) := by
-  have h0 : 0 < (expRes M).length := expRes_length_pos M hM2
-  have hacl : (expP M mfuel).afterCutLength = S.n - 1 := expP_afterCutLength S M hM mfuel h0
-  have hcut : (expP M mfuel).cutHeight = (expP M mfuel).badRootHeight :=
-    expP_yama_cut M mfuel hyama
-  have hlenpos : 0 < (expP M mfuel).len := by
-    show 0 < (expP M mfuel).afterCutLength - (expP M mfuel).badRootSeam
-    omega
-  have hlen : (expP M mfuel).badRootSeam + (expP M mfuel).len
-      = (expP M mfuel).afterCutLength := badRootSeam_add_len _ (by omega)
-  have hkm : ∀ i' j', kmaxAt M (expP M mfuel) i' j' (expRes M).length mfuel
-      ≤ j' + (expP M mfuel).len * i' + 1 :=
-    fun i' j' => kmaxAt_le_yama' M (expP M mfuel) i' j' _ _ hcut
-  have hkpos : ∀ i r, r < (expP M mfuel).len →
-      0 < kmaxAt M (expP M mfuel) i ((expP M mfuel).badRootSeam + r)
-        (expRes M).length mfuel := by
-    intro i r hr
-    exact kmaxAt_pos' S M hM (by omega) (expP M mfuel) i _ _ _ (by omega) h0
-  have hmono : RowsMono (expRes M) :=
-    rowsMono_cutChild M (expCutH M) (rowsMono_of_mtRep S M hM)
-  have hcolLt : ColLt (expRes M) (expP M mfuel).afterCutLength := by
-    rw [hacl]
-    exact colLt_cutChild S M hM (expCutH M) hn (Nat.le_of_eq (expCutH_eq S M hM hn).symm)
-  have hd0 : ∀ c, c < (expP M mfuel).afterCutLength → HasCol (expRes M) 0 c := by
-    intro c hc
-    rw [hacl] at hc
-    exact hasCol_cutChild_zero S M hM (expCutH M) h0 (by omega) c hc
-  have h := expandOut_some nrep mfuel efuel M hhas hkm hkpos hlenpos (by omega) hmono hcolLt hd0
-  rw [hacl] at h
-  exact h
-
 /-! ## 切ったあとも段は足りている
 
 切ると最上段が空になって段が 1 つ減ることがあるが、そのとき最上段には
@@ -225,47 +184,10 @@ theorem lastVal_expDg (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) (
   exact lastVal_of_rep _ S.n _ (rep_extract S M hM) hn
     (topValue_pos S.tower.base (S.tower.hpos (S.n - 1)))
 
-/-- **JS の分岐条件は「頂の値が 1」。** 原文の `badRootOf` が
-その層で止まる条件と同じである。 -/
-theorem expYama_iff (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat) (hn : 1 < S.n) :
-    expYama M (f + 1) ↔ topValue S.tower.base (S.n - 1) = 1 := by
-  show lastVal (rowAt (expDg M (f + 1)) 0) = 1 ↔ _
-  rw [lastVal_expDg S M hM f hn]
-
 /-! ## 山崎噴火の枝の bad root
 
 この枝では bad root はその層で見つかる。すなわち「頂の 1 つ下の段での、
 最後の列の親」である。 -/
-
-theorem getBadRoot_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (m : Nat)
-    (hbnd : S.bnd ≤ m) (hn : 1 < S.n) (hgt : 1 < S.tower.base.value (S.n - 1))
-    (hyama : topValue S.tower.base (S.n - 1) = 1) :
-    getBadRoot M (m + 1) (m + 1)
-      = (rows S.tower.base (height S.tower.base (S.n - 1) - 1)).forest.parent (S.n - 1) := by
-  rw [getBadRoot_eq m (m + 1) S M hM hbnd hn hgt]
-  show (if topValue S.tower.base (S.n - 1) = 1 then _ else _) = _
-  rw [if_pos hyama]
-
-/-- **山崎噴火の枝の継ぎ目は、山の最後の列の親である。** -/
-theorem expSeam_yama (S : Setting) (M : List Rowj) (hM : MtRep S M) (m : Nat)
-    (hbnd : S.bnd ≤ m) (hn : 1 < S.n) (hgt : 1 < S.tower.base.value (S.n - 1))
-    (hyama : topValue S.tower.base (S.n - 1) = 1) (y : Nat)
-    (hy : ((mountainOf' S).row (height S.tower.base (S.n - 1) - 1)).parent (S.n - 1)
-      = some y) :
-    expSeam M (m + 1) = y := by
-  show (getBadRoot M (m + 1) (m + 1)).getD 0 = y
-  rw [getBadRoot_yama S M hM m hbnd hn hgt hyama]
-  have hy' : (rows S.tower.base (height S.tower.base (S.n - 1) - 1)).forest.parent (S.n - 1)
-      = some y := hy
-  rw [hy']
-  rfl
-
-/-- 山の高さと段。`TerminalCopy.Context` の `last_height` にあたる。 -/
-theorem mountainOf'_height (S : Setting) (c : Nat) :
-    (mountainOf' S).height c = height S.tower.base c := rfl
-
-theorem mountainOf'_row (S : Setting) (r : Nat) :
-    (mountainOf' S).row r = (rows S.tower.base r).forest := rfl
 
 /-! ## 山崎噴火の枝のコピー先の山
 
@@ -283,26 +205,6 @@ def yamaContext (S : Setting) (y : Nat) (hy : y < S.n - 1)
   last_height := by
     show height S.tower.base (S.n - 1) = height S.tower.base (S.n - 1) - 1 + 1
     omega
-
-theorem yamaContext_height (S : Setting) (y : Nat) (hy hpar hh) (c : Nat) :
-    ((yamaContext S y hy hpar hh).toRowMountain).height c
-      = (yamaContext S y hy hpar hh).height c := rfl
-
-theorem yamaContext_row (S : Setting) (y : Nat) (hy hpar hh) (r c : Nat) :
-    (((yamaContext S y hy hpar hh).toRowMountain).row r).parent c
-      = (yamaContext S y hy hpar hh).parent r c := rfl
-
-theorem yamaContext_y (S : Setting) (y : Nat) (hy hpar hh) :
-    (yamaContext S y hy hpar hh).coordinates.y = y := rfl
-
-theorem yamaContext_x (S : Setting) (y : Nat) (hy hpar hh) :
-    (yamaContext S y hy hpar hh).coordinates.x = S.n - 1 := rfl
-
-theorem yamaContext_level (S : Setting) (y : Nat) (hy hpar hh) :
-    (yamaContext S y hy hpar hh).level = height S.tower.base (S.n - 1) - 1 := rfl
-
-theorem yamaContext_length (S : Setting) (y : Nat) (hy hpar hh) :
-    (yamaContext S y hy hpar hh).coordinates.length = S.n - 1 - y := rfl
 
 /-! ## コピー先の山の高さ
 
@@ -1675,9 +1577,6 @@ theorem expNd_topValue (S : Setting) (M : List Rowj) (hM : MtRep S M) (f : Nat)
   exact valAtIdx_expDg S M hM f (C.source0 c) (by omega)
 
 /-! ## 原文の `assemble` との一致 -/
-
-theorem layers_succ_value (a : RootedRow) (k c : Nat) :
-    (layers a (k + 1)).row.value c = topValue (layers a k).row c := rfl
 
 /-- **`K+1` 段目以上を畳んだ値は、`layers a K` の頂の値を `source0` で読んだもの。** -/
 theorem assemble_above_eq (s : List Nat) (hs : ZeroY.Legal s) {K d x y : Nat}

@@ -54,33 +54,6 @@ theorem recon_above (M : RowMountain) (top : Nat → Nat) (r c : Nat)
     (h : M.height c < r) : Reconstruction.value M top r c = 0 := by
   rw [Reconstruction.value_eq, if_neg (by omega)]
 
-/-- **差分の関係を満たす値は `Reconstruction.value` に一致する。** -/
-theorem value_of_diff (M : RowMountain) (top : Nat → Nat) (V : Nat → Nat → Nat)
-    (hstep : ∀ r c p, (M.row r).parent c = some p → V r c = V r p + V (r + 1) c)
-    (htop : ∀ c, V (M.height c) c = top c)
-    (hzero : ∀ r c, M.height c < r → V r c = 0) :
-    ∀ c r, V r c = Reconstruction.value M top r c := by
-  intro c
-  induction c using Nat.strongRecOn with
-  | ind c ih =>
-    intro r
-    rcases Nat.lt_or_ge (M.height c) r with hgt | hle
-    · rw [hzero r c hgt, recon_above M top r c hgt]
-    · -- `r ≤ height c`。上から降りる
-      obtain ⟨d, hd⟩ : ∃ d, M.height c - r = d := ⟨_, rfl⟩
-      induction d generalizing r with
-      | zero =>
-          have hre : r = M.height c := by omega
-          rw [hre, htop c, recon_top]
-      | succ d ihd =>
-          have hlt : r < M.height c := by omega
-          obtain ⟨p, hp⟩ := M.parent_exists r c hlt
-          have hpc : p < c := (M.row r).parent_left hp
-          rw [hstep r c p hp, ih p hpc r, recon_step M top r c hlt]
-          have hnext := ihd (r + 1) (by omega) (by omega)
-          rw [hnext]
-          simp only [Reconstruction.parentValue, hp]
-
 /-- **前半だけでの版。** 列 `W` 未満についてだけ仮定があれば、そこでの値は一致する。
 親は真に左へ動くので、帰納の中で使う列はすべて `W` 未満に留まる。 -/
 theorem value_of_diff_prefix (M : RowMountain) (top : Nat → Nat) (V : Nat → Nat → Nat)

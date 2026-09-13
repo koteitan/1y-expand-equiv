@@ -148,14 +148,6 @@ theorem calcMountainFrom_rep (S : Setting) (start : Rowj) (fuel r : Nat)
   rw [Nat.zero_add] at h
   exact h
 
-/-- **山の値が一致する。** JS の行 `r` を列番号 `c` で引いた値は、
-Phyrion 版の行 `r` の列 `c` の値である。 -/
-theorem calcMountain_value (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel r c : Nat)
-    (hr : r < (calcMountain s (fuel + 1)).length) (hc : c < s.length) :
-    readVal ((calcMountain s (fuel + 1))[r]'hr) r c = (rows (ofSequence s) r).value c :=
-  rep_read _ r s.length _ (calcMountain_rep s hs fuel r hr).1
-    (fun q hq => rows_value_zero_of_lt (ofSequence s) r q hq) c hc
-
 /-- **山の親が一致する。** JS の行 `r` の列 `c` の親は、Phyrion 版の行 `r` の
 森での親である。 -/
 theorem calcMountain_parent (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (fuel r c : Nat)

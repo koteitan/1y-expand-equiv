@@ -33,13 +33,6 @@ theorem yamaVal_eq (base : Rowj) (y x c : Nat) (hyx : y < x) :
       rw [he, Nat.add_mod_right]
     rw [hmod]
 
-/-- **`yamaVal` は `OrdinaryCopy` の値のコピーである。** -/
-theorem yamaVal_eq_source0 (base : Rowj) (C : OrdinaryCopy.Context) (c : Nat) :
-    yamaVal base C.coordinates.y C.coordinates.x c = valAtIdx base (C.source0 c) := by
-  rw [yamaVal_eq base _ _ c C.coordinates.root_lt_last]
-  unfold OrdinaryCopy.Context.source0 CopyCoordinates.Context.length
-  rfl
-
 /-- **JS の桁上げは `parentCopy` である。** -/
 theorem js_shift_eq_parentCopy (C : CopyCoordinates.Context) (b col : Nat) :
     col + (if C.y ≤ col then b * C.length else 0) = C.parentCopy b col := by
@@ -204,18 +197,12 @@ def kmaxAt (M : List Rowj) (P : FujiParams) (i j afterCutHeight ascFuel : Nat) :
   let d := P.cutHeight - P.badRootHeight
   if isAsc then seamH + d * i else seamH
 
-theorem fujiSeams_zero (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
-    (i ach af : Nat) (res : List Rowj) : fujiSeams M P nd i ach af 0 res = res := rfl
-
 theorem fujiSeams_succ (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
     (i ach af t : Nat) (res : List Rowj) :
     fujiSeams M P nd i ach af (t + 1) res
       = fujiRows M P nd i (P.badRootSeam + t) (isRepAt P (P.badRootSeam + t))
           (isAscAt M P (P.badRootSeam + t) af)
           (kmaxAt M P i (P.badRootSeam + t) ach af) (fujiSeams M P nd i ach af t res) := rfl
-
-theorem fujiIters_zero (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
-    (ach af : Nat) (res : List Rowj) : fujiIters M P nd ach af 0 res = res := rfl
 
 theorem fujiIters_succ (M : List Rowj) (P : FujiParams) (nd : Nat → Nat)
     (ach af i : Nat) (res : List Rowj) :
@@ -271,13 +258,6 @@ theorem rowExt_fujiIters (M : List Rowj) (P : FujiParams) (nd : Nat → Nat) (ac
       exact RowExt.trans (ih res m) (rowExt_fujiSeams _ _ _ _ _ _ _ _ _)
 
 /-! ## 積むセルの列と親の列 -/
-
-/-- **積むセルの列は `j + len * i`。** どの段でも同じ列に積む。 -/
-theorem fujiCell_col (M : List Rowj) (P : FujiParams) (cur : Rowj) (sy sx k i j shifts : Nat)
-    (topVal : Nat) (h : k ≤ j + P.len * i) :
-    (fujiCell M P cur sy sx k i j shifts topVal).pos + k = j + P.len * i := by
-  show (j + P.len * i - k) + k = j + P.len * i
-  omega
 
 /-- **親の列は「元の親の列 + 桁上げ」。** `parentPos` はそれを段 `k` の position に
 直したものである。 -/
@@ -444,13 +424,6 @@ theorem lookupPos_of_pos (row : Rowj) (hmono : PosMono row) (q i : Nat) (hi : i 
     (hpos : (row[i]'hi).pos = q) : lookupPos row q = some i := by
   have hfa : firstAtLeast row q = i := firstAtLeast_eq_of_mem row hmono q i hi hpos
   simp only [lookupPos, hfa, dif_pos hi, if_pos hpos]
-
-/-- **伸びた段でも同じ添字が引ける。** -/
-theorem lookupPos_of_rowExt {a b : Rowj} (h : RowExt a b) (hmono : PosMono b) (q i : Nat)
-    (hl : lookupPos a q = some i) : lookupPos b q = some i := by
-  obtain ⟨hi, hpos⟩ := lookupPos_some_iff a q i hl
-  obtain ⟨hb, heq⟩ := h.getElem i hi
-  exact lookupPos_of_pos b hmono q i hb (by rw [heq]; exact hpos)
 
 /-! ## 位置の単調性と列の上限
 
@@ -735,15 +708,6 @@ theorem fujiCell_par_col (M : List Rowj) (P : FujiParams) (cur : Rowj)
 
 /-! ## 枝の選び方についての初等的な事実 -/
 
-/-- **元の段はつねに行き先の段以下。** 4 つの枝のどれでも成り立つ。 -/
-theorem fujiSource_le (P : FujiParams) (i k : Nat) (isRep : Bool) :
-    (fujiSource P i k isRep).1 ≤ k := by
-  unfold fujiSource
-  dsimp only
-  repeat' split
-  all_goals try dsimp only
-  all_goals omega
-
 /-- **積む段の数の上限。** 継ぎ目の高さが `j + 1` 以下で、切りの落差 `d` が
 コピー 1 つぶんの長さ以下なら、`kmax ≤ j + len*i + 1` である。 -/
 theorem kmaxAt_le (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
@@ -809,33 +773,6 @@ theorem dense_of_cover (row : Rowj) (W : Nat) (hmono : PosMono row)
   exact ⟨by omega, fun t ht => hall t ht (by omega)⟩
 
 /-! ## 継ぎ目の高さの上限 -/
-
-theorem seamHeightOf_le (M : List Rowj) (j : Nat) :
-    ∀ hi : Nat, seamHeightOf M j hi ≤ hi := by
-  intro hi
-  induction hi with
-  | zero => exact Nat.le_refl 0
-  | succ h ih =>
-      rw [seamHeightOf]
-      split
-      · exact Nat.le_refl _
-      · omega
-
-/-- **継ぎ目の高さは列より 1 だけ大きい以下。** 段が足りていれば
-`seamHeightOf M j hi = height j + 1 ≤ j + 1` である。 -/
-theorem seamHeightOf_le_succ (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
-    (hj : j < S.n) (hi : Nat) (h1 : hi ≤ M.length) (h2 : height S.tower.base j < hi) :
-    seamHeightOf M j hi ≤ j + 1 := by
-  rw [seamHeightOf_eq S M hM j hj hi h1 h2]
-  have := height_le_self' S.tower.base S.tower.hpos j
-  omega
-
-/-- 継ぎ目の高さは正。 -/
-theorem seamHeightOf_pos (S : Setting) (M : List Rowj) (hM : MtRep S M) (j : Nat)
-    (hj : j < S.n) (hi : Nat) (h1 : hi ≤ M.length) (h2 : height S.tower.base j < hi) :
-    0 < seamHeightOf M j hi := by
-  rw [seamHeightOf_eq S M hM j hj hi h1 h2]
-  omega
 
 /-- 継ぎ目の高さが正なら、積む段の数も正。 -/
 theorem kmaxAt_pos (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
@@ -984,33 +921,6 @@ theorem expandJS_some (nrep mfuel efuel : Nat) (M : List Rowj)
   simp only [expandJS, h, Bool.not_true, Bool.false_eq_true, if_false]
   rfl
 
-/-- 埋めと空段落としのあとの行 0 の大きさ。 -/
-theorem row0_size_final (L : List Rowj) :
-    (rowAt (fillValues (dropEmptyTop L)) 0).size = (rowAt L 0).size := by
-  rw [fillValues_size, dropEmptyTop_row0 L.length L (Nat.le_refl _)]
-
-/-- **`some` の枝の出力の形。** 幅は `afterCutLength + len * nrep` である。 -/
-theorem expandOut_some (nrep mfuel efuel : Nat) (M : List Rowj)
-    (h : (if hlt : (rowAt M 0).size - 1 < (rowAt M 0).size
-          then (((rowAt M 0)[(rowAt M 0).size - 1]'hlt).par).isSome else false) = true)
-    (hkm : ∀ i' j', kmaxAt M (expP M mfuel) i' j' (expRes M).length mfuel
-      ≤ j' + (expP M mfuel).len * i' + 1)
-    (hkpos : ∀ i r, r < (expP M mfuel).len →
-      0 < kmaxAt M (expP M mfuel) i ((expP M mfuel).badRootSeam + r) (expRes M).length mfuel)
-    (hlenpos : 0 < (expP M mfuel).len)
-    (hseam : (expP M mfuel).badRootSeam ≤ (expP M mfuel).afterCutLength)
-    (hmono : RowsMono (expRes M))
-    (hb : ColLt (expRes M) (expP M mfuel).afterCutLength)
-    (hd0 : ∀ c, c < (expP M mfuel).afterCutLength → HasCol (expRes M) 0 c) :
-    expandOut (expandJS nrep mfuel (efuel + 1) M)
-      = (List.range ((expP M mfuel).afterCutLength + (expP M mfuel).len * nrep)).map
-          (fun c => valAtIdx (rowAt (expandJS nrep mfuel (efuel + 1) M) 0) c) := by
-  rw [expandJS_some nrep mfuel efuel M h]
-  refine expandOut_eq_range _ _ ?_
-  rw [row0_size_final]
-  exact (row0_dense_fujiIters M (expP M mfuel) (expNd nrep mfuel efuel M) (expRes M).length
-    mfuel hkm hkpos hlenpos (badRootSeam_add_len _ hseam) nrep (expRes M) hmono hb hd0).1
-
 /-! ## 位置で読むことと列で読むこと
 
 `fillRow` は 1 つ上の段を「position で」引く（`readValAt`）。列で引く `readVal` と
@@ -1056,13 +966,6 @@ theorem fillValues_pos_get (Rs : List Rowj) (r t : Nat)
     (ht : t < (rowAt (fillValues Rs) r).size) (ht' : t < (rowAt Rs r).size) :
     ((rowAt (fillValues Rs) r)[t]'ht).pos = ((rowAt Rs r)[t]'ht').pos := by
   have h := fillValues_pos? Rs r t
-  rw [Array.getElem?_eq_getElem ht, Array.getElem?_eq_getElem ht'] at h
-  simpa using h
-
-theorem fillValues_par_get (Rs : List Rowj) (r t : Nat)
-    (ht : t < (rowAt (fillValues Rs) r).size) (ht' : t < (rowAt Rs r).size) :
-    ((rowAt (fillValues Rs) r)[t]'ht).par = ((rowAt Rs r)[t]'ht').par := by
-  have h := fillValues_par? Rs r t
   rw [Array.getElem?_eq_getElem ht, Array.getElem?_eq_getElem ht'] at h
   simpa using h
 
@@ -1181,19 +1084,6 @@ theorem yamaVal_pop_source0 (base : Rowj) (C : OrdinaryCopy.Context) (c : Nat)
 
 /-! ## 新しい対角の値の 2 つの枝 -/
 
-/-- **山崎噴火の枝。** 新しい対角は、対角の値を `source0` で読んだものである。 -/
-theorem expNd_yama (nrep mfuel efuel : Nat) (M : List Rowj) (h : expYama M mfuel)
-    (hyx : expSeam M mfuel < (rowAt M 0).size - 1)
-    (hx : (rowAt M 0).size - 1 < (rowAt (expDg M mfuel) 0).size) (c : Nat) :
-    expNd nrep mfuel efuel M c
-      = valAtIdx (rowAt (expDg M mfuel) 0)
-          (if c < expSeam M mfuel then c
-           else expSeam M mfuel
-             + (c - expSeam M mfuel) % ((rowAt M 0).size - 1 - expSeam M mfuel)) := by
-  unfold expNd
-  rw [if_pos h]
-  exact yamaVal_pop _ _ _ c hyx hx
-
 /-- `OrdinaryCopy` の言葉での言い換え。 -/
 theorem expNd_yama_source0 (nrep mfuel efuel : Nat) (M : List Rowj) (h : expYama M mfuel)
     (C : OrdinaryCopy.Context) (hy : C.coordinates.y = expSeam M mfuel)
@@ -1246,18 +1136,9 @@ theorem kmaxAt_yama (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
   rw [hdz, Nat.zero_mul, Nat.add_zero]
   split <;> rfl
 
-/-- 山崎噴火の枝では `d ≤ len` が自明に成り立つ。 -/
-theorem kmaxAt_le_yama (M : List Rowj) (P : FujiParams) (i j ach af : Nat)
-    (hd : P.cutHeight = P.badRootHeight) (hs : seamHeightOf M j ach ≤ j + 1) :
-    kmaxAt M P i j ach af ≤ j + P.len * i + 1 :=
-  kmaxAt_le M P i j ach af hs (by omega)
-
 /-! ## 元のセルの添字
 
 `sourceIdx` は、`useLast` なら行の最後のセル、そうでなければ列 `j` のセルを指す。 -/
-
-theorem sourceIdx_false (M : List Rowj) (sy j : Nat) :
-    sourceIdx M sy j false = firstAtLeast (rowAt M sy) (j - sy) := rfl
 
 theorem sourceIdx_true (M : List Rowj) (sy j : Nat) :
     sourceIdx M sy j true = (rowAt M sy).size - 1 := rfl
@@ -2335,13 +2216,6 @@ theorem fujiSource_notyama (P : FujiParams) (hyk : P.yamakazi = false) (i k : Na
   simp only [Bool.not_false, Bool.true_and]
   repeat' split
   all_goals rfl
-
-theorem fujiSourceAt_le (P : FujiParams) (i k : Nat) (isRep isAsc : Bool) :
-    (fujiSourceAt P i k isRep isAsc).1 ≤ k := by
-  unfold fujiSourceAt
-  cases isAsc with
-  | true => simpa using fujiSource_le P i k isRep
-  | false => simp
 
 theorem fujiSrcRow_le (P : FujiParams) (i k : Nat) (isRep : Bool) :
     fujiSrcRow P i k isRep ≤ k := by

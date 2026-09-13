@@ -161,23 +161,6 @@ theorem sibSucc_rows (T : Tower) (m root e : Nat)
       (rows T.base (m + 1)).value (root + 1) :=
   sibSucc T m root e hj he hlt
 
-/-- **非祖先の場合の (1)。** 仮定 `hsib` が `sibSucc` で埋まり、消える。 -/
-theorem one_of_nonancestor_closed (T : Tower) (m : Nat)
-    {root p e : Nat}
-    (hp : (rows T.base (m + 1)).forest.parent p = some root)
-    (hj : (rows T.base (m + 1)).forest.parent (root + 1) = some root)
-    (he : (rows T.base m).forest.parent e = some root)
-    (hanc : ZeroY.Forest.Ancestor (rows T.base m).forest.parent p e ∨ e = p) :
-    (rows T.base (m + 1)).value p ≤
-      (rows T.base (m + 1)).value (root + 1) := by
-  refine one_of_nonancestor (compat_rows T.base m) hp he hanc ?_
-  rcases Nat.lt_or_ge (root + 1) e with hlt | hge
-  · exact sibSucc_rows T m root e (fparent_succ_step T.base m root hj) he hlt
-  · have hre := (rows T.base m).forest.parent_left he
-    have heq : e = root + 1 := by omega
-    rw [heq]
-    exact Nat.le_refl _
-
 /-! ## 最左の子は右隣（`RootChildAdjacent`）
 
 `SibSucc` があると、次が層に関する帰納で出る。
@@ -335,17 +318,5 @@ def linearTower (s : List Nat) (hs : ∀ x ∈ s, 0 < x) : Tower where
   B0 := fun _ e _ he hlt => by
     have hce := linear_child_eq he
     omega
-
-theorem leftmost_child_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (k root e : Nat)
-    (h : (rows (ofSequence s) k).forest.parent e = some root) :
-    (rows (ofSequence s) k).forest.parent (root + 1) = some root :=
-  leftmost_child_rows (linearTower s hs) k root e h
-
-theorem sibSucc_seq (s : List Nat) (hs : ∀ x ∈ s, 0 < x) (m root e : Nat)
-    (hj : (rows (ofSequence s) m).forest.parent (root + 1) = some root)
-    (he : (rows (ofSequence s) m).forest.parent e = some root)
-    (hlt : root + 1 < e) :
-    (rows (ofSequence s) (m + 1)).value e ≤ (rows (ofSequence s) (m + 1)).value (root + 1) :=
-  sibSucc_rows (linearTower s hs) m root e hj he hlt
 
 end Yukito

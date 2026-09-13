@@ -41,7 +41,7 @@ flowchart TB
 
 ### (2) Yukito 版(lean) = Phyrion 版(lean) の証明
 
-[`Equiv/Lower.lean`](Equiv/Lower.lean#L2152) の `expand_eq` で証明した。
+[`Equiv/Lower.lean`](Equiv/Lower.lean#L2115) の `expand_eq` で証明した。
 
 ```lean
 theorem expand_eq (s : List Nat) (hs : ZeroY.Legal s) (N m efuel : Nat)

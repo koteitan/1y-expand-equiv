@@ -39,27 +39,6 @@ namespace Yukito
 
 open OneY OneY.RootGeometry
 
-/-- 行 `h` で生きている列について、「その行で親を持たない」ことと
-「高さがちょうど `h`」は同値である。JS の停止条件はこれである。 -/
-theorem top_iff_height_eq (M : RowMountain) {h p : Nat} (hlive : h ≤ M.height p) :
-    (M.row h).parent p = none ↔ M.height p = h := by
-  rw [M.parent_none_iff]
-  omega
-
-/-- 高さ `H c` で止まった場合。`H p = H c` となる。 -/
-theorem stop_at_top (M : RowMountain) {c p : Nat}
-    (hlive : M.height c ≤ M.height p)
-    (hstop : (M.row (M.height c)).parent p = none) : M.height p = M.height c :=
-  (top_iff_height_eq M hlive).mp hstop
-
-/-- 高さ `H c − 1` に降りて止まった場合。`H p + 1 = H c` となる。 -/
-theorem stop_after_drop (M : RowMountain) {c p : Nat} (hc : 0 < M.height c)
-    (hlive : M.height c - 1 ≤ M.height p)
-    (hnotlive : ¬ (M.height c ≤ M.height p))
-    (hstop : (M.row (M.height c - 1)).parent p = none) : M.height p + 1 = M.height c := by
-  have := (top_iff_height_eq M hlive).mp hstop
-  omega
-
 /-! ## 歩行の停止位置
 
 JS は「その行で親を持たない」で止まるので、実質「高さが `H c` 以下」で止まる。
@@ -68,21 +47,6 @@ Lean は `H p ∈ {H c − 1, H c}` を課す。この 2 つは歩行が辿る�
 理由は、行 `r` の祖先鎖の要素はその行で生きている、すなわち高さが `r` 以上だから。
 歩行が辿るのは行 `H c − 1` の鎖なので、要素の高さは `H c − 1` 以上に押さえられる。
 そこに上からの `≤ H c` を合わせると、ちょうど 2 通りに絞られる。 -/
-
-/-- 行 `r` の祖先鎖の要素は、その行で生きている。 -/
-theorem chain_height_ge (M : RowMountain) {r c p : Nat}
-    (h : ZeroY.Forest.Ancestor (M.row r).parent c p) : r ≤ M.height p := by
-  induction h with
-  | single hp => exact M.parent_endpoint hp
-  | tail _ hp _ => exact M.parent_endpoint hp
-
-/-- 歩行が辿る鎖の上では、JS の停止条件と Lean の高さ条件は同値である。 -/
-theorem stop_iff_candidate (M : RowMountain) {c p : Nat} (hc : 0 < M.height c)
-    (h : ZeroY.Forest.Ancestor (M.row (M.height c - 1)).parent c p) :
-    M.height p ≤ M.height c ↔
-      (M.height p = M.height c ∨ M.height p + 1 = M.height c) := by
-  have hge := chain_height_ge M h
-  omega
 
 /-! ## 脚歩行
 
@@ -170,12 +134,6 @@ def legWalk (M : RowMountain) (r bound : Nat) : Nat → Nat → Option Nat
     match (M.row r).parent c with
     | none => none
     | some q => if M.height q ≤ bound then some q else legWalk M r bound fuel q
-
-/-- JS が `parentIndex = -1` を引かないための不変量。行 `h ≥ 1` で生きている列は
-行 `h−1` に親を持つので、`l` は必ず実在のセルを指す。 -/
-theorem legStep_defined (M : RowMountain) {h c : Nat} (hh : 0 < h)
-    (hlive : h ≤ M.height c) : ∃ q, (M.row (h - 1)).parent c = some q :=
-  M.parent_exists (h - 1) c (by omega)
 
 /-- 行の記録は要らない。`h = bound` から始めた歩行は、列だけの歩行と一致する。
 

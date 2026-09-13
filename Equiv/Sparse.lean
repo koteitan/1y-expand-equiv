@@ -27,37 +27,6 @@ def PosMono (row : Rowj) : Prop :=
   ∀ i j, (hi : i < row.size) → (hj : j < row.size) → i < j →
     (row[i]'hi).pos < (row[j]'hj).pos
 
-/-- 走査は始点以上の添字を返す。 -/
-theorem scanFrom_ge (row : Rowj) (target j : Nat) : j ≤ scanFrom row target j := by
-  induction j using scanFrom.induct row target with
-  | case1 j h hlt ih =>
-      rw [scanFrom.eq_def row target j, dif_pos h, if_pos hlt]
-      omega
-  | case2 j h hge =>
-      rw [scanFrom.eq_def row target j, dif_pos h, if_neg hge]
-      exact Nat.le_refl _
-  | case3 j h =>
-      rw [scanFrom.eq_def row target j, dif_neg h]
-      exact Nat.le_refl _
-
-/-- 走査は配列の外へは出ない。 -/
-theorem scanFrom_le (row : Rowj) (target : Nat) :
-    ∀ j, j ≤ row.size → scanFrom row target j ≤ row.size := by
-  intro j
-  induction j using scanFrom.induct row target with
-  | case1 j h hlt ih =>
-      intro _
-      rw [scanFrom.eq_def row target j, dif_pos h, if_pos hlt]
-      exact ih h
-  | case2 j h hge =>
-      intro hj
-      rw [scanFrom.eq_def row target j, dif_pos h, if_neg hge]
-      exact hj
-  | case3 j h =>
-      intro hj
-      rw [scanFrom.eq_def row target j, dif_neg h]
-      exact hj
-
 /-- 止まる手前のセルは `position` が `target` 未満。 -/
 theorem scanFrom_before (row : Rowj) (target : Nat) :
     ∀ j i, ∀ hi : i < row.size, j ≤ i → i < scanFrom row target j →
@@ -99,10 +68,6 @@ theorem scanFrom_at (row : Rowj) (target : Nat) :
       rw [scanFrom.eq_def row target j, dif_neg h] at he
       omega
 
-theorem firstAtLeast_le (row : Rowj) (target : Nat) :
-    firstAtLeast row target ≤ row.size :=
-  scanFrom_le row target 0 (Nat.zero_le _)
-
 theorem firstAtLeast_before (row : Rowj) (target i : Nat) (hi : i < row.size)
     (h : i < firstAtLeast row target) : (row[i]'hi).pos < target :=
   scanFrom_before row target 0 i hi (Nat.zero_le _) h
@@ -135,12 +100,5 @@ theorem firstAtLeast_eq_of_mem (row : Rowj) (hmono : PosMono row) (target m : Na
     firstAtLeast row target = m :=
   firstAtLeast_eq row target m hm (by omega)
     (fun i hi hlt => by have := hmono i m hi hm hlt; omega)
-
-/-- ちょうどのセルが無いときは、`firstAtLeast` が指すセルは `target` より右にある。 -/
-theorem firstAtLeast_gt_of_not_mem (row : Rowj) (target k : Nat)
-    (hk : k < row.size) (h : firstAtLeast row target = k)
-    (hne : (row[k]'hk).pos ≠ target) : target < (row[k]'hk).pos := by
-  have := firstAtLeast_at row target k hk h
-  omega
 
 end Yukito

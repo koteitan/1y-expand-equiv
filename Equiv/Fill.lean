@@ -178,49 +178,12 @@ theorem fillG_pos (up acc : Rowj) (c : Cell) : (fillG up acc c).pos = c.pos := b
   · rfl
   · rfl
 
-theorem fillG_par (up acc : Rowj) (c : Cell) : (fillG up acc c).par = c.par := by
-  unfold fillG
-  split
-  · rfl
-  · rfl
-
 theorem fillRow_pos? (row up : Rowj) (i : Nat) :
     ((fillRow row up)[i]?).map (·.pos) = ((row[i]?)).map (·.pos) := by
   rw [fillRow_get?]
   cases h : row[i]? with
   | none => rfl
   | some c => simp [fillG_pos]
-
-theorem fillRow_par? (row up : Rowj) (i : Nat) :
-    ((fillRow row up)[i]?).map (·.par) = ((row[i]?)).map (·.par) := by
-  rw [fillRow_get?]
-  cases h : row[i]? with
-  | none => rfl
-  | some c => simp [fillG_par]
-
-/-- `pos` は埋めても変わらない。 -/
-theorem fillRow_pos (row up : Rowj) (i : Nat) (hi : i < row.size)
-    (hi' : i < (fillRow row up).size) : ((fillRow row up)[i]'hi').pos = (row[i]'hi).pos := by
-  have := fillRow_get row up i hi
-  rw [Array.getElem?_eq_getElem hi'] at this
-  have h2 := Option.some.inj this
-  rw [h2]
-  unfold fillG
-  split
-  · rfl
-  · rfl
-
-/-- `par` は埋めても変わらない。 -/
-theorem fillRow_par (row up : Rowj) (i : Nat) (hi : i < row.size)
-    (hi' : i < (fillRow row up).size) : ((fillRow row up)[i]'hi').par = (row[i]'hi).par := by
-  have := fillRow_get row up i hi
-  rw [Array.getElem?_eq_getElem hi'] at this
-  have h2 := Option.some.inj this
-  rw [h2]
-  unfold fillG
-  split
-  · rfl
-  · rfl
 
 /-! ## 行の並び -/
 
@@ -240,17 +203,6 @@ theorem fillValues_cons (r a : Rowj) (t : List Rowj) :
   rw [show fillValues (r :: a :: t)
         = fillRow r ((fillValues (a :: t)).headD #[]) :: fillValues (a :: t) from rfl,
     headD_eq_rowAt]
-
-theorem fillValues_length (Rs : List Rowj) : (fillValues Rs).length = Rs.length := by
-  induction Rs with
-  | nil => rfl
-  | cons x rest ih =>
-      rcases rest with _ | ⟨a, t⟩
-      · rfl
-      · rw [fillValues_cons]
-        simp only [List.length_cons]
-        simp only [List.length_cons] at ih
-        omega
 
 /-- 段の大きさは変わらない。 -/
 theorem fillValues_size (Rs : List Rowj) (r : Nat) :
@@ -276,19 +228,6 @@ theorem fillValues_pos? (Rs : List Rowj) (r i : Nat) :
       · rw [fillValues_cons]
         cases r with
         | zero => rw [rowAt_cons_zero, rowAt_cons_zero, fillRow_pos?]
-        | succ k => rw [rowAt_cons_succ, rowAt_cons_succ]; exact ih k
-
-/-- `par` は変わらない。 -/
-theorem fillValues_par? (Rs : List Rowj) (r i : Nat) :
-    ((rowAt (fillValues Rs) r)[i]?).map (·.par) = ((rowAt Rs r)[i]?).map (·.par) := by
-  induction Rs generalizing r with
-  | nil => rfl
-  | cons x rest ih =>
-      rcases rest with _ | ⟨a, t⟩
-      · rfl
-      · rw [fillValues_cons]
-        cases r with
-        | zero => rw [rowAt_cons_zero, rowAt_cons_zero, fillRow_par?]
         | succ k => rw [rowAt_cons_succ, rowAt_cons_succ]; exact ih k
 
 /-- 最上段はそのまま。 -/

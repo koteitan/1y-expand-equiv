@@ -1,4 +1,5 @@
-import Equiv.SibLive
+import Equiv.FirstLive
+import Equiv.Row0
 
 /-!
 # 森の塔
@@ -82,9 +83,6 @@ theorem frameAt_step (T : Tower) (k : Nat) :
   | zero => exact funext T.hbase
   | succ k => rfl
 
-/-- 層 0 の frame は塔の底。 -/
-theorem frameAt_zero (T : Tower) : frameAt T 0 = T.frame0 := rfl
-
 /-! ## 3 択を塔の形で書く
 
 目標は層 `k` での `towerVal T k q2 ≤ towerVal T k q1` である。
@@ -96,15 +94,6 @@ theorem frameAt_zero (T : Tower) : frameAt T 0 = T.frame0 := rfl
 層 0 では 2 が起きえず（`no_siblings_zero`）、1 が必ず成り立つ（`one_at_zero`）
 ので、降下はそこで止まる。 -/
 
-/-- 場合 1。層 `k` の frame で `q1` が `q2` の祖先なら最大性で閉じる。 -/
-theorem tower_case_ancestor (T : Tower) {k t q1 q2 : Nat}
-    (h2 : (frameAt T (k+1)).parent q2 = some t)
-    (hanc : ZeroY.Forest.Ancestor (frameAt T k).parent q2 q1)
-    (ht : t < q1) (hpos : 0 < towerVal T k q1) :
-    towerVal T k q2 ≤ towerVal T k q1 := by
-  rw [frameAt_step] at h2
-  exact one_of_ancestor t q2 q1 h2 hanc ht hpos
-
 /-- 場合 2。層 `k+1` の frame で兄弟なら、層 `k` の目標から層 `k+1` の目標が出る。 -/
 theorem tower_case_descent (T : Tower) {k t q1 q2 : Nat}
     (h1 : (frameAt T (k+1)).parent q1 = some t)
@@ -112,18 +101,6 @@ theorem tower_case_descent (T : Tower) {k t q1 q2 : Nat}
     (hgoal : towerVal T k q2 ≤ towerVal T k q1) :
     towerVal T (k+1) q2 ≤ towerVal T (k+1) q1 :=
   (sibling_descent (rows T.base k) h1 h2).mpr hgoal
-
-/-- 場合 3 の結合部。層 `k` の frame で `z` が `q2` の祖先なら、
-`q2` 側を `z` で押さえて連鎖する。 -/
-theorem tower_case_meet (T : Tower) {k t z q1 q2 : Nat}
-    (h2 : (frameAt T (k+1)).parent q2 = some t)
-    (hz : ZeroY.Forest.Ancestor (frameAt T k).parent q2 z)
-    (htz : t < z) (hzpos : 0 < towerVal T k z)
-    (hrec : towerVal T k z ≤ towerVal T k q1) :
-    towerVal T k q2 ≤ towerVal T k q1 := by
-  rw [frameAt_step] at h2
-  have := one_of_ancestor t q2 z h2 hz htz hzpos
-  omega
 
 /-! ## 帰納の組み立て
 
@@ -136,26 +113,6 @@ CommonBelow k q1 q2 :  q1 と q2 は層 k の frame で共通の祖先を q1 よ
 
 層 `k+1` で兄弟なら、その親 `t` は層 `k` の frame で両者の祖先であり `t < q1` を
 満たすので、`CommonBelow k q1 q2` が従う。したがって降下で保たれる。 -/
-
-/-- `q1` と `q2` が層 `k` の frame で共通の祖先を `q1` より左に持つ。 -/
-def CommonBelow (T : Tower) (k q1 q2 : Nat) : Prop :=
-  ∃ t, t < q1 ∧ ZeroY.Forest.Ancestor (frameAt T k).parent q1 t ∧
-       ZeroY.Forest.Ancestor (frameAt T k).parent q2 t
-
-/-- 層 `k+1` で兄弟なら、層 `k` で共通の祖先を持つ。 -/
-theorem commonBelow_of_siblings (T : Tower) {k t q1 q2 : Nat}
-    (h1 : (frameAt T (k+1)).parent q1 = some t)
-    (h2 : (frameAt T (k+1)).parent q2 = some t) : CommonBelow T k q1 q2 := by
-  rw [frameAt_step] at h1 h2
-  obtain ⟨ha1, _, _, _⟩ := (restrictedParent_some_iff _ _ q1 t).mp h1
-  obtain ⟨ha2, _, _, _⟩ := (restrictedParent_some_iff _ _ q2 t).mp h2
-  exact ⟨t, ZeroY.Forest.ancestor_lt (frameAt T k).parent_left ha1, ha1, ha2⟩
-
-/-- 層 `k` で 3 択が場合 1 か場合 2 に落ちること。 -/
-def Resolves (T : Tower) (k q1 q2 : Nat) : Prop :=
-  (∃ t, (frameAt T (k+1)).parent q2 = some t ∧ t < q1 ∧
-        ZeroY.Forest.Ancestor (frameAt T k).parent q2 q1)
-  ∨ (∃ t, (frameAt T k).parent q1 = some t ∧ (frameAt T k).parent q2 = some t)
 
 /-! ### 注意：`hres` の充足可能性は未確認
 
@@ -198,49 +155,6 @@ Inv m q1 q2 :  (frameAt T (m+1)).parent q2 = some t かつ t < q1 < q2
 
 実測では値 12 まで 271,452 列・191,959 件でこの条件から結論が出ており、反例が無い。
 内訳は祖先 189,600、兄弟 1,775、どちらでもない 584 である。 -/
-
-/-- liveness は一段下へ伝わる。行が上がるほど値は増えないため。 -/
-theorem frame_live_down (T : Tower) (k q : Nat)
-    (h : (frameAt T (k+2)).parent q ≠ none) : (frameAt T (k+1)).parent q ≠ none := by
-  have h2 : 0 < (rows T.base (k+2)).value q := by
-    rcases hq : (frameAt T (k+2)).parent q with _ | z
-    · exact absurd hq h
-    · exact (rows_parent_iff_next_live T.base (k+1) q).mp ⟨z, hq⟩
-  have hle : (rows T.base (k+2)).value q ≤ (rows T.base (k+1)).value q :=
-    rows_value_le T.base (k+1) q
-  obtain ⟨p, hp⟩ := (rows_parent_iff_next_live T.base k q).mpr (by omega)
-  intro hn
-  rw [show (frameAt T (k+1)).parent = (rows T.base k).forest.parent from rfl,
-    hp] at hn
-  cases hn
-
-/-- liveness から、その層で値が正であることが出る。 -/
-theorem frame_live_pos (T : Tower) (k q : Nat)
-    (h : (frameAt T (k+1)).parent q ≠ none) : 0 < towerVal T k q := by
-  rcases hq : (frameAt T (k+1)).parent q with _ | z
-  · exact absurd hq h
-  · have := (rows_parent_iff_next_live T.base k q).mp ⟨z, hq⟩
-    have hle : (rows T.base (k+1)).value q ≤ (rows T.base k).value q :=
-      rows_value_le T.base k q
-    show 0 < (rows T.base k).value q
-    omega
-
-/-- 目標が層 `m` のときに担ぐ条件。 -/
-def Inv (T : Tower) (m q1 q2 : Nat) : Prop :=
-  (∃ t, (frameAt T (m+1)).parent q2 = some t ∧ t < q1) ∧ q1 < q2 ∧
-    (frameAt T (m+2)).parent q1 ≠ none
-
-/-- 不変量から、その層で `q1` の値が正であることが出る。 -/
-theorem inv_pos (T : Tower) {m q1 q2 : Nat} (h : Inv T m q1 q2) :
-    0 < towerVal T m q1 :=
-  frame_live_pos T m q1 (frame_live_down T m q1 h.2.2)
-
-/-- 兄弟なら不変量が一段下へ移る。 -/
-theorem inv_descend (T : Tower) {m t q1 q2 : Nat}
-    (h : Inv T (m+1) q1 q2)
-    (h1 : (frameAt T (m+1)).parent q1 = some t)
-    (h2 : (frameAt T (m+1)).parent q2 = some t) : Inv T m q1 q2 :=
-  ⟨⟨t, h2, (frameAt T (m+1)).parent_left h1⟩, h.2.1, frame_live_down T (m+1) q1 h.2.2⟩
 
 /-! ## `Inv` はまだ実際の配置より弱い
 
